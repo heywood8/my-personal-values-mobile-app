@@ -1,4 +1,9 @@
 import { queryFirst, executeQuery, queryAll } from './db';
+import {
+  readMirroredPreference,
+  writeMirroredPreference,
+  deleteMirroredPreference,
+} from './preferenceMirror';
 
 export const PREF_KEYS = {
   LANGUAGE: 'app_language',
@@ -10,6 +15,10 @@ export const PREF_KEYS = {
   // someone can pick a language and close the app mid-deck, and should land back
   // in the deck rather than on an empty results screen.
   ONBOARDING_COMPLETE: 'onboarding_complete',
+  // Set once the first run's scale question has been answered. The scale itself
+  // is SCALE, above; this is the step marker, and it is what makes a first run
+  // interrupted mid-deck resume in the deck instead of at the question again.
+  ONBOARDING_SCALE_CHOSEN: 'onboarding_scale_chosen',
   // Sort direction on the results screen: 'desc' (most important first, the
   // default) or 'asc'.
   RESULTS_SORT: 'results_sort',
@@ -21,6 +30,13 @@ export const PREF_KEYS = {
 
 /**
  * Get a preference value.
+ *
+ * Reads the database, which is the store of record — the browser-local mirror
+ * has already been folded into it by the time it opens (see
+ * `restoreMirroredPreferences` in db.js), so the two agree. The mirror is only
+ * consulted here when the read itself failed, where the alternative is handing
+ * back a default and quietly restarting someone's onboarding.
+ *
  * @param {string} key
  * @param {*} defaultValue returned when the preference is unset
  * @returns {Promise<string|null>}
@@ -39,17 +55,24 @@ export const getPreference = async (key, defaultValue = null) => {
     return defaultValue;
   } catch (error) {
     console.error('[PreferencesDB] Error getting preference:', key, error);
-    return defaultValue;
+    const mirrored = readMirroredPreference(key);
+    return mirrored === null ? defaultValue : mirrored;
   }
 };
 
 /**
  * Set a preference value.
+ *
+ * The mirror is written first, and on purpose: it cannot throw, and a database
+ * write that does should still leave the preference recorded somewhere the next
+ * open can find it.
+ *
  * @param {string} key
  * @param {string} value
  * @returns {Promise<void>}
  */
 export const setPreference = async (key, value) => {
+  writeMirroredPreference(key, String(value));
   try {
     const now = new Date().toISOString();
     await executeQuery(
@@ -90,8 +113,9 @@ export const setJsonPreference = async (key, value) => {
   await setPreference(key, JSON.stringify(value));
 };
 
-/** Delete a preference. */
+/** Delete a preference, from the mirror as well — see setPreference for the order. */
 export const deletePreference = async (key) => {
+  deleteMirroredPreference(key);
   try {
     await executeQuery('DELETE FROM app_metadata WHERE key = ?', [key]);
   } catch (error) {

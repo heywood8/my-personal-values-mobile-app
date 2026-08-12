@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import migrations from '../../drizzle/migrations.generated';
+import { readAllMirroredPreferences, clearMirroredPreferences } from './preferenceMirror';
 
 const DB_NAME = 'values.db';
 
@@ -86,6 +87,41 @@ async function runMigrations(db) {
 }
 
 /**
+ * Fold the browser-local preference mirror back into a database that is missing
+ * it (see app/services/preferenceMirror.js).
+ *
+ * On web an open can hand back an empty database — the memory fallback above, or
+ * an OPFS the browser has since cleared — and this is what stops that from also
+ * being a lost language, scale and onboarding state. Rows already present win:
+ * `INSERT OR IGNORE`, so the database stays the store of record and the mirror
+ * only ever fills gaps.
+ *
+ * Runs on every open, once, before any query the app makes; a failure here is
+ * logged rather than raised, because a mirror that cannot be restored is a worse
+ * startup, not a broken one.
+ */
+async function restoreMirroredPreferences(db) {
+  const mirrored = readAllMirroredPreferences();
+  const keys = Object.keys(mirrored);
+  if (keys.length === 0) return;
+
+  try {
+    const now = new Date().toISOString();
+    await db.withTransactionAsync(async () => {
+      for (const key of keys) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO app_metadata (key, value, updated_at)
+           VALUES (?, ?, ?)`,
+          [key, mirrored[key], now],
+        );
+      }
+    });
+  } catch (error) {
+    console.warn('[db] Could not restore the mirrored preferences:', error);
+  }
+}
+
+/**
  * Open the database, applying migrations once. Every caller awaits the same
  * promise, so concurrent callers on startup cannot race two migration runs.
  */
@@ -97,6 +133,7 @@ export function getDatabase() {
       // foreign keys off by default and the setting is per-connection.
       await db.execAsync('PRAGMA foreign_keys = ON');
       await runMigrations(db);
+      await restoreMirroredPreferences(db);
       return db;
     })().catch((error) => {
       // Do not cache a rejected promise — a transient failure would otherwise
@@ -152,6 +189,9 @@ export async function resetDatabase() {
     await db.execAsync('DELETE FROM personal_values');
     await db.execAsync('DELETE FROM app_metadata');
   });
+  // Or the next open would hand the language and the onboarding flag straight
+  // back, and a reset would not have reset anything the user can see.
+  clearMirroredPreferences();
 }
 
 /** Test seam: forget the cached connection so the next call re-opens. */
