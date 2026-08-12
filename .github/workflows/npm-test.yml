@@ -71,7 +71,7 @@ jobs:
 
             core.setOutput('message', comment);
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@v3
         if: always()
         with:
           header: "Lint Results"
@@ -155,7 +155,7 @@ jobs:
 
             core.setOutput('message', comment);
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@v3
         id: sticky-comment
         if: always()
         with:
