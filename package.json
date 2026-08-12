@@ -47,7 +47,7 @@
     "@testing-library/react-native": "^14.0.0",
     "babel-preset-expo": "~56.0.15",
     "drizzle-kit": "^1.0.0-beta.8-734e789",
-    "eslint": "^9.39.2",
+    "eslint": "^10.8.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-native": "^5.0.0",
     "globals": "^17.0.0",
