@@ -293,6 +293,12 @@ Two things have to be in place before the first release:
   `app.config.js` is a script it cannot rewrite. A static `app.json` is the only
   config it edits itself.
 
+  With no eas-cli to hand, `bunx eas-cli@latest init --account <name>
+  --non-interactive` needs no install, and the browser does it too: create the
+  project on expo.dev under the right account with the slug `values`, and copy
+  the ID off its page. Nothing about the CLI is required — the ID is the only
+  thing that has to arrive.
+
   Carry the ID across by hand, either way round:
 
   - set it as the **`EAS_PROJECT_ID`** repository variable under **Settings →
@@ -314,6 +320,16 @@ artifact installs on arm64 phones, older armeabi-v7a devices and x86_64 emulator
 alike. `preview` is arm64-only on purpose and is the wrong thing to hand a
 stranger. Signing is EAS-managed — `eas credentials` holds the keystore, and
 nothing about it lives in this repository.
+
+Expect it to be slow, and mostly not for compiling. `eas build --wait` submits in
+about ten seconds and then holds the runner in a queue whose length is not ours to
+control; the first release build spent a full hour in it without starting, and the
+job was killed still waiting on a build EAS ran to completion afterwards. Hence
+`timeout-minutes: 180`. When a run does hit that ceiling the build is not lost —
+eas-cli prints its URL before it starts waiting, and the finished APK can be
+downloaded from that page and attached to the release by hand. Re-running the
+workflow submits a *new* build instead of picking that one up, which costs another
+build against the account's monthly allowance.
 
 Moving the build onto the runner instead is what would introduce keystore secrets
 (the `MYAPP_UPLOAD_*` set) and a signing step; nothing else here would change.

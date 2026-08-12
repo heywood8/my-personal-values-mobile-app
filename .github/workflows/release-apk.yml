@@ -44,10 +44,14 @@ jobs:
   build:
     name: Build APK and attach to release
     runs-on: ubuntu-latest
-    # An EAS build queues before it compiles, so this is slow by nature — but an
-    # hour still beats the 6h default, which would hold a runner all day if EAS
-    # never answered.
-    timeout-minutes: 60
+    # An EAS build queues before it compiles, and on the free tier the queue is
+    # most of the wall clock: the first release build sat in it for the whole of
+    # a 60-minute timeout without starting, and the job was killed still waiting
+    # on a build that EAS went on to run anyway. Three hours is sized for that
+    # queue rather than for the compile. The idle runner is close to free — this
+    # repository is public, so GitHub-hosted minutes are not billed — and half
+    # the 6h default still bounds a release that EAS never answers.
+    timeout-minutes: 180
     # A project ID is not a secret — it ships inside every build — so it is a
     # repository variable, and empty when app.config.js carries the ID itself.
     # Set at the job level because both the check below and eas-cli read it.
