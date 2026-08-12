@@ -52,12 +52,12 @@ describe('interleaveByGroup', () => {
 });
 
 describe('the value catalogue', () => {
-  it('seeds all 48 values across 8 groups', async () => {
+  it('seeds all 74 values across 8 groups', async () => {
     const inserted = await seedDefaultValues();
-    expect(inserted).toBe(48);
+    expect(inserted).toBe(74);
 
     const values = await getAllValues();
-    expect(values).toHaveLength(48);
+    expect(values).toHaveLength(74);
     expect(new Set(values.map((v) => v.groupKey)).size).toBe(8);
     expect(VALUE_GROUPS).toHaveLength(8);
   });
@@ -65,7 +65,7 @@ describe('the value catalogue', () => {
   it('is idempotent — re-seeding inserts nothing', async () => {
     await seedDefaultValues();
     expect(await seedDefaultValues()).toBe(0);
-    expect(await getAllValues()).toHaveLength(48);
+    expect(await getAllValues()).toHaveLength(74);
   });
 
   it('seeds in deck order', async () => {
@@ -98,7 +98,7 @@ describe('archiving', () => {
     expect(active.find((v) => v.id === 'family')).toBeUndefined();
     // Still present, so past records that reference it still resolve a name.
     expect(await getValueById('family')).toMatchObject({ id: 'family', archived: true });
-    expect(await getAllValues()).toHaveLength(48);
+    expect(await getAllValues()).toHaveLength(74);
   });
 
   it('restores an archived value to the deck', async () => {

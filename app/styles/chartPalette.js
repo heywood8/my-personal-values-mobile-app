@@ -5,7 +5,7 @@
  *
  *   PRIORITY_RAMP is ORDINAL — one blue hue, stepped. It colours the ranked value
  *   list, whose job is magnitude (low → high), and a single hue stepped by rank is
- *   what makes 48 bars readable as an ordering rather than as 48 unrelated things.
+ *   what makes 74 bars readable as an ordering rather than as 74 unrelated things.
  *
  *   GROUP_SERIES is CATEGORICAL — eight distinct hues in a FIXED order. It colours
  *   things whose job is identity: the group chips, the group breakdown, the trend

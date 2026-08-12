@@ -20,7 +20,7 @@ import {
 /**
  * The card deck.
  *
- * One value at a time rather than a scrolling list of 48 rows: a list invites
+ * One value at a time rather than a scrolling list of 74 rows: a list invites
  * skimming and rating relative to whatever is adjacent, and the deck order is
  * already arranged (ValuesDB.interleaveByGroup) so that adjacency carries no
  * information. One card at a time is also what makes the qualitative scale a

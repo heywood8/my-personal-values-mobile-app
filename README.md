@@ -16,7 +16,7 @@ changes over months rather than trusting your memory of what mattered last year.
 2. **Pick a rating scale** — 1 to 5, 1 to 10, or three words (not important →
    very important). You can change it later; past records keep the scale they
    were taken on.
-3. **Rate the deck** — 48 values across 8 groups, one card at a time. Answers are
+3. **Rate the deck** — 74 values across 8 groups, one card at a time. Answers are
    saved as you give them, so you can stop halfway and pick up where you left off.
 4. **Read the result** — as a ranking from least to most important, or grouped by
    area of life.
@@ -26,7 +26,7 @@ changes over months rather than trusting your memory of what mattered last year.
 
 ## Features
 
-- **Calibration deck** — 48 values in 8 groups, dealt so that no two consecutive
+- **Calibration deck** — 74 values in 8 groups, dealt so that no two consecutive
   cards come from the same group
 - **Three rating scales** — scores are stored both as given and normalised, so a
   history that spans a change of scale stays comparable
@@ -42,6 +42,13 @@ changes over months rather than trusting your memory of what mattered last year.
 Android, iOS and web from one codebase. All data is stored locally on the device
 — in SQLite on Android and iOS, and in the browser's origin-private file system
 on the web. Nothing is sent anywhere.
+
+## The value catalogue
+
+The deck draws on the values checklist from Russ Harris's *The Confidence Gap*
+(Penguin Group Australia, 2010), an Acceptance and Commitment Therapy staple.
+Entries are grouped and worded for this app rather than copied, and the deck adds
+values the checklist does not carry.
 
 ## Internationalisation
 
