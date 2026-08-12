@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import PropTypes from 'prop-types';
 import {
   seedDefaultValues,
+  retireRemovedValues,
+  alignCatalogueOrder,
   getAllValues,
   addCustomValue as dbAddCustomValue,
   setValueArchived as dbSetValueArchived,
@@ -31,6 +33,12 @@ export const ValuesProvider = ({ children }) => {
       // makes a release that ships new catalogue entries pick them up without a
       // migration — and without touching anything the user has already rated.
       await seedDefaultValues();
+      // The other half of that: a release that *drops* entries would otherwise
+      // leave both decks in play, because seeding never removes anything.
+      await retireRemovedValues();
+      // And a release that *reorders* them would otherwise change nothing here,
+      // because seeding numbers only the rows it inserts.
+      await alignCatalogueOrder();
       setValues(await getAllValues());
       setError(null);
     } catch (e) {

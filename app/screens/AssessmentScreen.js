@@ -20,11 +20,13 @@ import {
 /**
  * The card deck.
  *
- * One value at a time rather than a scrolling list of 74 rows: a list invites
- * skimming and rating relative to whatever is adjacent, and the deck order is
- * already arranged (ValuesDB.interleaveByGroup) so that adjacency carries no
- * information. One card at a time is also what makes the qualitative scale a
- * genuinely fast path — three taps' worth of decision, then the next card.
+ * One value at a time rather than a scrolling list of 47 rows: a list invites
+ * skimming and rating each entry relative to whatever happens to be next to it.
+ * That matters more since the deck went to the source checklist's order
+ * (ValuesDB.DECK_ORDER), which does put related cards back to back — one card
+ * at a time is what keeps each one judged on itself. It is also what makes the
+ * qualitative scale a genuinely fast path — three taps' worth of decision, then
+ * the next card.
  *
  * Every answer is written through immediately, so leaving mid-deck loses nothing
  * and returning resumes at the first unrated card.

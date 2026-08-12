@@ -42,7 +42,7 @@ without touching anything the user has already rated.
 | `group_key` | text | one of the eight groups |
 | `is_custom` | integer | 1 for a value the user added |
 | `custom_name` | text | the user's own wording; null for catalogue values |
-| `display_order` | integer | deck order, round-robin across groups |
+| `display_order` | integer | deck order — the source checklist's numbering, 1..47; custom values follow |
 | `archived` | integer | archived values stay in past records but are not dealt |
 
 ### `assessments`

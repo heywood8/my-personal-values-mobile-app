@@ -123,7 +123,7 @@ export const AssessmentProvider = ({ children }) => {
    * last time and produce a history that barely moves — which is precisely the
    * signal this app exists to show. A fresh day starts blank; reopening today,
    * where the stated behaviour is "overwrite", starts from what is already there
-   * so a correction does not mean re-rating all 74 cards.
+   * so a correction does not mean re-rating all 47 cards.
    */
   const startCalibration = useCallback(async () => {
     const opened = await startAssessment(scale);

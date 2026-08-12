@@ -35,8 +35,23 @@ through `startAssessment()`; do not add a second path that writes an assessment.
 wrappers import it. Listing providers separately is how the app once shipped a
 Paper `Portal` above its `PaperProvider` while every test passed.
 
-**Catalogue seeding is additive and idempotent.** It runs on every launch. It
-must never renumber, rename or un-archive an existing row.
+**Catalogue seeding is additive and idempotent.** It runs on every launch and
+must never rename or un-archive an existing row. Two companions run beside it,
+also on every launch, and the deck is wrong without them: `retireRemovedValues()`
+archives shipped rows the catalogue has dropped, and `alignCatalogueOrder()`
+renumbers shipped rows to their catalogue position. Seeding alone touches only
+rows it inserts, so on an upgrading install a removal would leave both decks in
+play and a reorder would do nothing at all.
+
+**The deck is dealt in `defaultValues.json` order, which is the source
+checklist's numbering.** The file is not free to be reshuffled for readability.
+This replaced a round-robin-across-groups order; the anti-anchoring property was
+given up on purpose, for fidelity to the printed instrument.
+
+**A value dropped from the catalogue keeps its `value_<key>` name in both
+locales**, listed under `retired` in `defaultValues.json`. Its ratings survive,
+so old records still render it — delete the string and that history prints
+`value_family`. Descriptions are deck-card only and go with the value.
 
 **The categorical slot order in `app/styles/chartPalette.js` is a safety
 mechanism, not a style choice.** It was validated for colour-vision-deficiency

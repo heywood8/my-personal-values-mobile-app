@@ -238,7 +238,7 @@ export async function getValueTrend(valueId) {
 /**
  * The whole history in one query: every completed assessment's ratings, joined to
  * the catalogue. The history screen derives trends, movers and group averages
- * from this single read rather than issuing a query per value — with 74 values
+ * from this single read rather than issuing a query per value — with 47 values
  * and a row per calibration, the entire dataset is smaller than the round trips
  * would be.
  */
