@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import RankedValueBars from '../../app/components/charts/RankedValueBars';
 import { ThemeOnlyProviders } from '../../test-utils/renderWithProviders';
@@ -87,6 +88,66 @@ describe('RankedValueBars', () => {
       { wrapper: ThemeOnlyProviders },
     );
     expect(screen.getByTestId('ranked-value-bars')).toBeTruthy();
+  });
+});
+
+describe('the score column', () => {
+  const QUALITATIVE_ITEMS = [
+    item('health', 3, SCALE_IDS.QUALITATIVE),
+    item('love', 1, SCALE_IDS.QUALITATIVE),
+  ];
+
+  const layOutSizer = async (width) => {
+    // Hidden from assistive tech, so hidden from the queries too by default.
+    const sizer = screen.getByTestId('ranked-score-sizer', { includeHiddenElements: true });
+    await act(async () => {
+      fireEvent(sizer, 'layout', { nativeEvent: { layout: { width } } });
+    });
+  };
+
+  const scoreWidth = (label) => StyleSheet.flatten(screen.getByText(label).props.style).width;
+
+  it('is one width for every row, so the tracks line up', async () => {
+    await render(
+      <RankedValueBars items={QUALITATIVE_ITEMS} scaleId={SCALE_IDS.QUALITATIVE} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    await layOutSizer(84);
+
+    // A bar chart is read against a shared baseline at both ends. Sizing each
+    // row's column to its own word made "Very important" squeeze its track
+    // while "Not important" gave width back — a difference in word length
+    // showing up as a difference in score.
+    expect(scoreWidth('Very important')).toBe(84);
+    expect(scoreWidth('Not important')).toBe(84);
+  });
+
+  it('rounds a fractional measurement up, so the last glyph is not clipped', async () => {
+    await render(
+      <RankedValueBars items={QUALITATIVE_ITEMS} scaleId={SCALE_IDS.QUALITATIVE} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    await layOutSizer(84.2);
+
+    expect(scoreWidth('Very important')).toBe(85);
+  });
+
+  it('measures against every label the scale can print, not just the ones on screen', async () => {
+    await render(
+      <RankedValueBars
+        items={[item('health', 1, SCALE_IDS.QUALITATIVE)]}
+        scaleId={SCALE_IDS.QUALITATIVE}
+      />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // The widest word decides the column even when no row happens to use it —
+    // otherwise the bars would shift the moment a rating changed.
+    const sizer = screen.getByTestId('ranked-score-sizer', { includeHiddenElements: true });
+    const measured = sizer.children.map((child) => child.props.children);
+    expect(measured).toEqual(['Not important', 'Important', 'Very important']);
   });
 });
 
