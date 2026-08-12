@@ -4,9 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    # Packages whose versions are pinned by the Expo SDK. Bumping one on its own
-    # produces a build that installs but crashes at runtime; they move together
-    # via `npx expo install --fix` when the SDK is upgraded.
+    # Packages that cannot move on their own. Most are pinned by the Expo SDK:
+    # bumping one alone produces a build that installs but crashes at runtime, and
+    # they move together via `npx expo install --fix` when the SDK is upgraded.
+    # The last two entries are held back for their own reasons, noted inline.
     ignore:
       - dependency-name: "react"
       - dependency-name: "react-dom"
@@ -23,6 +24,20 @@ updates:
       - dependency-name: "react-native-safe-area-context"
       - dependency-name: "react-native-svg"
       - dependency-name: "react-native-worklets"
+      # babel-preset-expo and react-native-worklets depend on ~40 @babel/plugin-*
+      # packages pinned to ^7, and every one of them declares a peer of
+      # @babel/core ^7.0.0-0 that Babel validates as it loads the plugin. Babel 8
+      # therefore fails the web export ("Requires Babel ^7.0.0-0, but was loaded
+      # with 8.0.1") while tests and lint stay green — jest-expo never loads the
+      # worklets plugin. It moves when the SDK's toolchain moves.
+      - dependency-name: "@babel/core"
+      # ESLint majors arrive before the plugins follow. ESLint 10 dropped
+      # context.getFilename(); eslint-plugin-react still calls it, so the run
+      # dies with a TypeError before it lints a single file, and
+      # eslint-plugin-react-native caps its peer range at ^9. Minor and patch
+      # updates are still wanted — only the major is held back.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
