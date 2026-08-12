@@ -138,6 +138,8 @@
   "reset_done": "All data was reset.",
 
   "storage_memory_warning": "This browser isn't keeping your data — it will be gone when you close the tab.",
+  "privacy_local_only_title": "Your data stays on this computer",
+  "privacy_local_only": "Everything you record is stored by this browser, on this computer. There is no account and no server behind this page — nothing you enter is ever sent anywhere.",
 
   "value_learning": "Learning",
   "value_learning_desc": "Taking in new knowledge and skills on purpose.",

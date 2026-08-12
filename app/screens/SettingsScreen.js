@@ -11,6 +11,7 @@ import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import SegmentedToggle from '../components/SegmentedToggle';
 import ValueDeckPanel from '../components/ValueDeckPanel';
+import PrivacyNote from '../components/PrivacyNote';
 import { SCALE_ORDER, SCALES } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
 import { resetDatabase, isUsingMemoryFallback } from '../services/db';
@@ -147,6 +148,10 @@ const SettingsScreen = ({ onStartCalibration }) => {
         <Divider style={styles.divider} />
 
         <List.Subheader>{t('settings_data')}</List.Subheader>
+
+        {/* Renders only on web; see the component. */}
+        <PrivacyNote />
+
         <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
         <Button
           mode="outlined"
