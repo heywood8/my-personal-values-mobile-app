@@ -74,7 +74,7 @@ describe('i18n translation key parity', () => {
 });
 
 describe('the value catalogue is fully translated', () => {
-  it.each(LANGS)('%s.json names and describes all 48 values', (lang) => {
+  it.each(LANGS)('%s.json names and describes all 74 values', (lang) => {
     const missing = [];
     for (const value of catalogue.values) {
       if (typeof ALL[lang][`value_${value.key}`] !== 'string') missing.push(`value_${value.key}`);
@@ -104,7 +104,7 @@ describe('the value catalogue is fully translated', () => {
   });
 
   it('has a unique name per value within each language', () => {
-    // Two values sharing a name is unreadable in a ranked list of 48 rows.
+    // Two values sharing a name is unreadable in a ranked list of 74 rows.
     for (const lang of LANGS) {
       const names = catalogue.values.map((v) => ALL[lang][`value_${v.key}`]);
       const duplicates = names.filter((name, i) => names.indexOf(name) !== i);

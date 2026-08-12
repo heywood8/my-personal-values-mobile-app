@@ -14,7 +14,7 @@ import {
  * First run, step two: how the reader wants to rate.
  *
  * Each option previews its own steps, because "1 to 10" and "three words" are
- * decisions about how much deliberation each of 48 cards will cost, and that is
+ * decisions about how much deliberation each of 74 cards will cost, and that is
  * much easier to judge from seeing the buttons than from reading the name.
  */
 const ScaleSelectionScreen = ({ initialScale, onScaleSelected, onBack }) => {

@@ -107,6 +107,15 @@ Add it to `app/defaults/defaultValues.json`, then add `value_<key>` and
 idempotent, so an existing install picks the new value up on next launch without
 disturbing any rating, archive choice or custom value.
 
+Three tests hard-code the catalogue size — `ValuesDB.test.js`,
+`CalibrationFlow.test.js` and `translationKeyParity.test.js` — so the count in
+each has to move with it. That is deliberate: a value silently dropped from the
+deck is otherwise invisible.
+
+A shipped value must not restate one that already exists. Ratings are compared
+across months, and two cards meaning the same thing split the signal between
+them; the parity suite only catches an identical *name*, not an identical idea.
+
 ## Adding a language
 
 1. Add a loader to `i18nLoaders` in `app/contexts/LocalizationContext.js`.

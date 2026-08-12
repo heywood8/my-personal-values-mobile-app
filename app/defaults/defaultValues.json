@@ -16,6 +16,10 @@
     { "key": "mastery", "group": "growth" },
     { "key": "creativity", "group": "growth" },
     { "key": "adaptability", "group": "growth" },
+    { "key": "courage", "group": "growth" },
+    { "key": "open_mindedness", "group": "growth" },
+    { "key": "patience", "group": "growth" },
+    { "key": "self_control", "group": "growth" },
 
     { "key": "family", "group": "relationships" },
     { "key": "friendship", "group": "relationships" },
@@ -23,6 +27,12 @@
     { "key": "community", "group": "relationships" },
     { "key": "loyalty", "group": "relationships" },
     { "key": "belonging", "group": "relationships" },
+    { "key": "connection", "group": "relationships" },
+    { "key": "cooperation", "group": "relationships" },
+    { "key": "forgiveness", "group": "relationships" },
+    { "key": "friendliness", "group": "relationships" },
+    { "key": "intimacy", "group": "relationships" },
+    { "key": "respect", "group": "relationships" },
 
     { "key": "achievement", "group": "achievement" },
     { "key": "ambition", "group": "achievement" },
@@ -30,6 +40,8 @@
     { "key": "excellence", "group": "achievement" },
     { "key": "leadership", "group": "achievement" },
     { "key": "prosperity", "group": "achievement" },
+    { "key": "diligence", "group": "achievement" },
+    { "key": "persistence", "group": "achievement" },
 
     { "key": "health", "group": "wellbeing" },
     { "key": "balance", "group": "wellbeing" },
@@ -37,6 +49,10 @@
     { "key": "joy", "group": "wellbeing" },
     { "key": "humour", "group": "wellbeing" },
     { "key": "rest", "group": "wellbeing" },
+    { "key": "acceptance", "group": "wellbeing" },
+    { "key": "mindfulness", "group": "wellbeing" },
+    { "key": "sensuality", "group": "wellbeing" },
+    { "key": "sexuality", "group": "wellbeing" },
 
     { "key": "helping", "group": "contribution" },
     { "key": "compassion", "group": "contribution" },
@@ -44,6 +60,11 @@
     { "key": "justice", "group": "contribution" },
     { "key": "stewardship", "group": "contribution" },
     { "key": "mentorship", "group": "contribution" },
+    { "key": "caring", "group": "contribution" },
+    { "key": "encouragement", "group": "contribution" },
+    { "key": "equality", "group": "contribution" },
+    { "key": "kindness", "group": "contribution" },
+    { "key": "reciprocity", "group": "contribution" },
 
     { "key": "freedom", "group": "autonomy" },
     { "key": "independence", "group": "autonomy" },
@@ -51,6 +72,8 @@
     { "key": "spontaneity", "group": "autonomy" },
     { "key": "exploration", "group": "autonomy" },
     { "key": "self_expression", "group": "autonomy" },
+    { "key": "assertiveness", "group": "autonomy" },
+    { "key": "excitement", "group": "autonomy" },
 
     { "key": "stability", "group": "security" },
     { "key": "safety", "group": "security" },
@@ -58,12 +81,15 @@
     { "key": "tradition", "group": "security" },
     { "key": "honesty", "group": "security" },
     { "key": "responsibility", "group": "security" },
+    { "key": "conformity", "group": "security" },
+    { "key": "trustworthiness", "group": "security" },
 
     { "key": "purpose", "group": "meaning" },
     { "key": "spirituality", "group": "meaning" },
     { "key": "gratitude", "group": "meaning" },
     { "key": "beauty", "group": "meaning" },
     { "key": "wisdom", "group": "meaning" },
-    { "key": "authenticity", "group": "meaning" }
+    { "key": "authenticity", "group": "meaning" },
+    { "key": "humility", "group": "meaning" }
   ]
 }
