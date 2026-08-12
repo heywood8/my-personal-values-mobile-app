@@ -11,6 +11,7 @@ import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import SegmentedToggle from '../components/SegmentedToggle';
 import ValueDeckPanel from '../components/ValueDeckPanel';
+import CsvTransferPanel from '../components/CsvTransferPanel';
 import PrivacyNote from '../components/PrivacyNote';
 import { SCALE_ORDER, SCALES } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
@@ -151,6 +152,10 @@ const SettingsScreen = ({ onStartCalibration }) => {
 
         {/* Renders only on web; see the component. */}
         <PrivacyNote />
+
+        <CsvTransferPanel />
+
+        <Divider style={styles.divider} />
 
         <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
         <Button

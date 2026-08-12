@@ -14,6 +14,6 @@ export const DESTRUCTIVE = {
   dark: '#ff6b6b',
 };
 
-// Chart and group colour lives in styles/chartPalette.js — it is mode-dependent
+// Chart colour lives in styles/chartPalette.js — it is mode-dependent
 // and validated as a set, which is a different kind of thing from the two
 // scheme-keyed constants above.

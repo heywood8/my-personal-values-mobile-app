@@ -100,6 +100,28 @@ which catches build failures but not layout ones.
    generated SQL and against the database the app builds. Forgetting step 2 fails
    there.
 
+### Everything reads strongest-first
+
+The stacked rating scale puts "very important" at the top of the card,
+`getRankedResults()` returns most-important first, and the results screen opens
+that way. One direction across the app: the top of anything is what matters most.
+The results screen can flip to lowest-first, and that end is worth reading — it is
+where the things you keep saying yes to but do not actually value collect — but it
+is the reader's choice, not the default.
+
+The numeric scales are left in their own order, 1 on the left. A row has no top
+and bottom to be consistent with, and "10 9 8 …" is a scale printed backwards.
+
+### There are no value groups
+
+The deck used to sort each value into one of eight groups, which coloured the
+cards, sectioned the deck panel and drove a second reading of the results screen.
+They are gone: the source checklist is a flat list of 47 values, and the app is
+now too. `group_key`, `VALUE_GROUPS`, `groupName()`, `groupColor()`, the group
+breakdown chart and every `group_*` string went with them, and
+`translationKeyParity.test.js` fails on a leftover. A custom value takes a name
+and nothing else.
+
 ## Adding a value to the catalogue
 
 Add it to `app/defaults/defaultValues.json`, then add `value_<key>` and
@@ -167,9 +189,22 @@ English.
 `app/styles/chartPalette.js` holds two palettes and explains which is for what.
 Both were checked with a palette validator against this app's exact surfaces, not
 chosen by eye. The categorical slot **order** is the colour-vision-deficiency
-safety mechanism, so reordering the groups silently degrades it; three light-mode
+safety mechanism, so reordering the slots silently degrades it; three light-mode
 slots sit below 3:1 contrast and are only legal because every surface that uses
-them prints a visible label next to the mark.
+them prints a visible label next to the mark — on the trend chart, the legend that
+does so is also the selector.
+
+## Records as a CSV file
+
+`app/services/RecordsCsv.js` is the export and the import;
+`app/utils/fileTransfer.js` is the platform half. On the web a save is a real
+download and a load is a real file dialog, written against the DOM directly. A
+phone has neither without a native picker, so a save goes to the share sheet and a
+load is a paste — the UI asks `canPickFile()` rather than branching on `Platform`,
+so a screen never has to know which is which.
+
+The file's contract, and why import writes through `startAssessment`, is in
+[DATABASE.md](./DATABASE.md).
 
 ## Tests
 

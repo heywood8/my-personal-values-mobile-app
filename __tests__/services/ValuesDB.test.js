@@ -10,7 +10,6 @@ import {
   deleteCustomValue,
   alignCatalogueOrder,
   DECK_ORDER,
-  VALUE_GROUPS,
 } from '../../app/services/ValuesDB';
 import { __resetDatabaseHandleForTests, executeQuery } from '../../app/services/db';
 import catalogue from '../../app/defaults/defaultValues.json';
@@ -46,14 +45,13 @@ describe('DECK_ORDER', () => {
 });
 
 describe('the value catalogue', () => {
-  it('seeds all 47 values across 8 groups', async () => {
+  it('seeds all 47 values', async () => {
     const inserted = await seedDefaultValues();
     expect(inserted).toBe(47);
 
     const values = await getAllValues();
     expect(values).toHaveLength(47);
-    expect(new Set(values.map((v) => v.groupKey)).size).toBe(8);
-    expect(VALUE_GROUPS).toHaveLength(8);
+    expect(new Set(values.map((v) => v.key)).size).toBe(47);
   });
 
   it('is idempotent — re-seeding inserts nothing', async () => {
@@ -94,8 +92,8 @@ describe('retiring values the catalogue no longer ships', () => {
     const now = new Date().toISOString();
     await executeQuery(
       `INSERT INTO personal_values
-         (id, key, group_key, is_custom, custom_name, display_order, archived, created_at, updated_at)
-       VALUES (?, ?, 'growth', ?, ?, 999, ?, ?, ?)`,
+         (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 999, ?, ?, ?)`,
       [id, id, isCustom, isCustom ? id : null, archived, now, now],
     );
   };
@@ -125,7 +123,7 @@ describe('retiring values the catalogue no longer ships', () => {
   });
 
   it('never touches a custom value', async () => {
-    const id = await addCustomValue({ name: 'Sailing', groupKey: 'autonomy' });
+    const id = await addCustomValue({ name: 'Sailing' });
 
     expect(await retireRemovedValues()).toBe(0);
     expect((await getValueById(id)).archived).toBe(false);
@@ -198,7 +196,7 @@ describe('alignCatalogueOrder', () => {
   });
 
   it('leaves custom values after the catalogue', async () => {
-    const id = await addCustomValue({ name: 'Sailing', groupKey: 'autonomy' });
+    const id = await addCustomValue({ name: 'Sailing' });
     await alignCatalogueOrder();
 
     const active = await getActiveValues();
@@ -235,13 +233,12 @@ describe('custom values', () => {
   });
 
   it('adds one at the end of the deck', async () => {
-    const id = await addCustomValue({ name: '  Sailing  ', groupKey: 'autonomy' });
+    const id = await addCustomValue({ name: '  Sailing  ' });
     const value = await getValueById(id);
 
     expect(value).toMatchObject({
       isCustom: true,
       customName: 'Sailing', // trimmed
-      groupKey: 'autonomy',
       archived: false,
     });
 
@@ -249,13 +246,15 @@ describe('custom values', () => {
     expect(active[active.length - 1].id).toBe(id);
   });
 
-  it('rejects a blank name and an unknown group', async () => {
-    await expect(addCustomValue({ name: '   ', groupKey: 'autonomy' })).rejects.toThrow();
-    await expect(addCustomValue({ name: 'X', groupKey: 'nope' })).rejects.toThrow();
+  it('rejects a blank name', async () => {
+    // A name is the whole of a custom value now that groups are gone, so it is
+    // also the only thing there is to reject.
+    await expect(addCustomValue({ name: '   ' })).rejects.toThrow();
+    await expect(addCustomValue({ name: null })).rejects.toThrow();
   });
 
   it('renames only custom values', async () => {
-    const id = await addCustomValue({ name: 'Sailing', groupKey: 'autonomy' });
+    const id = await addCustomValue({ name: 'Sailing' });
     await renameCustomValue(id, 'Boats');
     expect((await getValueById(id)).customName).toBe('Boats');
 
@@ -265,7 +264,7 @@ describe('custom values', () => {
   });
 
   it('deletes only custom values', async () => {
-    const id = await addCustomValue({ name: 'Sailing', groupKey: 'autonomy' });
+    const id = await addCustomValue({ name: 'Sailing' });
     await deleteCustomValue(id);
     expect(await getValueById(id)).toBeNull();
 

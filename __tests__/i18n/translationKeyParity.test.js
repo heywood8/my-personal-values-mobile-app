@@ -83,11 +83,12 @@ describe('the value catalogue is fully translated', () => {
     expect(missing).toEqual([]);
   });
 
-  it.each(LANGS)('%s.json names all 8 groups', (lang) => {
-    const missing = catalogue.groups
-      .filter((group) => typeof ALL[lang][`group_${group}`] !== 'string')
-      .map((group) => `group_${group}`);
-    expect(missing).toEqual([]);
+  it.each(LANGS)('%s.json keeps no strings for the groups that were removed', (lang) => {
+    // The deck used to sort every value into one of eight groups. Nothing names
+    // a group any more, so a `group_*` string is a leftover that no screen can
+    // ever render.
+    const leftovers = Object.keys(ALL[lang]).filter((key) => key.startsWith('group_'));
+    expect(leftovers).toEqual([]);
   });
 
   it.each(LANGS)('%s.json still names every retired value', (lang) => {

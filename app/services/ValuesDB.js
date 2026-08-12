@@ -3,20 +3,17 @@ import { queryAll, queryFirst, executeQuery, withTransaction } from './db';
 import { PREF_KEYS, getJsonPreference, setJsonPreference } from './PreferencesDB';
 import catalogue from '../defaults/defaultValues.json';
 
-export const VALUE_GROUPS = catalogue.groups;
-
 /**
  * The order cards are dealt in: the order defaultValues.json lists them, which is
  * the source checklist's own numbering, 1 through 47.
  *
- * This deck used to be dealt round-robin across the groups, so that no two
- * consecutive cards shared one. That guards against a real effect — a run of
- * cards on one theme invites the reader to rate the *theme* once and then coast
- * — but it is a reordering of someone else's instrument, and the checklist is
- * meant to be worked through as printed. Fidelity to the source won; the deck
- * therefore does have short same-group runs in it (2. Приключения and
- * 3. Ассертивность both sit under autonomy, 5. Забота and 6. Сострадание both
- * under contribution).
+ * This deck used to be dealt round-robin across the eight groups it once had, so
+ * that no two consecutive cards shared one. That guards against a real effect — a
+ * run of cards on one theme invites the reader to rate the *theme* once and then
+ * coast — but it is a reordering of someone else's instrument, and the checklist
+ * is meant to be worked through as printed. Fidelity to the source won; the deck
+ * therefore does have short same-theme runs in it (2. Приключения next to
+ * 3. Ассертивность, 5. Забота next to 6. Сострадание).
  *
  * Deterministic either way, and that part is not negotiable: a recalibration has
  * to present the same sequence as the first run, or a "this moved" reading is
@@ -27,7 +24,6 @@ export const DECK_ORDER = catalogue.values.map((entry) => entry.key);
 const rowToValue = (row) => ({
   id: row.id,
   key: row.key,
-  groupKey: row.group_key,
   isCustom: row.is_custom === 1,
   customName: row.custom_name ?? null,
   displayOrder: row.display_order,
@@ -57,9 +53,9 @@ export async function seedDefaultValues() {
     for (const entry of missing) {
       await executeQuery(
         `INSERT INTO personal_values
-           (id, key, group_key, is_custom, custom_name, display_order, archived, created_at, updated_at)
-         VALUES (?, ?, ?, 0, NULL, ?, 0, ?, ?)`,
-        [entry.key, entry.key, entry.group, entry.displayOrder, now, now],
+           (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
+         VALUES (?, ?, 0, NULL, ?, 0, ?, ?)`,
+        [entry.key, entry.key, entry.displayOrder, now, now],
       );
     }
   });
@@ -176,13 +172,14 @@ export async function getValueById(id) {
  * Add a value of the user's own. It goes to the end of the deck, and its name is
  * stored verbatim rather than as an i18n key — it is the user's words, and there
  * is nothing to translate it into.
+ *
+ * A name is the whole of it. The deck used to sort every value into one of eight
+ * groups, which made adding one a two-part decision; the groups are gone, and a
+ * custom value is now just a card like any other.
  */
-export async function addCustomValue({ name, groupKey }) {
+export async function addCustomValue({ name }) {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('A custom value needs a name');
-  if (!VALUE_GROUPS.includes(groupKey)) {
-    throw new Error(`Unknown value group: ${groupKey}`);
-  }
 
   const id = String(uuid.v4());
   const now = new Date().toISOString();
@@ -191,9 +188,9 @@ export async function addCustomValue({ name, groupKey }) {
 
   await executeQuery(
     `INSERT INTO personal_values
-       (id, key, group_key, is_custom, custom_name, display_order, archived, created_at, updated_at)
-     VALUES (?, ?, ?, 1, ?, ?, 0, ?, ?)`,
-    [id, id, groupKey, trimmed, displayOrder, now, now],
+       (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
+     VALUES (?, ?, 1, ?, ?, 0, ?, ?)`,
+    [id, id, trimmed, displayOrder, now, now],
   );
 
   return id;

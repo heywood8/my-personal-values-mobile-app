@@ -9,14 +9,12 @@ import {
   setValueArchived as dbSetValueArchived,
   renameCustomValue as dbRenameCustomValue,
   deleteCustomValue as dbDeleteCustomValue,
-  VALUE_GROUPS,
 } from '../services/ValuesDB';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 
 const ValuesContext = createContext({
   values: [],
   activeValues: [],
-  groups: VALUE_GROUPS,
   isLoading: true,
   error: null,
   reload: async () => {},
@@ -91,7 +89,6 @@ export const ValuesProvider = ({ children }) => {
   const value = useMemo(() => ({
     values,
     activeValues,
-    groups: VALUE_GROUPS,
     isLoading,
     error,
     reload,

@@ -15,12 +15,21 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../styles/designToke
  * switches at that boundary: numbers sit in a single row (ten 1-to-10 buttons
  * still fit across a narrow phone at 28px each), words stack, because
  * "Очень важно" does not fit anywhere in a row of three.
+ *
+ * The stacked scale is dealt strongest-first: "very important" at the top,
+ * "not important" at the bottom. It reads the same way down the column as the
+ * results list does — the top of anything in this app is what matters most — and
+ * a column ordered the other way had the strongest answer sitting furthest from
+ * the value it is about. The numeric scales stay in their own natural order, 1 on
+ * the left: a row of "10 9 8 …" is a scale printed backwards, not a scale
+ * re-ordered.
  */
 const ScaleInput = ({ scaleId, value, onChange, disabled }) => {
   const { colors } = useThemeColors();
   const { t } = useLocalization();
   const scale = getScale(scaleId);
   const isWordScale = !!scale.stepLabelKeys;
+  const steps = isWordScale ? [...scale.steps].reverse() : scale.steps;
 
   return (
     <View
@@ -28,7 +37,7 @@ const ScaleInput = ({ scaleId, value, onChange, disabled }) => {
       testID="scale-input"
       accessibilityRole="radiogroup"
     >
-      {scale.steps.map((step) => {
+      {steps.map((step) => {
         const selected = value === step;
         const label = scaleStepLabel(scaleId, step, t);
 

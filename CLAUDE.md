@@ -30,6 +30,14 @@ score, never carry the old one across.
 
 **`assessments.assessed_on` is UNIQUE, and that is the same-day rule.** Resolve
 through `startAssessment()`; do not add a second path that writes an assessment.
+The CSV import is not an exception — it calls `startAssessment(scale, { today:
+<date from the file> })` for every record, which is what makes importing a date
+you already have an overwrite rather than a duplicate.
+
+**Most important is at the top, everywhere.** The stacked rating scale deals
+"very important" first, `getRankedResults()` returns strongest-first, and the
+results screen defaults to that. One direction across the whole app: if a new
+surface orders values, it orders them that way unless the user flips it.
 
 **Provider order lives in `app/AppProviders.js` only.** Both `App.js` and the test
 wrappers import it. Listing providers separately is how the app once shipped a
@@ -48,6 +56,11 @@ checklist's numbering.** The file is not free to be reshuffled for readability.
 This replaced a round-robin-across-groups order; the anti-anchoring property was
 given up on purpose, for fidelity to the printed instrument.
 
+**There are no value groups.** The deck was once sorted into eight of them; the
+source checklist is a flat list and so is this app. Nothing in the schema, the
+catalogue file, the UI or the locale files names a group, and the parity test
+fails on a leftover `group_*` string. A custom value needs only a name.
+
 **A value dropped from the catalogue keeps its `value_<key>` name in both
 locales**, listed under `retired` in `defaultValues.json`. Its ratings survive,
 so old records still render it — delete the string and that history prints
@@ -55,15 +68,24 @@ so old records still render it — delete the string and that history prints
 
 **The categorical slot order in `app/styles/chartPalette.js` is a safety
 mechanism, not a style choice.** It was validated for colour-vision-deficiency
-separation as an ordered set. Reordering the groups degrades it silently. Three
+separation as an ordered set. Reordering the slots degrades it silently. Three
 light-mode slots are below 3:1 contrast and are legal only because every surface
 using them prints a visible label beside the mark.
+
+**The CSV file is the only backup this app has.** Nothing leaves the device
+otherwise, so `app/services/RecordsCsv.js` has to keep reading files older
+releases wrote: change the columns by adding, never by renaming. Import trusts
+`score` and `scale` and recomputes `normalized`, because the column can be edited
+in a spreadsheet and the stored pair has to agree.
 
 ## Conventions
 
 - New user-facing strings go in **both** `assets/i18n/*.json`. The parity test
   fails by name otherwise, including on mismatched `{{placeholders}}`.
 - `value_*` keys are reserved for catalogue entries. Deck UI strings use `deck_*`.
+- Web-only capabilities (a file dialog, a download) are asked for by predicate —
+  `canPickFile()` in `app/utils/fileTransfer.js` — not by branching on `Platform`
+  in a screen.
 - Interactive surfaces use `Pressable`, not `TouchableOpacity`.
 - Confirmations go through `useDialog()`, never `Alert.alert` — `Alert` is a
   silent no-op on web.

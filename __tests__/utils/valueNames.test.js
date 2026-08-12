@@ -1,4 +1,4 @@
-import { valueName, valueDescription, groupName } from '../../app/utils/valueNames';
+import { valueName, valueDescription } from '../../app/utils/valueNames';
 import en from '../../assets/i18n/en.json';
 
 // Mirrors LocalizationContext's `translations[key] || key` semantics, including
@@ -37,16 +37,5 @@ describe('valueDescription', () => {
 
   it('returns null for custom values, which have no description', () => {
     expect(valueDescription({ key: 'abc', isCustom: true, customName: 'Sailing' }, t)).toBeNull();
-  });
-});
-
-describe('groupName', () => {
-  it('translates a known group', () => {
-    expect(groupName('growth', t)).toBe('Growth');
-  });
-
-  it('falls back to the raw key for an unknown group', () => {
-    expect(groupName('nope', t)).toBe('nope');
-    expect(groupName(null, t)).toBe('');
   });
 });

@@ -57,7 +57,6 @@ const HistoryScreen = ({ onStartCalibration }) => {
         values.set(row.valueId, {
           valueId: row.valueId,
           key: row.key,
-          groupKey: row.groupKey,
           isCustom: row.isCustom,
           customName: row.customName,
           points: [],
