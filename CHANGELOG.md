@@ -1,0 +1,49 @@
+# Changelog
+
+## [0.2.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.1.0...values-v0.2.0) (2026-08-12)
+
+
+### Features
+
+* add 26 values from the ACT values checklist ([fa3219d](https://github.com/heywood8/my-personal-values-mobile-app/commit/fa3219d38a276fd73ecd736970c88f75ea8f581d))
+* **values:** add 26 values from the ACT values checklist ([bf8eed9](https://github.com/heywood8/my-personal-values-mobile-app/commit/bf8eed9ec15ac6be002e85d19b50d8dff0f800ac))
+* **values:** make the deck the ACT values checklist, verbatim ([aa3a634](https://github.com/heywood8/my-personal-values-mobile-app/commit/aa3a634f8a300073c2cf86b3848502509edd2a4c))
+* **values:** make the deck the ACT values checklist, verbatim ([32f5b51](https://github.com/heywood8/my-personal-values-mobile-app/commit/32f5b515f2907768d83b5220562dca07d72a24b8))
+* **web:** tell web users their data never leaves the machine ([db71fdc](https://github.com/heywood8/my-personal-values-mobile-app/commit/db71fdca2f48bea2ba82ed3705cd16c9c79bf7aa))
+* **web:** tell web users their data never leaves the machine ([208a232](https://github.com/heywood8/my-personal-values-mobile-app/commit/208a232874d8d8a2bdd12336b4849d705b43144a))
+
+
+### Code Refactoring
+
+* **web:** move the privacy note into its own component ([32a1d88](https://github.com/heywood8/my-personal-values-mobile-app/commit/32a1d88efcd092c882ea49476e877c81a508149c))
+
+
+### Build System
+
+* **deps-dev:** Bump @eslint/js from 9.39.5 to 10.0.1 ([d471082](https://github.com/heywood8/my-personal-values-mobile-app/commit/d471082bf57ca8f70abf76f819ce801f58dcdbea))
+* **deps-dev:** Bump @eslint/js from 9.39.5 to 10.0.1 ([99fa8f2](https://github.com/heywood8/my-personal-values-mobile-app/commit/99fa8f2e4cd4f411514cc4d32cfeaf102b81b910))
+* **deps:** Bump actions/checkout from 5 to 7 ([e47ad26](https://github.com/heywood8/my-personal-values-mobile-app/commit/e47ad269e49dadef36e63249c79ff152433d3444))
+* **deps:** Bump actions/checkout from 5 to 7 ([b8208b7](https://github.com/heywood8/my-personal-values-mobile-app/commit/b8208b70ca70e33cbeae00d9d51bd87bc69b492e))
+* **deps:** Bump actions/checkout from 5 to 7 ([350edfc](https://github.com/heywood8/my-personal-values-mobile-app/commit/350edfc925b6c9fa2e52f067575c9de19632c7ae))
+* **deps:** Bump actions/checkout from 5 to 7 ([963184e](https://github.com/heywood8/my-personal-values-mobile-app/commit/963184e81e62228acde49ead0ace5119467a9d57))
+* **deps:** Bump actions/deploy-pages from 4 to 5 ([bf961d0](https://github.com/heywood8/my-personal-values-mobile-app/commit/bf961d01b376a4b46f094c607ef768e5358a28fd))
+* **deps:** Bump actions/github-script from 8 to 9 ([26c3f4b](https://github.com/heywood8/my-personal-values-mobile-app/commit/26c3f4b8e88ee328f9a7906c97e37df195b2fddf))
+* **deps:** Bump actions/github-script from 8 to 9 ([2ce9ecd](https://github.com/heywood8/my-personal-values-mobile-app/commit/2ce9ecdcabb7aa0856c1d6e113c113d87d822158))
+* **deps:** Bump expo/expo-github-action from 8 to 9 ([d7e2c81](https://github.com/heywood8/my-personal-values-mobile-app/commit/d7e2c811cb75ed472f7c904e1be247c7e661e305))
+* **deps:** Bump expo/expo-github-action from 8 to 9 ([94a76b2](https://github.com/heywood8/my-personal-values-mobile-app/commit/94a76b20a2a9a502e4fa954af216afc0f2a86861))
+* **deps:** Bump github/codeql-action from 3 to 4 ([01dd646](https://github.com/heywood8/my-personal-values-mobile-app/commit/01dd646737374ae869e780eb8770dc3476d029ec))
+* **deps:** Bump googleapis/release-please-action from 4 to 5 ([7c86ca9](https://github.com/heywood8/my-personal-values-mobile-app/commit/7c86ca92f275bace392275331aa0b2a554723412))
+* **deps:** Bump googleapis/release-please-action from 4 to 5 ([d016d8c](https://github.com/heywood8/my-personal-values-mobile-app/commit/d016d8c231bfcc67c1dccb7b087b978f4bcf887e))
+* **deps:** Bump marocchino/sticky-pull-request-comment from 2 to 3 ([2b9978b](https://github.com/heywood8/my-personal-values-mobile-app/commit/2b9978b0b2c743d692393f5e8b8ad4b2389b3c9a))
+* **deps:** Bump marocchino/sticky-pull-request-comment from 2 to 3 ([26d8862](https://github.com/heywood8/my-personal-values-mobile-app/commit/26d886241c3210c6c1702cb63850ef1c55d8636d))
+
+
+### Continuous Integration
+
+* attach an Android APK to every GitHub release ([7458a3d](https://github.com/heywood8/my-personal-values-mobile-app/commit/7458a3d99694ade0a44c988543f82ff3733b6878))
+* attach an Android APK to every GitHub release ([2afc5e8](https://github.com/heywood8/my-personal-values-mobile-app/commit/2afc5e8dd3ce89d425d3f9739e0788ddc95fcf9a))
+* hold back @babel/core and ESLint majors in Dependabot ([c4743bd](https://github.com/heywood8/my-personal-values-mobile-app/commit/c4743bd0714d76fdc898d8af1447388582b426da))
+* hold back Babel/ESLint majors and fix false-green lint comments ([5db82e1](https://github.com/heywood8/my-personal-values-mobile-app/commit/5db82e1930c7ae9fee3a1552e5d58d06b2564e96))
+* name the setting that refuses release-please its PR ([1e656c6](https://github.com/heywood8/my-personal-values-mobile-app/commit/1e656c6ad8f32e5d39ac3702bcf7d1e1a8a8f3ef))
+* name the setting that refuses release-please its PR ([3a53899](https://github.com/heywood8/my-personal-values-mobile-app/commit/3a538996af2ec128a7ba8cf499ef0527917b54a7))
+* stop the lint comment reporting green on an ESLint crash ([ca4b4d3](https://github.com/heywood8/my-personal-values-mobile-app/commit/ca4b4d3f99d6f5bcc4fe7ae97e65792c0b855d19))
