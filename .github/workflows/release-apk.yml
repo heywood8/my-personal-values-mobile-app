@@ -10,9 +10,12 @@ name: Release APK
 # keystore material lives in this repository or in GitHub secrets. Moving the
 # build onto the runner later is what would add the keystore set.
 #
-# The project must also be linked to EAS: `eas init` writes an
-# `extra.eas.projectId` into app.config.js, and without it `eas build` cannot run
-# non-interactively, nor resolve the remote versionCode that eas.json asks for.
+# The project must also be linked to EAS, by an `extra.eas.projectId` in the app
+# config — without it `eas build` cannot run non-interactively, nor resolve the
+# remote versionCode that eas.json asks for. `eas init` cannot write that field
+# into app.config.js, because it is a script rather than a static app.json, so
+# the ID is set by hand: either as the fallback in app.config.js or as the
+# EAS_PROJECT_ID repository variable read below.
 
 on:
   workflow_call:
@@ -45,6 +48,11 @@ jobs:
     # hour still beats the 6h default, which would hold a runner all day if EAS
     # never answered.
     timeout-minutes: 60
+    # A project ID is not a secret — it ships inside every build — so it is a
+    # repository variable, and empty when app.config.js carries the ID itself.
+    # Set at the job level because both the check below and eas-cli read it.
+    env:
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
     steps:
       - name: Checkout the release tag
         uses: actions/checkout@v7
@@ -62,6 +70,20 @@ jobs:
             echo "::error::EXPO_TOKEN is not set. Create one at https://expo.dev/settings/access-tokens and add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
+
+      # Unlinked, eas-cli fails 40 minutes of setup later with "EAS project not
+      # configured", a message that names neither the field it wants nor the
+      # reason `eas init` could not write it. app.config.js is a plain module
+      # that imports nothing, so the resolved ID can be read before `bun install`
+      # — and reading it, rather than the variable, keeps a hardcoded ID valid.
+      - name: Fail early without a linked EAS project
+        run: |
+          id="$(node -e 'process.stdout.write(require("./app.config.js").expo.extra?.eas?.projectId ?? "")')"
+          if [ -z "${id}" ]; then
+            echo "::error::No EAS project ID. Run 'eas init' once locally: it creates the project and prints the ID, then exits without writing it, because app.config.js is a dynamic config. Store that ID as the EAS_PROJECT_ID repository variable under Settings → Secrets and variables → Actions → Variables, or paste it into app.config.js as the EAS_PROJECT_ID fallback."
+            exit 1
+          fi
+          echo "Building EAS project ${id}."
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

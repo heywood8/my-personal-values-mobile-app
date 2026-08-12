@@ -19,6 +19,18 @@ const ANDROID_ARCHITECTURES = IS_PREVIEW
 // locally and in `expo start --web`, where the app is served from the root.
 const WEB_BASE_URL = process.env.EXPO_WEB_BASE_URL || undefined;
 
+// The EAS project this app builds under. `eas build` reads it from
+// `extra.eas.projectId` and refuses to start without it — `eas.json` asks for a
+// remote `versionCode`, and there is no project to read one from.
+//
+// `eas init` writes that field itself, but only into a *static* `app.json`. It
+// cannot rewrite a config that is a script, so against this file it creates the
+// project on EAS, prints the ID and exits with "Cannot automatically write to
+// dynamic config" — the link is real, only the write half failed. Carry the ID
+// over by hand: paste it as the fallback below, or leave it out of the
+// repository and set the `EAS_PROJECT_ID` variable, which is what CI does.
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '';
+
 module.exports = {
   expo: {
     name: 'Values',
@@ -64,6 +76,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     ...(WEB_BASE_URL && { experiments: { baseUrl: WEB_BASE_URL } }),
+    ...(EAS_PROJECT_ID && { extra: { eas: { projectId: EAS_PROJECT_ID } } }),
     plugins: [
       'expo-sqlite',
       [
