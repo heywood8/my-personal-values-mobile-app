@@ -1,0 +1,67 @@
+{
+  "cli": {
+    "version": ">= 16.27.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "node": "22.12.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:preBuild :app:assembleRelease"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "APP_VARIANT": "preview"
+      },
+      "channel": "preview"
+    },
+    "emulator": {
+      "distribution": "internal",
+      "node": "22.12.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:preBuild :app:assembleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "emulator"
+      },
+      "channel": "preview"
+    },
+    "x86": {
+      "distribution": "internal",
+      "node": "22.12.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:preBuild :app:assembleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "x86"
+      },
+      "channel": "preview"
+    },
+    "production": {
+      "autoIncrement": true,
+      "node": "22.12.0",
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "production"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

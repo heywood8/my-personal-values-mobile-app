@@ -1,0 +1,23 @@
+{
+  "coverage_file_path": "./coverage/coverage-summary.json",
+  "badges": {
+    "coverage": {
+      "style": "flat",
+      "logo": "jest",
+      "logoColor": "white",
+      "color": "green"
+    },
+    "statements": {
+      "style": "flat"
+    },
+    "branches": {
+      "style": "flat"
+    },
+    "functions": {
+      "style": "flat"
+    },
+    "lines": {
+      "style": "flat"
+    }
+  }
+}

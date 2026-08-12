@@ -1,0 +1,46 @@
+name: Auto-retry failed runs
+
+# Rides out transient CI hiccups (flaky network, runner preemption, registry blips)
+# by re-running the failed jobs of any listed workflow exactly once.
+#
+# It fires when one of those workflows completes and acts only when:
+#   - the run genuinely failed (not cancelled / skipped), and
+#   - it was the FIRST attempt (run_attempt == 1).
+# `gh run rerun --failed` retries only the failed jobs, leaving successful ones as-is.
+# Because a retried run reports run_attempt == 2 on its next completion, this never
+# loops: every run is retried at most once, and a second failure is left for a human.
+#
+# NOTE: keep this workflow's own name OUT of the list below, and add new workflows
+# here when they are introduced (workflow_run has no wildcard for names).
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Deploy Web
+      - OSSAR
+      - PR Title Check
+      - Release Please
+    types:
+      - completed
+
+# Least privilege: only the rights needed to re-run a run.
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  rerun:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'failure'
+          && github.event.workflow_run.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-run failed jobs once
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          echo "::notice::Transient-retry: re-running failed jobs of '${WORKFLOW_NAME}' run ${RUN_ID} (attempt 1 -> 2)"
+          gh run rerun "${RUN_ID}" --failed --repo "${GITHUB_REPOSITORY}"

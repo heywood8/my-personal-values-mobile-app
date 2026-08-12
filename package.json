@@ -1,0 +1,70 @@
+{
+  "name": "values",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "build:web": "expo export --platform web --output-dir dist",
+    "test": "jest",
+    "test:coverage": "jest --coverage && node scripts/generate-badges.js",
+    "db:generate": "drizzle-kit generate && node scripts/build-migrations.js",
+    "db:studio": "drizzle-kit studio",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:ci": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~56.0.19",
+    "@expo/vector-icons": "^15.0.3",
+    "drizzle-orm": "^1.0.0-beta.6-7aaf14b",
+    "expo": "~56.0.19",
+    "expo-build-properties": "~56.0.25",
+    "expo-constants": "~56.0.23",
+    "expo-font": "~56.0.7",
+    "expo-splash-screen": "~56.0.14",
+    "expo-sqlite": "~56.0.5",
+    "expo-status-bar": "~56.0.4",
+    "expo-system-ui": "~56.0.5",
+    "prop-types": "^15.8.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-gesture-handler": "~2.31.1",
+    "react-native-paper": "^5.14.5",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4",
+    "react-native-uuid": "^2.0.3",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.8.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@eslint/js": "^9.39.2",
+    "@testing-library/react-native": "^14.0.0",
+    "babel-preset-expo": "~56.0.15",
+    "drizzle-kit": "^1.0.0-beta.8-734e789",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-native": "^5.0.0",
+    "globals": "^17.0.0",
+    "jest": "~30.4.2",
+    "jest-expo": "~56.0.5",
+    "react-test-renderer": "19.2.3"
+  },
+  "private": true,
+  "overrides": {
+    "jest-environment-node": "30.4.1",
+    "jest-mock": "30.4.1"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "jest"
+      ]
+    }
+  }
+}
