@@ -160,6 +160,7 @@ providers by hand.
 | `pr-title-check.yml` | every PR | PR title must be a Conventional Commit |
 | `ossar.yml` | PRs to main, weekly | static analysis into the Security tab |
 | `release-please.yml` | push to main | maintains the release PR and changelog |
+| `release-apk.yml` | on release, or by hand | builds the APK on EAS, attaches it to the release |
 | `deploy-web.yml` | push to main | publishes the web export to GitHub Pages |
 | `auto-retry.yml` | on failure | re-runs a failed run's jobs once, for flakes |
 
@@ -167,6 +168,37 @@ providers by hand.
 once; it needs no secrets. `release-please.yml` works with the default token and
 additionally auto-merges its release PR when a `RELEASE_TOKEN` secret exists.
 
-There are no EAS or Sentry workflows yet. Adding them means adding the
-corresponding secrets (`EXPO_TOKEN`, the `MYAPP_UPLOAD_*` keystore set,
-`SENTRY_*`) and listing the new workflow names in `auto-retry.yml`.
+## Releasing the Android APK
+
+`release-apk.yml` builds an APK on EAS and uploads it to the GitHub release as
+`values-<tag>.apk`. It is a reusable workflow, reached two ways: `release-please`
+calls it as a job once it has published a release, and **Actions → Release APK →
+Run workflow** re-runs it for any tag that already exists.
+
+It is called from inside `release-please.yml` rather than triggered by
+`on: release`, because a release created with the default `GITHUB_TOKEN` raises
+no event that can start another workflow. Give release-please a `RELEASE_TOKEN`
+and that stops being true, but the direct call works either way, so it is the one
+path.
+
+Two things have to be in place before the first release:
+
+- **`EXPO_TOKEN`** — a token from expo.dev → **Settings → Access tokens**, stored
+  under **Settings → Secrets and variables → Actions**. The job fails with an
+  explicit message when it is missing rather than deep inside eas-cli.
+- **A linked EAS project** — run `eas init` once locally and commit the
+  `extra.eas.projectId` it writes into `app.config.js`. `eas.json` sets
+  `appVersionSource: "remote"`, so without the link there is no project whose
+  `versionCode` can be read or incremented, and the build never starts.
+
+The build uses the `release` profile: an APK, like `preview`, but with no
+`APP_VARIANT` set, so `app.config.js` filters no architectures out and the
+artifact installs on arm64 phones, older armeabi-v7a devices and x86_64 emulators
+alike. `preview` is arm64-only on purpose and is the wrong thing to hand a
+stranger. Signing is EAS-managed — `eas credentials` holds the keystore, and
+nothing about it lives in this repository.
+
+Moving the build onto the runner instead is what would introduce keystore secrets
+(the `MYAPP_UPLOAD_*` set) and a signing step; nothing else here would change.
+There is no Sentry workflow yet either — adding one means its `SENTRY_*` secrets
+and a new name in `auto-retry.yml`.

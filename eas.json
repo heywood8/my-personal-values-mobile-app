@@ -59,6 +59,16 @@
         "APP_VARIANT": "production"
       },
       "channel": "production"
+    },
+    "release": {
+      "autoIncrement": true,
+      "distribution": "internal",
+      "node": "22.12.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:preBuild :app:assembleRelease"
+      },
+      "channel": "production"
     }
   },
   "submit": {
