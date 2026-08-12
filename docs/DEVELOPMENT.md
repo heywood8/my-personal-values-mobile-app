@@ -232,10 +232,31 @@ Two things have to be in place before the first release:
 - **`EXPO_TOKEN`** — a token from expo.dev → **Settings → Access tokens**, stored
   under **Settings → Secrets and variables → Actions**. The job fails with an
   explicit message when it is missing rather than deep inside eas-cli.
-- **A linked EAS project** — run `eas init` once locally and commit the
-  `extra.eas.projectId` it writes into `app.config.js`. `eas.json` sets
-  `appVersionSource: "remote"`, so without the link there is no project whose
-  `versionCode` can be read or incremented, and the build never starts.
+- **A linked EAS project** — `eas.json` sets `appVersionSource: "remote"`, so
+  without the link there is no project whose `versionCode` can be read or
+  incremented, and the build never starts.
+
+  Linking is two halves, and only the first is automatic. Run `eas init` once
+  locally: it creates `@<account>/values` on EAS, prints the project ID, and then
+  exits with `Cannot automatically write to dynamic config`. That failure is
+  expected and not fatal — the project exists, and eas-cli refuses only because
+  `app.config.js` is a script it cannot rewrite. A static `app.json` is the only
+  config it edits itself.
+
+  Carry the ID across by hand, either way round:
+
+  - set it as the **`EAS_PROJECT_ID`** repository variable under **Settings →
+    Secrets and variables → Actions → Variables** — `release-apk.yml` passes it
+    to the build, and the ID stays out of the repository, so a fork builds under
+    its own account without a diff; or
+  - paste it as the `EAS_PROJECT_ID` fallback in `app.config.js` and commit it. A
+    project ID is not a secret — it ships inside every build.
+
+  The workflow checks the resolved value before it installs anything, so a
+  missing link fails in seconds with an actionable message rather than deep
+  inside eas-cli. The `owner` and `slug` fields in `app.config.js` have to keep
+  matching the linked project: eas-cli compares all three and refuses a build on
+  any mismatch.
 
 The build uses the `release` profile: an APK, like `preview`, but with no
 `APP_VARIANT` set, so `app.config.js` filters no architectures out and the
