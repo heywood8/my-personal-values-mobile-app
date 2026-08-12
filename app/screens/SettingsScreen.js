@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, List, Button, Divider, Icon } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, List, Button, Divider } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useLocalization, availableLanguages } from '../contexts/LocalizationContext';
 import { useThemeConfig } from '../contexts/ThemeConfigContext';
@@ -11,18 +11,13 @@ import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import SegmentedToggle from '../components/SegmentedToggle';
 import ValueDeckPanel from '../components/ValueDeckPanel';
+import PrivacyNote from '../components/PrivacyNote';
 import { SCALE_ORDER, SCALES } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
 import { resetDatabase, isUsingMemoryFallback } from '../services/db';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 import { formatDateKey } from '../utils/dateUtils';
-import {
-  SPACING,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  BORDER_RADIUS,
-  CONTENT_MAX_WIDTH,
-} from '../styles/designTokens';
+import { SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH } from '../styles/designTokens';
 
 const SettingsScreen = ({ onStartCalibration }) => {
   const { t, language, setLanguage } = useLocalization();
@@ -154,31 +149,8 @@ const SettingsScreen = ({ onStartCalibration }) => {
 
         <List.Subheader>{t('settings_data')}</List.Subheader>
 
-        {/*
-          Web only. A page served from a URL looks like every other web app that
-          keeps your data on someone's server, and this one does not: the whole
-          database is SQLite in the browser. On a phone nobody assumes otherwise,
-          so the note would be noise there.
-        */}
-        {Platform.OS === 'web' && (
-          <View
-            style={[styles.privacy, { backgroundColor: colors.selected }]}
-            testID="settings-privacy-note"
-          >
-            <View style={styles.privacyHeader}>
-              <Icon source="shield-lock-outline" size={18} color={colors.text} />
-              <Text
-                accessibilityRole="header"
-                style={[styles.privacyTitle, { color: colors.text }]}
-              >
-                {t('privacy_local_only_title')}
-              </Text>
-            </View>
-            <Text style={[styles.privacyText, { color: colors.text }]}>
-              {t('privacy_local_only')}
-            </Text>
-          </View>
-        )}
+        {/* Renders only on web; see the component. */}
+        <PrivacyNote />
 
         <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
         <Button
@@ -221,25 +193,6 @@ const styles = StyleSheet.create({
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
     width: '100%',
-  },
-  privacy: {
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
-    padding: SPACING.md,
-  },
-  privacyHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  privacyText: {
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginTop: SPACING.xs,
-  },
-  privacyTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
   },
   subheader: {
     marginTop: SPACING.md,
