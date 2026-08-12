@@ -35,7 +35,7 @@ jobs:
 
       - name: Post lint results
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         id: set-lint-results
         env:
           LINT_OUTCOME: ${{ steps.lint.outcome }}
@@ -122,7 +122,7 @@ jobs:
 
       - name: Post test results
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         id: set-results
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
