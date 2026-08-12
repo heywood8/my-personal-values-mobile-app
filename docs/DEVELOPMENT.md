@@ -165,8 +165,18 @@ providers by hand.
 | `auto-retry.yml` | on failure | re-runs a failed run's jobs once, for flakes |
 
 `deploy-web.yml` needs **Settings → Pages → Source** set to "GitHub Actions"
-once; it needs no secrets. `release-please.yml` works with the default token and
-additionally auto-merges its release PR when a `RELEASE_TOKEN` secret exists.
+once; it needs no secrets.
+
+`release-please.yml` opens a pull request, and a repository may forbid that:
+**Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to
+create and approve pull requests"** has to be ticked before the default
+`GITHUB_TOKEN` is allowed to. Untick it and the job pushes its release branch,
+then dies on `GitHub Actions is not permitted to create or approve pull
+requests` — the branch survives, so re-running the workflow after ticking the
+box picks up where it stopped. A `RELEASE_TOKEN` secret (a PAT with `repo`
+scope) sidesteps the setting entirely, and the auto-merge step needs that secret
+regardless: it merges the release PR only when the PAT exists, because a
+`GITHUB_TOKEN`-authored PR starts no further workflows.
 
 ## Releasing the Android APK
 

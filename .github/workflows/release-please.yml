@@ -32,6 +32,15 @@ jobs:
           # rather than failing when the PAT is absent.
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
+      # release-please pushes its release branch before it opens the pull
+      # request, so the two halves fail apart: the branch lands, the PR is
+      # refused, and the raw error names neither the setting that refuses it nor
+      # the fact that a re-run resumes cleanly. Say both.
+      - name: Explain a refused release PR
+        if: ${{ failure() && steps.release-please.outcome == 'failure' }}
+        run: |
+          echo "::error title=Release PR was not opened::GitHub refuses pull request creation by the default GITHUB_TOKEN until Settings > Actions > General > Workflow permissions > 'Allow GitHub Actions to create and approve pull requests' is enabled. Enable it, or add a RELEASE_TOKEN secret (a PAT with repo scope), then re-run this workflow — the release branch is already pushed, so a re-run only has to open the PR."
+
       - name: Enable auto-merge for the release PR
         if: ${{ steps.release-please.outputs.pr && env.HAS_RELEASE_TOKEN == 'true' }}
         run: gh pr merge --auto --squash "$PR_NUMBER"
