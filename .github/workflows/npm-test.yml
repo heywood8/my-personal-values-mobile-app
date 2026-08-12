@@ -37,6 +37,8 @@ jobs:
         if: always()
         uses: actions/github-script@v8
         id: set-lint-results
+        env:
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -46,19 +48,34 @@ jobs:
             // strip ANSI escape codes
             output = output.replace(/\u001b\[[0-9;]*m/g, '');
 
-            const errorCount = (output.match(/\d+\s+error/g) || []).reduce((acc, match) => {
-              return acc + parseInt(match.match(/\d+/)[0]);
-            }, 0);
-            const warningCount = (output.match(/\d+\s+warning/g) || []).reduce((acc, match) => {
-              return acc + parseInt(match.match(/\d+/)[0]);
-            }, 0);
+            // Read the counts off ESLint's own summary line rather than tallying
+            // every "N error" in the report: each finding is prefixed with
+            // "line:column", so a match sweep sums line numbers into the total and
+            // reports "2 errors, 6 warnings" for one of each.
+            const summary = output.match(/✖\s+\d+\s+problems?\s+\((\d+)\s+errors?,\s+(\d+)\s+warnings?\)/);
+            const errorCount = summary ? parseInt(summary[1], 10) : 0;
+            const warningCount = summary ? parseInt(summary[2], 10) : 0;
 
             const problems = output.match(/[\s\S]*?(?=\n✖|$)/);
             const problemDetails = problems ? problems[0].trim() : '';
 
+            // ESLint prints that summary only once it has actually linted. A bad
+            // config, or a plugin that does not support the installed ESLint,
+            // exits 2 with a bare stack trace and no summary at all — which reads
+            // as zero problems, so a red job used to carry a green comment. The
+            // step outcome is what separates the two.
+            const crashed = !summary && process.env.LINT_OUTCOME !== 'success';
+
             let comment = '## Lint Results\n\n';
 
-            if (errorCount === 0 && warningCount === 0) {
+            if (crashed) {
+              comment += '💥 **ESLint failed to run**\n\n';
+              comment += 'No files were linted — this is a tooling failure, not a code problem.\n\n';
+
+              if (problemDetails) {
+                comment += '<details>\n<summary>Details</summary>\n\n```\n' + problemDetails + '\n```\n</details>\n';
+              }
+            } else if (errorCount === 0 && warningCount === 0) {
               comment += '✅ **No linting issues found!**\n\n';
               comment += 'All code passed ESLint checks.\n';
             } else {
