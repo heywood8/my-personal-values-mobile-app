@@ -23,6 +23,22 @@ method and never uses Drizzle's migrator. Synchronous SQLite needs
 `SharedArrayBuffer`, which needs COOP/COEP headers GitHub Pages cannot send. One
 sync call breaks the web build only, and only at runtime.
 
+**Preferences are mirrored into `localStorage`, and only through
+`setPreference()`.** `app/services/preferenceMirror.js` keeps a copy of
+`app_metadata` — that table only — because a web reload can come back to an empty
+database, and a lost language plus a lost onboarding flag means being asked the
+same two questions and re-dealt all 47 cards on every visit. Writes go through
+`PreferencesDB`; `db.js` folds the mirror back in when the database opens (gaps
+only, the database wins) and clears it in `resetDatabase()`. A new preference
+written by any other route is invisible to it, and a reset that forgets to clear
+it un-resets the app on the next launch.
+
+**Onboarding has two persisted step markers, not one.** `onboarding_complete` is
+the finished first calibration; `onboarding_scale_chosen` is the answered scale
+question. Storing the chosen scale is a different fact from having answered — that
+conflation is exactly what re-asked the question after every reload of a first run
+someone had abandoned mid-deck.
+
 **Every rating stores both `score` and `normalized`.** Raw score is what the user
 sees; the 0..1 value is what every chart, sort and delta reads. They must always
 agree — after a lossy scale conversion, recompute `normalized` from the rounded

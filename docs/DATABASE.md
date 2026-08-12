@@ -28,6 +28,16 @@ rating scale, onboarding state, and the results screen's view and sort toggles.
 | `value` | text | always stored as a string |
 | `updated_at` | text | ISO timestamp |
 
+This is the one table that is also kept outside the database — see
+[the mirror](#the-localstorage-mirror) below.
+
+Two of its keys are onboarding *steps* rather than settings, and both are needed:
+`onboarding_complete` says the first calibration finished, and
+`onboarding_scale_chosen` says the scale question was answered. Storing the
+chosen scale is not the same fact — someone who picks a scale and then closes the
+app a third of the way through 47 cards has answered the question, and should
+come back to the deck rather than to the question.
+
 ### `personal_values`
 
 The value catalogue. Named `personal_values` because `VALUES` is reserved in
@@ -128,3 +138,23 @@ this install has never seen.
 If the browser cannot provide OPFS — a private-browsing mode, or a non-secure
 context — `db.js` falls back to an in-memory database so the app still runs, and
 Settings shows a warning that the session will not be kept.
+
+### The localStorage mirror
+
+`app_metadata`, and nothing else, is mirrored into `localStorage` by
+`app/services/preferenceMirror.js`, under `values.pref.*`. It exists for the case
+above: a web reload that comes back to an empty database would otherwise be a
+first launch, and the reader would answer the language question, the scale
+question and 47 cards again — every visit.
+
+| | |
+|---|---|
+| written | beside every `setPreference()` / `deletePreference()`, before the database write, which cannot make it fail |
+| read | when the database opens (`restoreMirroredPreferences`), and when a preference read throws |
+| precedence | `INSERT OR IGNORE`: a key the database already has wins, so this only fills gaps |
+| cleared | by `resetDatabase()`, or the reset would hand everything straight back |
+| availability | probed with a real write — Safari's private mode has the API and throws from the setter. React Native has no `localStorage`, so on a phone this is inert and the database is simply the only copy |
+
+The mirror keeps preferences, not data. A browser that cannot persist the
+database still loses every rating on reload; what it no longer loses is the
+answer to "which language" and "which scale".

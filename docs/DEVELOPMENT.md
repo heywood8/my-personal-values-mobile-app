@@ -59,6 +59,21 @@ needs `SharedArrayBuffer`, which needs COOP/COEP response headers that GitHub
 Pages cannot send. A single sync call would break the web build only, and only at
 runtime.
 
+### Preferences are stored twice, too
+
+The database is the store of record, but on the web it lives in the
+origin-private file system — which a browser is free not to provide, and which
+`db.js` then substitutes with an in-memory database that lasts until the tab is
+reloaded. Losing a few ratings that way is a disappointment; losing the language,
+the rating scale and the onboarding flags means being asked all of them again on
+every single visit, which is what actually drove people away.
+
+So `app/services/preferenceMirror.js` keeps a copy of `app_metadata` — that table
+only — in `localStorage`. Every write through `PreferencesDB` updates it, and
+`db.js` folds it back in when the database opens, filling gaps and never
+overriding. Anything writing a preference by some other route is invisible to it;
+go through `setPreference()`.
+
 ### Scores are stored twice
 
 Every rating keeps the raw score the user chose *and* that score normalised to
