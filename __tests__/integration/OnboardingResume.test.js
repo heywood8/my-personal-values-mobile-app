@@ -22,6 +22,21 @@ import { appEvents, EVENTS } from '../../app/services/eventEmitter';
  * exactly as it does on a cold start.
  */
 
+/**
+ * The onboarding sequence ends where the tab shell begins, and this file is about
+ * the sequence. Standing in for `SimpleTabs` keeps three screens, the history
+ * charts and the CSV panel out of a test that never shows any of them — and
+ * gives the "we got all the way through" assertions something to look for.
+ */
+jest.mock('../../app/navigation/SimpleTabs', () => {
+  const ReactModule = require('react');
+  const { Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => ReactModule.createElement(Text, { testID: 'main-app' }, 'main app'),
+  };
+});
+
 const press = async (testID) => {
   await act(async () => {
     fireEvent.press(screen.getByTestId(testID));
@@ -34,6 +49,15 @@ const press = async (testID) => {
  * point of the exercise.
  */
 const launch = () => render(<AppInitializer />, { wrapper: AllProviders });
+
+/** Rate one card and finish, which is what completes onboarding. */
+const finishTheRun = async () => {
+  await press('scale-step-8');
+  await press('assessment-finish');
+  await waitFor(() => expect(screen.getByTestId('dialog-action-0')).toBeTruthy());
+  await press('dialog-action-0');
+  await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+};
 
 /** Walk the first run as far as the deck. */
 const walkToTheDeck = async () => {
@@ -85,6 +109,17 @@ describe('coming back to an unfinished first run', () => {
     expect(screen.queryByTestId('scale-input')).toBeNull();
   });
 
+  it('opens the main app once the first calibration is finished', async () => {
+    const first = await launch();
+    await walkToTheDeck();
+    await finishTheRun();
+
+    await first.unmount();
+    await launch();
+
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+  });
+
   it('starts over after a data reset', async () => {
     const first = await launch();
     await walkToTheDeck();
@@ -118,6 +153,21 @@ describe('coming back on the web, where the database can be lost', () => {
     await waitFor(() => expect(screen.getByTestId('scale-input')).toBeTruthy());
     expect(screen.queryByTestId('language-list')).toBeNull();
     expect(screen.queryByTestId('scale-selection')).toBeNull();
+  });
+
+  it('does not re-run onboarding for someone who already finished it', async () => {
+    const first = await launch();
+    await walkToTheDeck();
+    await finishTheRun();
+
+    // The records are gone with the database — that much a mirror of the
+    // preferences cannot help with. What it does prevent is greeting someone who
+    // has already been through all 47 cards as a first-time visitor.
+    await first.unmount();
+    __resetDatabaseHandleForTests();
+    await launch();
+
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
   });
 
   it('asks again when there is no mirror to fall back on', async () => {
