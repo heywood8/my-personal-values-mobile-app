@@ -1,0 +1,69 @@
+{
+  "groups": [
+    "growth",
+    "relationships",
+    "achievement",
+    "wellbeing",
+    "contribution",
+    "autonomy",
+    "security",
+    "meaning"
+  ],
+  "values": [
+    { "key": "learning", "group": "growth" },
+    { "key": "curiosity", "group": "growth" },
+    { "key": "self_awareness", "group": "growth" },
+    { "key": "mastery", "group": "growth" },
+    { "key": "creativity", "group": "growth" },
+    { "key": "adaptability", "group": "growth" },
+
+    { "key": "family", "group": "relationships" },
+    { "key": "friendship", "group": "relationships" },
+    { "key": "love", "group": "relationships" },
+    { "key": "community", "group": "relationships" },
+    { "key": "loyalty", "group": "relationships" },
+    { "key": "belonging", "group": "relationships" },
+
+    { "key": "achievement", "group": "achievement" },
+    { "key": "ambition", "group": "achievement" },
+    { "key": "recognition", "group": "achievement" },
+    { "key": "excellence", "group": "achievement" },
+    { "key": "leadership", "group": "achievement" },
+    { "key": "prosperity", "group": "achievement" },
+
+    { "key": "health", "group": "wellbeing" },
+    { "key": "balance", "group": "wellbeing" },
+    { "key": "calm", "group": "wellbeing" },
+    { "key": "joy", "group": "wellbeing" },
+    { "key": "humour", "group": "wellbeing" },
+    { "key": "rest", "group": "wellbeing" },
+
+    { "key": "helping", "group": "contribution" },
+    { "key": "compassion", "group": "contribution" },
+    { "key": "generosity", "group": "contribution" },
+    { "key": "justice", "group": "contribution" },
+    { "key": "stewardship", "group": "contribution" },
+    { "key": "mentorship", "group": "contribution" },
+
+    { "key": "freedom", "group": "autonomy" },
+    { "key": "independence", "group": "autonomy" },
+    { "key": "adventure", "group": "autonomy" },
+    { "key": "spontaneity", "group": "autonomy" },
+    { "key": "exploration", "group": "autonomy" },
+    { "key": "self_expression", "group": "autonomy" },
+
+    { "key": "stability", "group": "security" },
+    { "key": "safety", "group": "security" },
+    { "key": "order", "group": "security" },
+    { "key": "tradition", "group": "security" },
+    { "key": "honesty", "group": "security" },
+    { "key": "responsibility", "group": "security" },
+
+    { "key": "purpose", "group": "meaning" },
+    { "key": "spirituality", "group": "meaning" },
+    { "key": "gratitude", "group": "meaning" },
+    { "key": "beauty", "group": "meaning" },
+    { "key": "wisdom", "group": "meaning" },
+    { "key": "authenticity", "group": "meaning" }
+  ]
+}

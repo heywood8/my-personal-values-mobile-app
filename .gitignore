@@ -1,0 +1,75 @@
+# Backup/Trash
+.trash/
+# Git worktrees
+.worktrees/
+.claude/worktrees/
+
+# React Native
+# No trailing slash: also matches the node_modules SYMLINK used in git worktrees
+# (a trailing slash matches directories only, which lets the symlink get staged).
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package manager lock files (keep bun.lock committed)
+package-lock.json
+yarn.lock
+
+# macOS
+.DS_Store
+
+# Android
+android/
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+android/local.properties
+
+# iOS
+ios/
+
+# Metro / Expo
+.expo/
+.expo-shared/
+*.expo
+*.expo-shared
+dist/
+web-build/
+
+# Misc
+*.log
+*.tmp
+*.swp
+*.swo
+*.swn
+*.orig
+
+# VSCode
+.vscode/
+
+# Keystores / EAS credentials
+*.keystore
+credentials.json
+*.keystore.base64.txt
+
+# Test coverage (keep badge SVGs)
+coverage/*
+!coverage/badge*.svg
+*.lcov
+
+# Env files
+.env
+.env.*
+
+# Watchman
+.watchmanconfig
+
+# IDEs
+.idea/
+*.iml
+
+# Local files
+local/
+*.apk

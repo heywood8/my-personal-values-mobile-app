@@ -1,0 +1,68 @@
+name: Deploy Web
+
+# Publishes the Expo web export to GitHub Pages.
+#
+# Before the first run, set Settings → Pages → Source to "GitHub Actions".
+# Nothing else needs configuring: the job needs no secrets, since the web build
+# has no signing keys or service credentials.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one in flight — a half-finished upload
+# would leave the published site inconsistent.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build web bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Export web bundle
+        env:
+          # Pages serves the site from /<repo>/, so every asset URL has to carry
+          # that prefix. app.config.js reads this into expo.experiments.baseUrl.
+          EXPO_WEB_BASE_URL: /${{ github.event.repository.name }}
+        run: bun run build:web
+
+      # Expo's static export puts its bundles under `_expo/`, and GitHub Pages
+      # runs Jekyll by default, which skips every underscore-prefixed directory.
+      # Without this file the page loads and every script 404s.
+      - name: Disable Jekyll processing
+        run: touch dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

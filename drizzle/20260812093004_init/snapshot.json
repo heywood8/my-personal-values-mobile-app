@@ -1,0 +1,427 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "0754674c-009b-44cc-9839-cd15d5e42434",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "name": "app_metadata",
+      "entityType": "tables"
+    },
+    {
+      "name": "assessments",
+      "entityType": "tables"
+    },
+    {
+      "name": "personal_values",
+      "entityType": "tables"
+    },
+    {
+      "name": "ratings",
+      "entityType": "tables"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "key",
+      "entityType": "columns",
+      "table": "app_metadata"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "app_metadata"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "app_metadata"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "assessed_on",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "scale",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "completed_at",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "assessments"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "key",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "group_key",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "is_custom",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "custom_name",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "display_order",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "archived",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "personal_values"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "assessment_id",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value_id",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "score",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "normalized",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "ratings"
+    },
+    {
+      "columns": [
+        "assessment_id"
+      ],
+      "tableTo": "assessments",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_ratings_assessment_id_assessments_id_fk",
+      "entityType": "fks",
+      "table": "ratings"
+    },
+    {
+      "columns": [
+        "value_id"
+      ],
+      "tableTo": "personal_values",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_ratings_value_id_personal_values_id_fk",
+      "entityType": "fks",
+      "table": "ratings"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": false,
+      "name": "app_metadata_pk",
+      "table": "app_metadata",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "assessments_pk",
+      "table": "assessments",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "personal_values_pk",
+      "table": "personal_values",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "ratings_pk",
+      "table": "ratings",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        {
+          "value": "group_key",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_personal_values_group",
+      "entityType": "indexes",
+      "table": "personal_values"
+    },
+    {
+      "columns": [
+        {
+          "value": "display_order",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_personal_values_order",
+      "entityType": "indexes",
+      "table": "personal_values"
+    },
+    {
+      "columns": [
+        {
+          "value": "assessment_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_ratings_assessment",
+      "entityType": "indexes",
+      "table": "ratings"
+    },
+    {
+      "columns": [
+        {
+          "value": "value_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_ratings_value",
+      "entityType": "indexes",
+      "table": "ratings"
+    },
+    {
+      "columns": [
+        "assessed_on"
+      ],
+      "nameExplicit": true,
+      "name": "idx_assessments_date",
+      "entityType": "uniques",
+      "table": "assessments"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": true,
+      "name": "idx_personal_values_key",
+      "entityType": "uniques",
+      "table": "personal_values"
+    },
+    {
+      "columns": [
+        "assessment_id",
+        "value_id"
+      ],
+      "nameExplicit": true,
+      "name": "idx_ratings_assessment_value",
+      "entityType": "uniques",
+      "table": "ratings"
+    }
+  ],
+  "renames": []
+}

@@ -1,0 +1,38 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    # The `secrets` context is not available in a step-level `if:`, but it is in
+    # a job-level `env:` — so the "do we have a PAT?" test is resolved here and
+    # read back as a plain string below.
+    env:
+      HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release-please
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # Falls back to the default token when RELEASE_TOKEN is not set. The
+          # difference matters for the auto-merge step below, which a
+          # GITHUB_TOKEN-authored PR cannot trigger — so that step is skipped
+          # rather than failing when the PAT is absent.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for the release PR
+        if: ${{ steps.release-please.outputs.pr && env.HAS_RELEASE_TOKEN == 'true' }}
+        run: gh pr merge --auto --squash "$PR_NUMBER"
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ fromJSON(steps.release-please.outputs.pr || '{"number":0}').number }}
