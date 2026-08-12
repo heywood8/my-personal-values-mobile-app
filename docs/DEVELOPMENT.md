@@ -116,6 +116,42 @@ A shipped value must not restate one that already exists. Ratings are compared
 across months, and two cards meaning the same thing split the signal between
 them; the parity suite only catches an identical *name*, not an identical idea.
 
+The order entries appear in `defaultValues.json` **is** the order cards are
+dealt — it mirrors the source checklist's numbering, so the file is not free to
+be reshuffled for readability. `alignCatalogueOrder()` renumbers existing rows to
+match on every load; without it, changing the order in the JSON would only ever
+reach a fresh install, since seeding numbers just the rows it inserts.
+
+## Removing a value from the catalogue
+
+Dropping the entry from `defaultValues.json` is only half of it. Seeding never
+deletes, so on an upgrading install the row survives and the user is dealt a card
+that no longer exists in the catalogue. `retireRemovedValues()` in
+`app/services/ValuesDB.js` is the other half: it archives shipped rows that are
+no longer listed, and `ValuesContext` runs it right after seeding.
+
+Two things about it are load-bearing:
+
+- It **archives, never deletes**, for the same reason `setValueArchived` does —
+  the ratings a value collected stay queryable, so a history chart spanning the
+  removal is still complete and old records still resolve a name.
+- It records every key it has handled in the `retired_catalogue_values`
+  preference, *including* one the user had already archived. That record, not
+  the `archived` flag, is what makes it a one-time step. Keying off `archived`
+  instead would re-archive a value the user deliberately restored, on every
+  launch, forever.
+
+A key that stays in the catalogue but changes meaning is a different operation
+and needs no retirement — the row and its ratings carry over, which is what you
+want when the wording is being sharpened rather than the value replaced. Because
+`key` is also the i18n suffix, a key can outlive the name it was originally
+chosen for; `learning` currently renders as "Self-development". The alternative
+is minting a new key, which is a new card with no history.
+
+Whichever you do, drop the retired entry's `value_*` and `value_*_desc` strings
+from both locale files. `translationKeyParity.test.js` reserves that namespace
+for live catalogue entries and fails on the leftovers.
+
 ## Adding a language
 
 1. Add a loader to `i18nLoaders` in `app/contexts/LocalizationContext.js`.

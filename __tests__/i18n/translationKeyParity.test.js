@@ -74,7 +74,7 @@ describe('i18n translation key parity', () => {
 });
 
 describe('the value catalogue is fully translated', () => {
-  it.each(LANGS)('%s.json names and describes all 74 values', (lang) => {
+  it.each(LANGS)('%s.json names and describes all 47 values', (lang) => {
     const missing = [];
     for (const value of catalogue.values) {
       if (typeof ALL[lang][`value_${value.key}`] !== 'string') missing.push(`value_${value.key}`);
@@ -90,12 +90,28 @@ describe('the value catalogue is fully translated', () => {
     expect(missing).toEqual([]);
   });
 
-  it('reserves the value_* namespace for catalogue entries only', () => {
-    // `value_` means "a value in the catalogue", with no exceptions — deck UI
-    // strings live under `deck_`. That is what lets this check be exact rather
-    // than an allowlist that quietly rots: a stale key left behind by a renamed
-    // value, or a UI string parked in the wrong namespace, both fail here.
-    const known = new Set(catalogue.values.map((v) => v.key));
+  it.each(LANGS)('%s.json still names every retired value', (lang) => {
+    // A value dropped from the catalogue keeps its ratings, so it goes on
+    // appearing in records taken before the change. Delete its name with it and
+    // that history renders "value_family" — which nothing else here catches,
+    // because the catalogue no longer lists the key to check.
+    const missing = catalogue.retired
+      .filter((key) => typeof ALL[lang][`value_${key}`] !== 'string')
+      .map((key) => `value_${key}`);
+    expect(missing).toEqual([]);
+  });
+
+  it('does not list a retired value that is still in the catalogue', () => {
+    const live = new Set(catalogue.values.map((v) => v.key));
+    expect(catalogue.retired.filter((key) => live.has(key))).toEqual([]);
+  });
+
+  it('reserves the value_* namespace for catalogue and retired entries only', () => {
+    // `value_` means "a value this app can name", with no exceptions — deck UI
+    // strings live under `deck_`. Retired entries count because history still
+    // renders them; anything else is a stale key from a rename, or a UI string
+    // parked in the wrong namespace, and both fail here.
+    const known = new Set([...catalogue.values.map((v) => v.key), ...catalogue.retired]);
     const orphans = enKeys
       .filter((key) => key.startsWith('value_'))
       .map((key) => key.replace(/^value_/, '').replace(/_desc$/, ''))
@@ -103,10 +119,25 @@ describe('the value catalogue is fully translated', () => {
     expect([...new Set(orphans)]).toEqual([]);
   });
 
+  it('describes only values still in the deck', () => {
+    // A description is read on the assessment card and nowhere else, and a
+    // retired value is never dealt one. Keeping its description would be dead
+    // text in two locales that no test would ever exercise.
+    const live = new Set(catalogue.values.map((v) => v.key));
+    const stale = enKeys
+      .filter((key) => key.startsWith('value_') && key.endsWith('_desc'))
+      .map((key) => key.replace(/^value_/, '').replace(/_desc$/, ''))
+      .filter((key) => !live.has(key));
+    expect(stale).toEqual([]);
+  });
+
   it('has a unique name per value within each language', () => {
-    // Two values sharing a name is unreadable in a ranked list of 74 rows.
+    // Two values sharing a name is unreadable in a ranked list of 47 rows —
+    // and a retired name colliding with a live one is worse, because the two
+    // sit side by side in a history view spanning the change.
+    const keys = [...catalogue.values.map((v) => v.key), ...catalogue.retired];
     for (const lang of LANGS) {
-      const names = catalogue.values.map((v) => ALL[lang][`value_${v.key}`]);
+      const names = keys.map((key) => ALL[lang][`value_${key}`]);
       const duplicates = names.filter((name, i) => names.indexOf(name) !== i);
       expect({ lang, duplicates }).toEqual({ lang, duplicates: [] });
     }

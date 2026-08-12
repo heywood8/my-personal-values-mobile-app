@@ -108,7 +108,7 @@ describe('changing scale mid-day', () => {
   it('re-expresses the day\'s existing answers in the new scale', async () => {
     const first = await startAssessment(SCALE_IDS.NUMERIC_5, { today: TODAY });
     await saveRating(first.id, 'learning', 5, SCALE_IDS.NUMERIC_5); // top of 1..5
-    await saveRating(first.id, 'family', 1, SCALE_IDS.NUMERIC_5); // bottom
+    await saveRating(first.id, 'love', 1, SCALE_IDS.NUMERIC_5); // bottom
     await completeAssessment(first.id);
 
     const second = await startAssessment(SCALE_IDS.NUMERIC_10, { today: TODAY });
@@ -120,8 +120,8 @@ describe('changing scale mid-day', () => {
     // The position is preserved, not the number: top of 1..5 becomes top of 1..10.
     expect(byValue.learning.score).toBe(10);
     expect(byValue.learning.normalized).toBe(1);
-    expect(byValue.family.score).toBe(1);
-    expect(byValue.family.normalized).toBe(0);
+    expect(byValue.love.score).toBe(1);
+    expect(byValue.love.normalized).toBe(0);
   });
 
   it('keeps score and normalized consistent after a lossy conversion', async () => {
@@ -188,13 +188,13 @@ describe('getRankedResults', () => {
   it('returns values least-important first, joined to the catalogue', async () => {
     const assessment = await completeRun(TODAY, SCALE_IDS.NUMERIC_5, {
       learning: 5,
-      family: 1,
+      love: 1,
       health: 3,
     });
 
     const ranked = await getRankedResults(assessment.id);
-    expect(ranked.map((r) => r.valueId)).toEqual(['family', 'health', 'learning']);
-    expect(ranked[0]).toMatchObject({ key: 'family', groupKey: 'relationships', isCustom: false });
+    expect(ranked.map((r) => r.valueId)).toEqual(['love', 'health', 'learning']);
+    expect(ranked[0]).toMatchObject({ key: 'love', groupKey: 'relationships', isCustom: false });
   });
 
   it('omits values that were left unrated', async () => {
@@ -241,7 +241,7 @@ describe('deleteAssessment', () => {
   it('removes the record and cascades to its ratings', async () => {
     const assessment = await completeRun(TODAY, SCALE_IDS.NUMERIC_5, {
       learning: 5,
-      family: 2,
+      love: 2,
     });
     expect(await queryAll('SELECT id FROM ratings')).toHaveLength(2);
 
@@ -277,7 +277,7 @@ describe('deleting a value', () => {
   it('cascades to the ratings it collected', async () => {
     const assessment = await completeRun(TODAY, SCALE_IDS.NUMERIC_5, {
       learning: 5,
-      family: 2,
+      love: 2,
     });
     const { deleteCustomValue, addCustomValue } = require('../../app/services/ValuesDB');
 

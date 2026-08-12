@@ -1,44 +1,28 @@
 import uuid from 'react-native-uuid';
 import { queryAll, queryFirst, executeQuery, withTransaction } from './db';
+import { PREF_KEYS, getJsonPreference, setJsonPreference } from './PreferencesDB';
 import catalogue from '../defaults/defaultValues.json';
 
 export const VALUE_GROUPS = catalogue.groups;
 
 /**
- * The order cards are dealt in.
+ * The order cards are dealt in: the order defaultValues.json lists them, which is
+ * the source checklist's own numbering, 1 through 47.
  *
- * defaultValues.json lists the catalogue grouped, which is how it stays readable
- * and how a missing entry is easy to spot. Dealing it in that order would be a
- * different thing entirely: six consecutive cards about family, then six about
- * money, invites the reader to rate the *group* once and then coast, and anchors
- * every card on the one before it. Round-robin across the groups breaks both —
- * consecutive cards are unrelated, so each one is judged on itself.
+ * This deck used to be dealt round-robin across the groups, so that no two
+ * consecutive cards shared one. That guards against a real effect — a run of
+ * cards on one theme invites the reader to rate the *theme* once and then coast
+ * — but it is a reordering of someone else's instrument, and the checklist is
+ * meant to be worked through as printed. Fidelity to the source won; the deck
+ * therefore does have short same-group runs in it (2. Приключения and
+ * 3. Ассертивность both sit under autonomy, 5. Забота and 6. Сострадание both
+ * under contribution).
  *
- * Deterministic rather than shuffled, on purpose: a recalibration should present
- * the same sequence as the first run, or a "this moved" reading is confounded by
- * the order having changed underneath it.
+ * Deterministic either way, and that part is not negotiable: a recalibration has
+ * to present the same sequence as the first run, or a "this moved" reading is
+ * confounded by the order having changed underneath it.
  */
-export function interleaveByGroup(values, groups = VALUE_GROUPS) {
-  const byGroup = new Map(groups.map((group) => [group, []]));
-  const ungrouped = [];
-  for (const value of values) {
-    const bucket = byGroup.get(value.group ?? value.groupKey);
-    if (bucket) bucket.push(value);
-    else ungrouped.push(value);
-  }
-
-  const ordered = [];
-  const longest = Math.max(0, ...[...byGroup.values()].map((b) => b.length));
-  for (let round = 0; round < longest; round++) {
-    for (const group of groups) {
-      const bucket = byGroup.get(group);
-      if (round < bucket.length) ordered.push(bucket[round]);
-    }
-  }
-  // Anything belonging to a group the catalogue does not declare still ships,
-  // just at the end, rather than vanishing from the deck.
-  return [...ordered, ...ungrouped];
-}
+export const DECK_ORDER = catalogue.values.map((entry) => entry.key);
 
 const rowToValue = (row) => ({
   id: row.id,
@@ -62,8 +46,7 @@ export async function seedDefaultValues() {
   const existing = await queryAll('SELECT id FROM personal_values');
   const known = new Set(existing.map((row) => row.id));
 
-  const ordered = interleaveByGroup(catalogue.values);
-  const missing = ordered
+  const missing = catalogue.values
     .map((entry, index) => ({ ...entry, displayOrder: index }))
     .filter((entry) => !known.has(entry.key));
 
@@ -82,6 +65,90 @@ export async function seedDefaultValues() {
   });
 
   return missing.length;
+}
+
+/**
+ * Renumber shipped rows to their position in the catalogue.
+ *
+ * Seeding only assigns `display_order` to rows it inserts, so on an install that
+ * already has the deck, changing the order in defaultValues.json would otherwise
+ * change nothing at all — the rows keep whatever numbering the release that
+ * first seeded them handed out. This is what makes the checklist order actually
+ * reach an upgrading user rather than only a fresh install.
+ *
+ * Only `display_order` moves. Ratings key off `value_id`, so renumbering cannot
+ * touch a score, and archived rows are renumbered too so restoring one puts it
+ * back where the checklist has it.
+ *
+ * Custom values are left alone. They are numbered from the end of the deck when
+ * added, which keeps them after the catalogue's 0..n-1 either way.
+ */
+export async function alignCatalogueOrder() {
+  const target = new Map(catalogue.values.map((entry, index) => [entry.key, index]));
+  const rows = await queryAll(
+    'SELECT id, display_order FROM personal_values WHERE is_custom = 0',
+  );
+  const misplaced = rows.filter(
+    (row) => target.has(row.id) && row.display_order !== target.get(row.id),
+  );
+  if (misplaced.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  await withTransaction(async () => {
+    for (const row of misplaced) {
+      await executeQuery(
+        'UPDATE personal_values SET display_order = ?, updated_at = ? WHERE id = ?',
+        [target.get(row.id), now, row.id],
+      );
+    }
+  });
+
+  return misplaced.length;
+}
+
+/**
+ * Archive shipped values a later release has dropped from the catalogue.
+ *
+ * Seeding alone is additive, so replacing the catalogue would otherwise leave an
+ * upgrading user holding both decks at once. Archiving rather than deleting is
+ * the same bargain `setValueArchived` makes: the rows stay, so a history chart
+ * that reaches back past the change is still complete, and only new assessments
+ * stop offering them.
+ *
+ * Every dropped key is recorded, including one the user had already archived
+ * themselves. That record — not the `archived` flag — is what makes this a
+ * one-time step per key: without it, restoring a retired value by hand would
+ * last exactly until the next launch re-archived it.
+ *
+ * Custom values are never touched. They are not ours to retire.
+ */
+export async function retireRemovedValues() {
+  const shipped = new Set(catalogue.values.map((entry) => entry.key));
+  const handled = new Set(await getJsonPreference(PREF_KEYS.RETIRED_VALUES, []));
+
+  const rows = await queryAll('SELECT id, archived FROM personal_values WHERE is_custom = 0');
+  const dropped = rows.filter((row) => !shipped.has(row.id) && !handled.has(row.id));
+  if (dropped.length === 0) return 0;
+
+  const toArchive = dropped.filter((row) => row.archived === 0);
+  if (toArchive.length > 0) {
+    const now = new Date().toISOString();
+    await withTransaction(async () => {
+      for (const row of toArchive) {
+        await executeQuery(
+          'UPDATE personal_values SET archived = 1, updated_at = ? WHERE id = ?',
+          [now, row.id],
+        );
+      }
+    });
+  }
+
+  await setJsonPreference(
+    PREF_KEYS.RETIRED_VALUES,
+    [...handled, ...dropped.map((row) => row.id)],
+  );
+
+  return toArchive.length;
 }
 
 /** Every value, archived ones included, in deck order. */

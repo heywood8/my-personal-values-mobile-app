@@ -14,6 +14,10 @@ export const PREF_KEYS = {
   RESULTS_SORT: 'results_sort',
   // Results grouping: 'priority' or 'group'.
   RESULTS_VIEW: 'results_view',
+  // Catalogue keys this install has already retired — see retireRemovedValues()
+  // in ValuesDB. Remembering which ones were handled is what stops the retirement
+  // from re-running on a value the user has since restored by hand.
+  RETIRED_VALUES: 'retired_catalogue_values',
 };
 
 /**

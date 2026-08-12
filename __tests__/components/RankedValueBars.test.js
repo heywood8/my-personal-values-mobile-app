@@ -20,7 +20,7 @@ const item = (key, groupKey, score, scaleId = SCALE_IDS.NUMERIC_5) => ({
 });
 
 const ITEMS = [
-  item('family', 'relationships', 1),
+  item('love', 'relationships', 1),
   item('learning', 'growth', 3),
   item('health', 'wellbeing', 5),
 ];
@@ -43,8 +43,8 @@ describe('RankedValueBars', () => {
 
     // Direct labels are not decoration here — they are what lets the chart be
     // read without relying on colour.
-    expect(screen.getByText('Family')).toBeTruthy();
-    expect(screen.getByText('Health')).toBeTruthy();
+    expect(screen.getByText('Love')).toBeTruthy();
+    expect(screen.getByText('Fitness')).toBeTruthy();
     expect(screen.getByText('5')).toBeTruthy();
     expect(screen.getByText('1')).toBeTruthy();
   });
@@ -62,7 +62,7 @@ describe('RankedValueBars', () => {
   it('labels a qualitative score with its word', async () => {
     await render(
       <RankedValueBars
-        items={[item('family', 'relationships', 3, SCALE_IDS.QUALITATIVE)]}
+        items={[item('love', 'relationships', 3, SCALE_IDS.QUALITATIVE)]}
         scaleId={SCALE_IDS.QUALITATIVE}
       />,
       { wrapper: ThemeOnlyProviders },

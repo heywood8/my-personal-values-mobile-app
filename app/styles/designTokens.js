@@ -36,7 +36,7 @@ export const HEIGHTS = {
   // width is what gives; the height stays at Android's 48px touch floor.
   scaleStep: 48,
   tabBar: 64,
-  // Bars in the ranked results chart. Tight enough that a good chunk of 74
+  // Bars in the ranked results chart. Tight enough that a good chunk of 47
   // values is visible without scrolling, tall enough to hold a label.
   rankedBar: 34,
 };
@@ -64,6 +64,6 @@ export const FONT_WEIGHT = {
 export const TOP_CONTENT_SPACING = 32;
 
 // Maximum width for centred content. Phones never reach it; on a tablet or a
-// browser window it stops a 74-item list from stretching to 1600px, where the
+// browser window it stops a 47-item list from stretching to 1600px, where the
 // label and its bar end up too far apart to read as one row.
 export const CONTENT_MAX_WIDTH = 560;

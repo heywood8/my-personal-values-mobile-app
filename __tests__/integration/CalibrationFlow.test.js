@@ -59,8 +59,8 @@ describe('a first calibration', () => {
 
     await act(async () => { await api.startCalibration(); });
 
-    // All 74 values, none archived on a fresh install.
-    expect(screen.getByTestId('session')).toHaveTextContent('74');
+    // All 47 values, none archived on a fresh install.
+    expect(screen.getByTestId('session')).toHaveTextContent('47');
     expect(api.session.isRecalibration).toBe(false);
   });
 
@@ -95,7 +95,7 @@ describe('a first calibration', () => {
     let summary;
     await act(async () => { summary = await api.finishCalibration(); });
 
-    expect(summary).toMatchObject({ isRecalibration: false, rated: 1, total: 74 });
+    expect(summary).toMatchObject({ isRecalibration: false, rated: 1, total: 47 });
   });
 });
 
@@ -110,7 +110,7 @@ describe('recalibrating the same day', () => {
 
     expect(api.session.isRecalibration).toBe(true);
     // The reopened deck starts from what was already answered, so a correction
-    // does not mean re-rating all 74 cards.
+    // does not mean re-rating all 47 cards.
     expect(api.session.scores.size).toBe(3);
     expect(screen.getByTestId('records')).toHaveTextContent('1');
   });

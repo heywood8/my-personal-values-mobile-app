@@ -7,7 +7,7 @@ const t = (key) => en[key] || key;
 
 describe('valueName', () => {
   it('translates a catalogue value', () => {
-    expect(valueName({ key: 'learning', isCustom: false }, t)).toBe('Learning');
+    expect(valueName({ key: 'learning', isCustom: false }, t)).toBe('Self-development');
   });
 
   it('shows a custom value verbatim', () => {
@@ -26,7 +26,7 @@ describe('valueName', () => {
 describe('valueDescription', () => {
   it('translates a catalogue description', () => {
     expect(valueDescription({ key: 'learning', isCustom: false }, t))
-      .toBe('Taking in new knowledge and skills on purpose.');
+      .toBe('To keep growing, advancing or improving in knowledge, skills, character or life experience.');
   });
 
   it('returns null rather than the raw key when a description is missing', () => {
