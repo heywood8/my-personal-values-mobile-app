@@ -12,6 +12,12 @@ name: Auto-retry failed runs
 #
 # NOTE: keep this workflow's own name OUT of the list below, and add new workflows
 # here when they are introduced (workflow_run has no wildcard for names).
+#
+# The two release workflows are the expensive entries: retrying either one starts
+# a second EAS build, which costs a slot on the build plan rather than just runner
+# minutes. That is deliberate — a queue timeout or an upload blip should not leave
+# a published release without its APK — but it is the reason to keep the retry at
+# exactly one.
 
 on:
   workflow_run:
@@ -20,6 +26,7 @@ on:
       - Deploy Web
       - OSSAR
       - PR Title Check
+      - Release APK
       - Release Please
     types:
       - completed

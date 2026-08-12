@@ -12,6 +12,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
     # The `secrets` context is not available in a step-level `if:`, but it is in
     # a job-level `env:` — so the "do we have a PAT?" test is resolved here and
     # read back as a plain string below.
@@ -36,3 +39,16 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ fromJSON(steps.release-please.outputs.pr || '{"number":0}').number }}
+
+  # Attached from inside this workflow rather than from `on: release`, because a
+  # release created with the default GITHUB_TOKEN raises no event that can start
+  # another workflow — the APK would simply never be built.
+  android-apk:
+    name: Android APK
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/release-apk.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    # EXPO_TOKEN; the called workflow narrows the permissions it actually uses.
+    secrets: inherit

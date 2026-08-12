@@ -1,0 +1,110 @@
+name: Release APK
+
+# Builds an Android APK on EAS and attaches it to an existing GitHub release.
+#
+# Called by release-please.yml the moment it publishes a release, and runnable by
+# hand from the Actions tab to (re)attach an APK to any tag that already has one.
+#
+# One secret is required — EXPO_TOKEN, from expo.dev → Settings → Access tokens.
+# The signing keystore is generated and held by EAS (`eas credentials`), so no
+# keystore material lives in this repository or in GitHub secrets. Moving the
+# build onto the runner later is what would add the keystore set.
+#
+# The project must also be linked to EAS: `eas init` writes an
+# `extra.eas.projectId` into app.config.js, and without it `eas build` cannot run
+# non-interactively, nor resolve the remote versionCode that eas.json asks for.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag of the release to build from and attach the APK to
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an existing release, e.g. v0.1.0
+        required: true
+        type: string
+
+# Uploading a release asset is the only write this needs.
+permissions:
+  contents: write
+
+# Two runs for the same tag would race on the same asset name.
+concurrency:
+  group: release-apk-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build APK and attach to release
+    runs-on: ubuntu-latest
+    # An EAS build queues before it compiles, so this is slow by nature — but an
+    # hour still beats the 6h default, which would hold a runner all day if EAS
+    # never answered.
+    timeout-minutes: 60
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+
+      # The `secrets` context cannot be read from an `if:`, so a missing token
+      # has to be caught in a step body. Failing here, before the EAS setup, is
+      # what turns "eas whoami: not logged in" into an actionable message.
+      - name: Fail early without EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "${EXPO_TOKEN}" ]; then
+            echo "::error::EXPO_TOKEN is not set. Create one at https://expo.dev/settings/access-tokens and add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # The compile happens on EAS, but eas-cli evaluates app.config.js through
+      # the project's own @expo/config, so the dependencies still have to be here.
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build the APK on EAS
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        # `--output` applies to `--local` builds only, so the artifact URL is
+        # read back out of the JSON. `--json` implies `--non-interactive` and
+        # keeps everything that is not JSON on stderr.
+        run: |
+          eas build --platform android --profile release --json --wait > build.json
+          url="$(jq -r '.[0].artifacts.applicationArchiveUrl // .[0].artifacts.buildUrl // empty' build.json)"
+          if [ -z "${url}" ]; then
+            echo "::error::EAS reported no application archive for this build."
+            cat build.json
+            exit 1
+          fi
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+
+      - name: Download the APK
+        env:
+          APK_URL: ${{ steps.build.outputs.url }}
+          TAG: ${{ inputs.tag }}
+        run: curl -fsSL --retry 3 -o "values-${TAG}.apk" "${APK_URL}"
+
+      - name: Attach the APK to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        # --clobber so a manual re-run replaces the asset rather than failing on
+        # a name that is already taken.
+        run: gh release upload "${TAG}" "values-${TAG}.apk" --clobber
