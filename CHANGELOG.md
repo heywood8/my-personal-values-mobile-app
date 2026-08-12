@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.2.0...values-v0.3.0) (2026-08-12)
+
+
+### Features
+
+* rank strongest-first, drop value groups, add CSV export and import ([#23](https://github.com/heywood8/my-personal-values-mobile-app/issues/23)) ([34de53e](https://github.com/heywood8/my-personal-values-mobile-app/commit/34de53e518077f80801eb4124b6b1d6c6638648e))
+
+
+### Bug Fixes
+
+* **ci:** link the APK build to its EAS project ([#21](https://github.com/heywood8/my-personal-values-mobile-app/issues/21)) ([8b41597](https://github.com/heywood8/my-personal-values-mobile-app/commit/8b41597fd968a921b658ca0c1eeee4877dbe0c60))
+
 ## [0.2.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.1.0...values-v0.2.0) (2026-08-12)
 
 
