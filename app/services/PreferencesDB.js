@@ -10,10 +10,9 @@ export const PREF_KEYS = {
   // someone can pick a language and close the app mid-deck, and should land back
   // in the deck rather than on an empty results screen.
   ONBOARDING_COMPLETE: 'onboarding_complete',
-  // Sort direction on the results screen: 'asc' (low to high) or 'desc'.
+  // Sort direction on the results screen: 'desc' (most important first, the
+  // default) or 'asc'.
   RESULTS_SORT: 'results_sort',
-  // Results grouping: 'priority' or 'group'.
-  RESULTS_VIEW: 'results_view',
   // Catalogue keys this install has already retired — see retireRemovedValues()
   // in ValuesDB. Remembering which ones were handled is what stops the retirement
   // from re-running on a value the user has since restored by hand.

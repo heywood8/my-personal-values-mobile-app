@@ -162,6 +162,18 @@ export async function clearRating(assessmentId, valueId) {
   );
 }
 
+/**
+ * Drop every answer of one assessment, keeping the record itself.
+ *
+ * Used by the CSV import, which replaces a day rather than merging into it: an
+ * imported file is a statement about that date, and leaving behind ratings it
+ * does not mention would make re-importing the same file produce a different
+ * record each time.
+ */
+export async function clearRatingsForAssessment(assessmentId) {
+  await executeQuery('DELETE FROM ratings WHERE assessment_id = ?', [assessmentId]);
+}
+
 /** Every rating of one assessment, keyed by value id for O(1) lookup in the deck. */
 export async function getRatingsForAssessment(assessmentId) {
   const rows = await queryAll('SELECT * FROM ratings WHERE assessment_id = ?', [assessmentId]);
@@ -185,19 +197,20 @@ export async function deleteAssessment(assessmentId) {
 /**
  * An assessment's ratings joined to the catalogue, ranked.
  *
- * Sorted ascending — least important first — because that is the reading the app
- * is built around: the interesting end of a values list is the bottom, where the
- * things you keep saying yes to but do not actually care about collect. The
- * results screen can flip it.
+ * Sorted descending — most important first — so a list read top-down starts with
+ * what matters most, which is the order the deck itself now presents ("very
+ * important" at the top of the card). The results screen can flip it, and the
+ * other end is worth reading too: the bottom is where the things you keep saying
+ * yes to but do not actually care about collect.
  */
 export async function getRankedResults(assessmentId) {
   const rows = await queryAll(
     `SELECT r.id, r.score, r.normalized, r.value_id,
-            v.key, v.group_key, v.is_custom, v.custom_name
+            v.key, v.is_custom, v.custom_name
        FROM ratings r
        JOIN personal_values v ON v.id = r.value_id
       WHERE r.assessment_id = ?
-      ORDER BY r.normalized ASC, v.display_order ASC`,
+      ORDER BY r.normalized DESC, v.display_order ASC`,
     [assessmentId],
   );
 
@@ -205,7 +218,6 @@ export async function getRankedResults(assessmentId) {
     ratingId: row.id,
     valueId: row.value_id,
     key: row.key,
-    groupKey: row.group_key,
     isCustom: row.is_custom === 1,
     customName: row.custom_name ?? null,
     score: row.score,
@@ -237,8 +249,8 @@ export async function getValueTrend(valueId) {
 
 /**
  * The whole history in one query: every completed assessment's ratings, joined to
- * the catalogue. The history screen derives trends, movers and group averages
- * from this single read rather than issuing a query per value — with 47 values
+ * the catalogue. The history screen derives its trends and its movers from this
+ * single read rather than issuing a query per value — with 47 values
  * and a row per calibration, the entire dataset is smaller than the round trips
  * would be.
  */
@@ -246,7 +258,7 @@ export async function getHistory() {
   const rows = await queryAll(
     `SELECT a.id AS assessment_id, a.assessed_on, a.scale,
             r.value_id, r.score, r.normalized,
-            v.key, v.group_key, v.is_custom, v.custom_name
+            v.key, v.is_custom, v.custom_name
        FROM assessments a
        JOIN ratings r ON r.assessment_id = a.id
        JOIN personal_values v ON v.id = r.value_id
@@ -260,7 +272,6 @@ export async function getHistory() {
     scale: row.scale,
     valueId: row.value_id,
     key: row.key,
-    groupKey: row.group_key,
     isCustom: row.is_custom === 1,
     customName: row.custom_name ?? null,
     score: row.score,

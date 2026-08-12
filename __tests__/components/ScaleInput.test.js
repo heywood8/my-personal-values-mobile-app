@@ -43,6 +43,31 @@ describe('ScaleInput', () => {
     expect(screen.getByText('Very important')).toBeTruthy();
   });
 
+  it('stacks the word scale strongest-first — "very important" on top', async () => {
+    await render(
+      <ScaleInput scaleId={SCALE_IDS.QUALITATIVE} onChange={jest.fn()} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // Top of the column is the strongest answer, the same way the top of the
+    // results list is. A column ordered the other way put the answer someone
+    // reaches for most furthest from the value it is about.
+    expect(screen.getAllByRole('radio').map((step) => step.props.accessibilityLabel))
+      .toEqual(['Very important', 'Important', 'Not important']);
+  });
+
+  it('leaves a numeric scale in its own order, 1 on the left', async () => {
+    await render(
+      <ScaleInput scaleId={SCALE_IDS.NUMERIC_5} onChange={jest.fn()} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // A row of "5 4 3 2 1" is a scale printed backwards, not a scale re-ordered
+    // — there is no top and bottom in a row to begin with.
+    expect(screen.getAllByRole('radio').map((step) => step.props.accessibilityLabel))
+      .toEqual(['1', '2', '3', '4', '5']);
+  });
+
   it('reports the step that was pressed', async () => {
     const onChange = jest.fn();
     await render(

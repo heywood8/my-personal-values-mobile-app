@@ -21,10 +21,3 @@ export function valueDescription(value, t) {
   // under a card would be worse than showing nothing.
   return text === key ? null : text;
 }
-
-export function groupName(groupKey, t) {
-  if (!groupKey) return '';
-  const key = `group_${groupKey}`;
-  const text = t(key);
-  return text === key ? groupKey : text;
-}

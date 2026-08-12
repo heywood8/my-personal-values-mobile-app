@@ -26,7 +26,6 @@ export const personalValues = sqliteTable('personal_values', {
   // i18n suffix: the name renders as t(`value_${key}`). Equal to `id` for
   // catalogue entries; for custom values the key is unused and customName wins.
   key: text('key').notNull(),
-  groupKey: text('group_key').notNull(),
   isCustom: integer('is_custom').notNull().default(0),
   // Only set for custom values — user-typed, so it is stored verbatim rather
   // than translated.
@@ -39,7 +38,6 @@ export const personalValues = sqliteTable('personal_values', {
   updatedAt: text('updated_at').notNull(),
 }, (table) => ({
   keyIdx: unique('idx_personal_values_key').on(table.key),
-  groupIdx: index('idx_personal_values_group').on(table.groupKey),
   orderIdx: index('idx_personal_values_order').on(table.displayOrder),
 }));
 

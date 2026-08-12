@@ -54,5 +54,12 @@ export default {
     `CREATE INDEX \`idx_ratings_value\` ON \`ratings\` (\`value_id\`);`,
     ],
   },
+  {
+    tag: '20260812134435_steep_apocalypse',
+    statements: [
+    `DROP INDEX IF EXISTS \`idx_personal_values_group\`;`,
+    `ALTER TABLE \`personal_values\` DROP COLUMN \`group_key\`;`,
+    ],
+  },
   ],
 };

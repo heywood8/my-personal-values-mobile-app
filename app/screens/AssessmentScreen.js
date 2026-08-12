@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Text, Button, IconButton } from 'react-native-paper';
@@ -7,11 +7,9 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
-import { useValues } from '../contexts/ValuesContext';
 import ScaleInput from '../components/ScaleInput';
 import EmptyState from '../components/EmptyState';
-import { groupColor } from '../styles/chartPalette';
-import { valueName, valueDescription, groupName } from '../utils/valueNames';
+import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey } from '../utils/dateUtils';
 import {
   BORDER_RADIUS, FONT_SIZE, SPACING, CONTENT_MAX_WIDTH,
@@ -33,9 +31,8 @@ import {
  */
 const AssessmentScreen = ({ onExit, onFinished }) => {
   const { t, language } = useLocalization();
-  const { colors, mode } = useThemeColors();
+  const { colors } = useThemeColors();
   const { showDialog } = useDialog();
-  const { groups } = useValues();
   const {
     session, startCalibration, rate, goToCard, finishCalibration, cancelCalibration,
   } = useAssessment();
@@ -57,11 +54,6 @@ const AssessmentScreen = ({ onExit, onFinished }) => {
   const current = session?.deck?.[session.index] ?? null;
   const ratedCount = session?.scores?.size ?? 0;
   const total = session?.deck?.length ?? 0;
-
-  const groupIndex = useMemo(
-    () => (current ? groups.indexOf(current.groupKey) : -1),
-    [current, groups],
-  );
 
   const handleRate = useCallback(async (score) => {
     if (!current) return;
@@ -181,15 +173,6 @@ const AssessmentScreen = ({ onExit, onFinished }) => {
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             testID={`assessment-card-${current?.key}`}
           >
-            <View style={styles.groupRow}>
-              <View
-                style={[styles.groupDot, { backgroundColor: groupColor(groupIndex, mode) }]}
-              />
-              <Text style={[styles.groupLabel, { color: colors.mutedText }]}>
-                {groupName(current?.groupKey, t)}
-              </Text>
-            </View>
-
             <Text style={[styles.valueName, { color: colors.text }]}>
               {valueName(current, t)}
             </Text>
@@ -276,22 +259,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     textAlign: 'center',
   },
-  groupDot: {
-    borderRadius: BORDER_RADIUS.pill,
-    height: 10,
-    width: 10,
-  },
-  groupLabel: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  groupRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -354,7 +321,6 @@ const styles = StyleSheet.create({
   valueName: {
     fontSize: FONT_SIZE.xxl,
     fontWeight: '700',
-    marginTop: SPACING.md,
   },
 });
 

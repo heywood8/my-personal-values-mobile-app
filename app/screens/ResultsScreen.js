@@ -5,57 +5,47 @@ import { Text, Button } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
-import { useValues } from '../contexts/ValuesContext';
+import { useCsvTransfer } from '../hooks/useCsvTransfer';
 import { getPreference, setPreference, PREF_KEYS } from '../services/PreferencesDB';
 import RankedValueBars from '../components/charts/RankedValueBars';
-import GroupBreakdown from '../components/charts/GroupBreakdown';
 import SegmentedToggle from '../components/SegmentedToggle';
 import EmptyState from '../components/EmptyState';
 import { formatDateKey } from '../utils/dateUtils';
 import { SPACING, FONT_SIZE, CONTENT_MAX_WIDTH } from '../styles/designTokens';
 
-const VIEW_PRIORITY = 'priority';
-const VIEW_GROUP = 'group';
 const SORT_ASC = 'asc';
 const SORT_DESC = 'desc';
 
 /**
- * What the last calibration says.
+ * What the last calibration says: every rated value as an ordering.
  *
- * Two readings of the same data, because the brief asks for both: an ordering
- * (which values sit where, low to high) and a shape (which parts of life the
- * ordering favours). They are genuinely different questions, so they are a
- * switch rather than two screens.
+ * Sort defaults to descending — most important first. The whole app now reads
+ * strongest-at-the-top, from the rating buttons on a card to this list, and a
+ * single direction across both is what stops "up" meaning two things. The other
+ * end is still worth reading, which is what the toggle is for: the bottom of a
+ * values list is where the things you keep saying yes to but do not actually care
+ * about collect.
  *
- * Sort defaults to ascending — lowest first. That is the deliberate default: a
- * ranked list read top-down usually gets read as "here is what I care about",
- * and the more useful half is the other end, where the things you keep spending
- * time on but do not actually value collect.
+ * There used to be a second reading here, by value group. The groups are gone —
+ * the source checklist is a flat list of values and this app now is too — so what
+ * is left is the ranking, with each value's own description a hover or a tap away.
  */
 const ResultsScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
-  const { groups } = useValues();
   const { latest, results, isLoading, hasResults } = useAssessment();
+  const { exportCsv, busy } = useCsvTransfer();
 
-  const [view, setView] = useState(VIEW_PRIORITY);
-  const [sort, setSort] = useState(SORT_ASC);
+  const [sort, setSort] = useState(SORT_DESC);
 
-  // Both toggles persist — they are a reading preference, and resetting them on
-  // every launch would make the screen feel like it forgot.
+  // The toggle persists — it is a reading preference, and resetting it on every
+  // launch would make the screen feel like it forgot.
   useEffect(() => {
-    Promise.all([
-      getPreference(PREF_KEYS.RESULTS_VIEW, VIEW_PRIORITY),
-      getPreference(PREF_KEYS.RESULTS_SORT, SORT_ASC),
-    ]).then(([storedView, storedSort]) => {
-      if (storedView === VIEW_PRIORITY || storedView === VIEW_GROUP) setView(storedView);
-      if (storedSort === SORT_ASC || storedSort === SORT_DESC) setSort(storedSort);
-    }).catch(() => {});
-  }, []);
-
-  const changeView = useCallback((next) => {
-    setView(next);
-    setPreference(PREF_KEYS.RESULTS_VIEW, next).catch(() => {});
+    getPreference(PREF_KEYS.RESULTS_SORT, SORT_DESC)
+      .then((storedSort) => {
+        if (storedSort === SORT_ASC || storedSort === SORT_DESC) setSort(storedSort);
+      })
+      .catch(() => {});
   }, []);
 
   const changeSort = useCallback((next) => {
@@ -63,11 +53,11 @@ const ResultsScreen = ({ onStartCalibration }) => {
     setPreference(PREF_KEYS.RESULTS_SORT, next).catch(() => {});
   }, []);
 
-  // getRankedResults already returns ascending, so descending is a reverse
-  // rather than a re-sort with a different comparator — which keeps ties in a
-  // stable, mirrored order instead of shuffling them.
+  // getRankedResults already returns descending, so ascending is a reverse rather
+  // than a re-sort with a different comparator — which keeps ties in a stable,
+  // mirrored order instead of shuffling them.
   const ordered = useMemo(
-    () => (sort === SORT_ASC ? results : [...results].reverse()),
+    () => (sort === SORT_DESC ? results : [...results].reverse()),
     [results, sort],
   );
 
@@ -107,32 +97,31 @@ const ResultsScreen = ({ onStartCalibration }) => {
 
         <View style={styles.controls}>
           <SegmentedToggle
-            testID="results-view-toggle"
-            value={view}
-            onChange={changeView}
+            testID="results-sort-toggle"
+            value={sort}
+            onChange={changeSort}
             options={[
-              { value: VIEW_PRIORITY, label: t('results_view_priority') },
-              { value: VIEW_GROUP, label: t('results_view_group') },
+              { value: SORT_DESC, label: t('results_sort_desc') },
+              { value: SORT_ASC, label: t('results_sort_asc') },
             ]}
           />
-          {view === VIEW_PRIORITY && (
-            <SegmentedToggle
-              testID="results-sort-toggle"
-              value={sort}
-              onChange={changeSort}
-              options={[
-                { value: SORT_ASC, label: t('results_sort_asc') },
-                { value: SORT_DESC, label: t('results_sort_desc') },
-              ]}
-            />
-          )}
+          <Text style={[styles.rowHint, { color: colors.mutedText }]}>
+            {t('results_row_hint')}
+          </Text>
         </View>
 
-        {view === VIEW_PRIORITY ? (
-          <RankedValueBars items={ordered} scaleId={latest.scale} />
-        ) : (
-          <GroupBreakdown items={results} groups={groups} scaleId={latest.scale} />
-        )}
+        <RankedValueBars items={ordered} scaleId={latest.scale} />
+
+        <Button
+          mode="outlined"
+          icon="file-download-outline"
+          onPress={exportCsv}
+          disabled={busy}
+          style={styles.export}
+          testID="results-export-csv"
+        >
+          {t('csv_export')}
+        </Button>
 
         <Button
           mode="outlined"
@@ -163,6 +152,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
+  export: {
+    marginTop: SPACING.xxl,
+  },
   fill: {
     flex: 1,
   },
@@ -175,7 +167,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   recalibrate: {
-    marginTop: SPACING.xxl,
+    marginTop: SPACING.md,
+  },
+  rowHint: {
+    fontSize: FONT_SIZE.sm,
   },
 });
 

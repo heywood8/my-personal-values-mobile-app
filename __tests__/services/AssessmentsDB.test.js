@@ -185,16 +185,18 @@ describe('saveRating', () => {
 });
 
 describe('getRankedResults', () => {
-  it('returns values least-important first, joined to the catalogue', async () => {
+  it('returns values most-important first, joined to the catalogue', async () => {
     const assessment = await completeRun(TODAY, SCALE_IDS.NUMERIC_5, {
       learning: 5,
       love: 1,
       health: 3,
     });
 
+    // Strongest first is the app's one direction: the top of the results list,
+    // like the top of a rating card, is what matters most.
     const ranked = await getRankedResults(assessment.id);
-    expect(ranked.map((r) => r.valueId)).toEqual(['love', 'health', 'learning']);
-    expect(ranked[0]).toMatchObject({ key: 'love', groupKey: 'relationships', isCustom: false });
+    expect(ranked.map((r) => r.valueId)).toEqual(['learning', 'health', 'love']);
+    expect(ranked[0]).toMatchObject({ key: 'learning', isCustom: false });
   });
 
   it('omits values that were left unrated', async () => {
@@ -281,7 +283,7 @@ describe('deleting a value', () => {
     });
     const { deleteCustomValue, addCustomValue } = require('../../app/services/ValuesDB');
 
-    const customId = await addCustomValue({ name: 'Sailing', groupKey: 'autonomy' });
+    const customId = await addCustomValue({ name: 'Sailing' });
     await saveRating(assessment.id, customId, 4, SCALE_IDS.NUMERIC_5);
     expect(await getRatingsForAssessment(assessment.id)).toHaveLength(3);
 

@@ -39,11 +39,15 @@ without touching anything the user has already rated.
 |---|---|---|
 | `id` | text | primary key; equals the catalogue key for shipped values, a UUID for custom ones |
 | `key` | text | unique; i18n suffix — the name renders as `t('value_' + key)` |
-| `group_key` | text | one of the eight groups |
 | `is_custom` | integer | 1 for a value the user added |
 | `custom_name` | text | the user's own wording; null for catalogue values |
 | `display_order` | integer | deck order — the source checklist's numbering, 1..47; custom values follow |
 | `archived` | integer | archived values stay in past records but are not dealt |
+
+The table used to carry a `group_key`, sorting every value into one of eight
+groups. The groups are gone — the source checklist is a flat list — and the
+column went with them in `20260812134435_steep_apocalypse`. Nothing was lost with
+it: no rating, archive choice or custom value ever depended on the group.
 
 ### `assessments`
 
@@ -88,6 +92,31 @@ always agrees with the number shown on screen.
 
 Cascades depend on `PRAGMA foreign_keys = ON`, which `db.js` sets per connection
 — SQLite has foreign keys off by default.
+
+## Getting the data out, and back in
+
+`app/services/RecordsCsv.js` writes every completed assessment as one row per
+rating and reads the same shape back. It is the only backup this app has — nothing
+leaves the device otherwise — so the columns are additive: a later release may add
+one, never rename one, or a file written by an earlier version stops importing.
+
+```
+assessed_on,scale,value_key,value_name,score,normalized
+2026-08-12,numeric5,love,Love,5,1
+```
+
+Import writes through the same two functions the app itself uses. Every record
+resolves through `startAssessment(scale, { today: <the file's date> })`, so a date
+that already has a record is reopened rather than duplicated — the same-day rule,
+unchanged — and its existing ratings are cleared first, so importing a file twice
+leaves the same database as importing it once. `normalized` is recomputed from
+`score`, never read from the file: the column is editable in a spreadsheet, and
+the stored pair has to agree.
+
+A value is matched by `value_key`, then by `value_name`, and anything still
+unmatched is added as a custom value. That is what makes a file from another
+device import as records rather than as nothing — its custom values carry keys
+this install has never seen.
 
 ## Storage locations
 
