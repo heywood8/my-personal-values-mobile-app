@@ -9,22 +9,23 @@ import {
   translate,
   availableLanguages,
 } from '../../app/contexts/LocalizationContext';
-import { setPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
+import { getPreference, setPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
 import { __resetDatabaseHandleForTests } from '../../app/services/db';
 import { appEvents, EVENTS } from '../../app/services/eventEmitter';
+import { detectDeviceLanguage } from '../../app/utils/languages';
 
 beforeEach(() => {
   __resetDatabaseHandleForTests();
 });
 
 function Probe() {
-  const { t, language, isFirstLaunch, isLoading } = useLocalization();
+  const { t, language, isLoading } = useLocalization();
   if (isLoading) return <Text testID="state">loading</Text>;
   return (
     <>
-      <Text testID="state">{isFirstLaunch ? 'first-launch' : 'ready'}</Text>
+      <Text testID="state">ready</Text>
       <Text testID="language">{language}</Text>
-      <Text testID="translated">{t('welcome_title')}</Text>
+      <Text testID="translated">{t('settings_language')}</Text>
       <Text testID="interpolated">{t('assessment_progress', { current: 3, total: 48 })}</Text>
     </>
   );
@@ -57,7 +58,7 @@ describe('loadTranslations', () => {
   it('resolves every advertised language', () => {
     expect(availableLanguages).toEqual(['en', 'ru']);
     availableLanguages.forEach((lang) => {
-      expect(typeof loadTranslations(lang).welcome_title).toBe('string');
+      expect(typeof loadTranslations(lang).app_name).toBe('string');
     });
   });
 
@@ -66,26 +67,38 @@ describe('loadTranslations', () => {
   });
 
   it('translate() works outside React', () => {
-    expect(translate('ru', 'welcome_title')).toBe('Добро пожаловать');
+    expect(translate('ru', 'settings_language')).toBe('Язык');
     expect(translate('ru', 'assessment_progress', { current: 1, total: 5 })).toBe('1 из 5');
   });
 });
 
-describe('LocalizationProvider', () => {
-  it('reports a first launch when no language is stored', async () => {
-    await renderProbe();
-    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('first-launch'));
-    expect(screen.getByTestId('language')).toHaveTextContent('en');
+describe('detectDeviceLanguage', () => {
+  // The language the app opens in is a guess now that nothing asks — so what it
+  // guesses from is worth pinning down.
+  it('matches a supported language regardless of region', () => {
+    expect(detectDeviceLanguage(['en', 'ru'])).toBe('en');
+    expect(detectDeviceLanguage(['en', 'ru'], 'ru')).toBe('en');
   });
 
-  it('loads a stored language and skips first launch', async () => {
+  it('falls back when nothing the device asks for is supported', () => {
+    expect(detectDeviceLanguage(['kl'], 'kl')).toBe('kl');
+  });
+});
+
+describe('LocalizationProvider', () => {
+  it('opens in a supported language when nothing is stored', async () => {
+    await renderProbe();
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'));
+    expect(availableLanguages).toContain(screen.getByTestId('language').props.children);
+  });
+
+  it('loads a stored language', async () => {
     await setPreference(PREF_KEYS.LANGUAGE, 'ru');
 
     await renderProbe();
 
-    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'));
-    expect(screen.getByTestId('language')).toHaveTextContent('ru');
-    expect(screen.getByTestId('translated')).toHaveTextContent('Добро пожаловать');
+    await waitFor(() => expect(screen.getByTestId('language')).toHaveTextContent('ru'));
+    expect(screen.getByTestId('translated')).toHaveTextContent('Язык');
   });
 
   it('ignores a stored language it cannot load', async () => {
@@ -94,8 +107,8 @@ describe('LocalizationProvider', () => {
 
     await renderProbe();
 
-    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('first-launch'));
-    expect(screen.getByTestId('language')).toHaveTextContent('en');
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'));
+    expect(availableLanguages).toContain(screen.getByTestId('language').props.children);
   });
 
   it('interpolates through t()', async () => {
@@ -103,16 +116,20 @@ describe('LocalizationProvider', () => {
     await waitFor(() => expect(screen.getByTestId('interpolated')).toHaveTextContent('3 of 48'));
   });
 
-  it('returns to first launch when the database is reset', async () => {
+  it('drops the chosen language when the database is reset', async () => {
     await setPreference(PREF_KEYS.LANGUAGE, 'ru');
     await renderProbe();
-    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'));
+    await waitFor(() => expect(screen.getByTestId('language')).toHaveTextContent('ru'));
 
     await act(async () => {
       appEvents.emit(EVENTS.DATABASE_RESET);
     });
 
-    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('first-launch'));
-    expect(screen.getByTestId('language')).toHaveTextContent('en');
+    // Back to whatever the device says, which in a test environment is English —
+    // the point being that the stored choice is gone, not that English wins.
+    await waitFor(() => expect(screen.getByTestId('language')).toHaveTextContent(
+      detectDeviceLanguage(availableLanguages),
+    ));
+    expect(await getPreference(PREF_KEYS.LANGUAGE)).toBeNull();
   });
 });

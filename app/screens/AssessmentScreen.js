@@ -8,6 +8,7 @@ import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
 import ScaleInput from '../components/ScaleInput';
+import CalibrationSettings from '../components/CalibrationSettings';
 import EmptyState from '../components/EmptyState';
 import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey } from '../utils/dateUtils';
@@ -28,13 +29,17 @@ import {
  *
  * Every answer is written through immediately, so leaving mid-deck loses nothing
  * and returning resumes at the first unrated card.
+ *
+ * The first card also carries the language and scale switches — this screen is
+ * where a first run begins, there being no setup in front of it any more, and
+ * those two settings have to be reachable before the deck is 47 cards deep.
  */
-const AssessmentScreen = ({ onExit, onFinished }) => {
+const AssessmentScreen = ({ canExit, onExit, onFinished }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
   const {
-    session, startCalibration, rate, goToCard, finishCalibration, cancelCalibration,
+    session, startCalibration, rate, goToCard, finishCalibration, cancelCalibration, setScale,
   } = useAssessment();
 
   // Opening this screen IS starting a calibration; the same-day rule is resolved
@@ -103,8 +108,8 @@ const AssessmentScreen = ({ onExit, onFinished }) => {
         <EmptyState
           icon="cards-outline"
           title={t('assessment_no_values')}
-          actionLabel={t('close')}
-          onAction={onExit}
+          actionLabel={canExit ? t('close') : undefined}
+          onAction={canExit ? onExit : undefined}
           testID="assessment-empty"
         />
       </SafeAreaView>
@@ -113,11 +118,17 @@ const AssessmentScreen = ({ onExit, onFinished }) => {
 
   const isLast = session.index === total - 1;
   const allRated = ratedCount === total;
+  const isFirstCard = session.index === 0;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <IconButton icon="close" onPress={handleExit} testID="assessment-exit" />
+        {/* No close button on a first run: there are no results yet, so there is
+            no screen behind this one to close onto. What used to be back there
+            was the scale question, and that is on the card now. */}
+        {canExit
+          ? <IconButton icon="close" onPress={handleExit} testID="assessment-exit" />
+          : <View style={styles.headerSpacer} />}
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('assessment_title')}
@@ -167,6 +178,16 @@ const AssessmentScreen = ({ onExit, onFinished }) => {
                 date: formatDateKey(session.assessment.assessedOn, language),
               })}
             </Text>
+          )}
+
+          {/* Above the card rather than below it, so it is on screen without
+              scrolling on the narrowest phone this ships to — the whole point of
+              moving these two settings here was that they be seen. */}
+          {isFirstCard && (
+            <CalibrationSettings
+              scale={session.assessment.scale}
+              onScaleChange={setScale}
+            />
           )}
 
           <View
@@ -325,6 +346,9 @@ const styles = StyleSheet.create({
 });
 
 AssessmentScreen.propTypes = {
+  // Whether there is anywhere to go back to. False for the very first run, which
+  // opens on this screen and has no results behind it.
+  canExit: PropTypes.bool,
   onExit: PropTypes.func,
   onFinished: PropTypes.func,
 };

@@ -11,14 +11,11 @@ export const PREF_KEYS = {
   // The user's chosen rating scale, applied to the NEXT assessment. Existing
   // assessments keep the scale they were taken on (see app/db/schema.js).
   SCALE: 'rating_scale',
-  // Set once the first calibration completes. Distinct from "a language is set":
-  // someone can pick a language and close the app mid-deck, and should land back
-  // in the deck rather than on an empty results screen.
+  // Set once the first calibration completes, and the only step marker there is:
+  // nothing precedes the deck, so "has been through onboarding" and "has finished
+  // a run" are the same fact. A first run interrupted mid-deck resumes in the
+  // deck, because that is where it started.
   ONBOARDING_COMPLETE: 'onboarding_complete',
-  // Set once the first run's scale question has been answered. The scale itself
-  // is SCALE, above; this is the step marker, and it is what makes a first run
-  // interrupted mid-deck resume in the deck instead of at the question again.
-  ONBOARDING_SCALE_CHOSEN: 'onboarding_scale_chosen',
   // Sort direction on the results screen: 'desc' (most important first, the
   // default) or 'asc'.
   RESULTS_SORT: 'results_sort',

@@ -45,7 +45,7 @@ const SettingsScreen = ({ onStartCalibration }) => {
               await resetDatabase();
               // Every provider listens for this: the catalogue re-seeds, the
               // results clear, and the language preference is dropped, which
-              // sends the app back to first-run.
+              // sends the app back to a first run on the deck.
               appEvents.emit(EVENTS.DATABASE_RESET);
             } catch (e) {
               console.error('[Settings] Reset failed:', e);

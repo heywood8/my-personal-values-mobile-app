@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 import enTranslations from '../../assets/i18n/en.json';
 import { getPreference, setPreference, deletePreference, PREF_KEYS } from '../services/PreferencesDB';
 import { appEvents, EVENTS } from '../services/eventEmitter';
+import { detectDeviceLanguage } from '../utils/languages';
 
 const defaultLang = 'en';
 
@@ -23,9 +24,6 @@ const i18nCache = { en: enTranslations };
 /**
  * Resolve (and memoise) the translations for a language code. Returns undefined
  * for an unknown code, preserving the `translations[key] || key` lookup below.
- *
- * Exported because the first-run language picker renders before any provider is
- * mounted and has to translate its own handful of strings.
  */
 export function loadTranslations(lang) {
   if (i18nCache[lang]) return i18nCache[lang];
@@ -66,33 +64,32 @@ const LocalizationContext = createContext({
   language: defaultLang,
   setLanguage: () => {},
   availableLanguages,
-  isFirstLaunch: false,
   isLoading: true,
-  setFirstLaunchComplete: () => {},
 });
+
+/** The language to open in when nothing has been chosen yet. */
+const guessLanguage = () => detectDeviceLanguage(availableLanguages, defaultLang);
 
 export function LocalizationProvider({ children }) {
   const [language, setLanguageState] = useState(defaultLang);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load the stored language on mount.
+  // Load the stored language on mount, falling back to what the device is set
+  // to. There is no language question in front of the app — the switch sits on
+  // the first card of the deck — so an unset preference is the normal state for
+  // everyone who never touched it, not a step that was skipped.
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const storedLang = await getPreference(PREF_KEYS.LANGUAGE);
         if (!mounted) return;
-        if (storedLang && i18nLoaders[storedLang]) {
-          setLanguageState(storedLang);
-          setIsFirstLaunch(false);
-        } else {
-          setIsFirstLaunch(true);
-        }
+        setLanguageState(storedLang && i18nLoaders[storedLang] ? storedLang : guessLanguage());
       } catch (e) {
-        // A failed read is treated as a first launch — the picker is a safe
-        // place to land, and it rewrites the preference on the way out.
+        // A failed read is not worth blocking on: the guess is what an untouched
+        // install would have used anyway, and the switch is one card away.
         console.warn('[Localization] Could not read the stored language:', e);
+        if (mounted) setLanguageState(guessLanguage());
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -100,15 +97,15 @@ export function LocalizationProvider({ children }) {
     return () => { mounted = false; };
   }, []);
 
-  // A data reset clears the language too, so the app returns to first-run.
+  // A data reset clears the chosen language too, which returns the app to the
+  // device's own language rather than to English.
   useEffect(() => {
     let mounted = true;
     const unsubscribe = appEvents.on(EVENTS.DATABASE_RESET, async () => {
       try {
         await deletePreference(PREF_KEYS.LANGUAGE);
         if (!mounted) return;
-        setIsFirstLaunch(true);
-        setLanguageState(defaultLang);
+        setLanguageState(guessLanguage());
       } catch (e) {
         if (mounted) console.error('Failed to clear language preference:', e);
       }
@@ -126,23 +123,13 @@ export function LocalizationProvider({ children }) {
     }
   }, []);
 
-  const setFirstLaunchComplete = useCallback(async (lng) => {
-    setLanguageState(lng);
-    setIsFirstLaunch(false);
-    try {
-      await setPreference(PREF_KEYS.LANGUAGE, lng);
-    } catch (e) {
-      console.warn('[Localization] Could not persist the language:', e);
-    }
-  }, []);
-
   const t = useCallback(
     (key, params) => interpolate(loadTranslations(language)?.[key] || key, params),
     [language],
   );
 
-  // Hide the splash once the language preference is known, so the picker never
-  // flashes before we know whether this is truly a first launch.
+  // Hide the splash once the language is settled, so the first screen never
+  // renders in English and then swaps under the reader.
   useEffect(() => {
     if (!isLoading) {
       SplashScreen.hideAsync().catch(() => {});
@@ -154,10 +141,8 @@ export function LocalizationProvider({ children }) {
     language,
     setLanguage,
     availableLanguages,
-    isFirstLaunch,
     isLoading,
-    setFirstLaunchComplete,
-  }), [t, language, setLanguage, isFirstLaunch, isLoading, setFirstLaunchComplete]);
+  }), [t, language, setLanguage, isLoading]);
 
   return (
     <LocalizationContext.Provider value={value}>

@@ -31,12 +31,18 @@ rating scale, onboarding state, and the results screen's view and sort toggles.
 This is the one table that is also kept outside the database — see
 [the mirror](#the-localstorage-mirror) below.
 
-Two of its keys are onboarding *steps* rather than settings, and both are needed:
-`onboarding_complete` says the first calibration finished, and
-`onboarding_scale_chosen` says the scale question was answered. Storing the
-chosen scale is not the same fact — someone who picks a scale and then closes the
-app a third of the way through 47 cards has answered the question, and should
-come back to the deck rather than to the question.
+One of its keys is an onboarding *step* rather than a setting:
+`onboarding_complete` says the first calibration finished, which is what decides
+between opening on the deck and opening on the tabs. There is only one such key
+because there is only one step — nothing is asked in front of the deck, so
+"started the app" and "started the first run" are the same moment. A `1` here and
+no records at all is the normal state of an install whose database the web target
+lost; it keeps that person out of a second first run.
+
+An earlier release also stored `onboarding_scale_chosen`, marking the answered
+scale question. The question is gone — the scale switch sits on the first card of
+the deck — and so is the key. Upgrading installs are left with the row; nothing
+reads it.
 
 ### `personal_values`
 

@@ -21,6 +21,9 @@ export const SCALES = {
   [SCALE_IDS.NUMERIC_5]: {
     id: SCALE_IDS.NUMERIC_5,
     labelKey: 'scale_numeric5',
+    // A second, shorter name for the three-across switch on the deck, where
+    // "Словами, а не цифрами" has about a third of a phone's width to sit in.
+    shortLabelKey: 'scale_numeric5_short',
     hintKey: 'scale_numeric5_hint',
     min: 1,
     max: 5,
@@ -31,6 +34,7 @@ export const SCALES = {
   [SCALE_IDS.NUMERIC_10]: {
     id: SCALE_IDS.NUMERIC_10,
     labelKey: 'scale_numeric10',
+    shortLabelKey: 'scale_numeric10_short',
     hintKey: 'scale_numeric10_hint',
     min: 1,
     max: 10,
@@ -40,6 +44,7 @@ export const SCALES = {
   [SCALE_IDS.QUALITATIVE]: {
     id: SCALE_IDS.QUALITATIVE,
     labelKey: 'scale_qualitative',
+    shortLabelKey: 'scale_qualitative_short',
     hintKey: 'scale_qualitative_hint',
     min: 1,
     max: 3,
