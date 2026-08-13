@@ -9,8 +9,8 @@ import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
 import ScaleInput from '../components/ScaleInput';
 import CalibrationSettings from '../components/CalibrationSettings';
+import DeckCardText from '../components/DeckCardText';
 import EmptyState from '../components/EmptyState';
-import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey } from '../utils/dateUtils';
 import {
   BORDER_RADIUS, FONT_SIZE, SPACING, CONTENT_MAX_WIDTH,
@@ -194,14 +194,10 @@ const AssessmentScreen = ({ canExit, onExit, onFinished }) => {
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             testID={`assessment-card-${current?.key}`}
           >
-            <Text style={[styles.valueName, { color: colors.text }]}>
-              {valueName(current, t)}
-            </Text>
-            {!!valueDescription(current, t) && (
-              <Text style={[styles.valueDesc, { color: colors.mutedText }]}>
-                {valueDescription(current, t)}
-              </Text>
-            )}
+            {/* Fixed height across the deck: descriptions run one line to four,
+                and letting the card size itself moves every rating button by up
+                to three lines from one card to the next. */}
+            <DeckCardText deck={session.deck} value={current} />
 
             <View style={styles.scaleWrapper}>
               <ScaleInput
@@ -333,15 +329,6 @@ const styles = StyleSheet.create({
   },
   scaleWrapper: {
     marginTop: SPACING.xl,
-  },
-  valueDesc: {
-    fontSize: FONT_SIZE.base,
-    lineHeight: 22,
-    marginTop: SPACING.sm,
-  },
-  valueName: {
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: '700',
   },
 });
 
