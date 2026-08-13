@@ -267,7 +267,9 @@ regardless: it merges the release PR only when the PAT exists, because a
 ## Releasing the Android APK
 
 `release-apk.yml` builds an APK on EAS and uploads it to the GitHub release as
-`values-<tag>.apk`. It is a reusable workflow, reached two ways: `release-please`
+`values-v<version>.apk` — the tag with its `values-` prefix counted once, not
+twice, which is what v0.3.0 shipped as `values-values-v0.3.0.apk` before the
+duplicate was stripped. It is a reusable workflow, reached two ways: `release-please`
 calls it as a job once it has published a release, and **Actions → Release APK →
 Run workflow** re-runs it for any tag that already exists. Give that box the tag
 in full — `values-v0.3.0`, with the component prefix release-please puts there,
