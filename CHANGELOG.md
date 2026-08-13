@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.3.0...values-v0.4.0) (2026-08-13)
+
+
+### Features
+
+* open the first run on the deck, with the settings on card one ([#28](https://github.com/heywood8/my-personal-values-mobile-app/issues/28)) ([0998c27](https://github.com/heywood8/my-personal-values-mobile-app/commit/0998c279b65ee7608f316a6194c44aad5deca18c))
+
+
+### Bug Fixes
+
+* **web:** stop re-asking the language and scale questions on every visit ([#25](https://github.com/heywood8/my-personal-values-mobile-app/issues/25)) ([9183989](https://github.com/heywood8/my-personal-values-mobile-app/commit/91839899e70b7ef982e91892c264fa483beaa5cb))
+
+
+### Continuous Integration
+
+* give the EAS build room to sit in the queue ([#27](https://github.com/heywood8/my-personal-values-mobile-app/issues/27)) ([31ee827](https://github.com/heywood8/my-personal-values-mobile-app/commit/31ee827bac448042d88c02be55b864f9eead8050))
+* name the release tag in full on the APK dispatch form ([#29](https://github.com/heywood8/my-personal-values-mobile-app/issues/29)) ([f4c38ed](https://github.com/heywood8/my-personal-values-mobile-app/commit/f4c38ed732a03cf09d1770ff0dd14932084f3f62))
+
 ## [0.3.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.2.0...values-v0.3.0) (2026-08-12)
 
 
