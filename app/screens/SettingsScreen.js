@@ -13,6 +13,8 @@ import SegmentedToggle from '../components/SegmentedToggle';
 import ValueDeckPanel from '../components/ValueDeckPanel';
 import CsvTransferPanel from '../components/CsvTransferPanel';
 import PrivacyNote from '../components/PrivacyNote';
+import UpdatePanel from '../components/UpdatePanel';
+import { canInstallUpdates } from '../services/AppUpdateService';
 import { SCALE_ORDER, SCALES } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
 import { resetDatabase, isUsingMemoryFallback } from '../services/db';
@@ -167,6 +169,15 @@ const SettingsScreen = ({ onStartCalibration }) => {
         >
           {t('reset_data')}
         </Button>
+
+        {/* Absent where an APK cannot be installed — see the component. */}
+        {canInstallUpdates() && (
+          <>
+            <Divider style={styles.divider} />
+            <List.Subheader>{t('settings_updates')}</List.Subheader>
+            <UpdatePanel />
+          </>
+        )}
 
         <Divider style={styles.divider} />
 

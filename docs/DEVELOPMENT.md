@@ -338,3 +338,62 @@ Moving the build onto the runner instead is what would introduce keystore secret
 (the `MYAPP_UPLOAD_*` set) and a signing step; nothing else here would change.
 There is no Sentry workflow yet either — adding one means its `SENTRY_*` secrets
 and a new name in `auto-retry.yml`.
+
+The workflow also runs `sha256sum` over the APK and uploads the result beside it
+as `values-<tag>.apk.sha256`. The in-app updater below reads that file; a release
+without one still installs, on a weaker check.
+
+## In-app updates
+
+There is no store listing, so an install already on a phone learns about a new
+release by asking GitHub. Four pieces:
+
+| file | what it does |
+| --- | --- |
+| `app/services/AppUpdateService.js` | version comparison and the `/releases` call. Pure `fetch` — runs and is tested everywhere |
+| `app/services/ApkInstaller.js` | the filesystem and the `ACTION_VIEW` intent. Android only |
+| `app/hooks/useAppUpdateCheck.js` | when to check, and when to keep quiet about what it found |
+| `app/components/UpdatePanel.js`, `UpdatePrompt.js` | the settings section and the prompt |
+
+**Android only, by predicate.** `canInstallUpdates()` is `Platform.OS ===
+'android'`, and both the settings section and the background check are absent
+elsewhere rather than disabled — on web the app updates by being reloaded and on
+iOS there is no sideloading, so the check would find a release it could do
+nothing with.
+
+**`ApkInstaller.js` is never imported statically.** `AppUpdateService` reaches it
+with `await import()` from behind that predicate. A static import would pull
+expo-intent-launcher, which has no web implementation, into the web bundle's
+module graph and evaluate it on load. Metro splits it into its own async chunk,
+which is visible in `bun run build:web` output — if `ApkInstaller` stops
+appearing there as a separate bundle, something started importing it eagerly.
+
+**Checks are events, not a timer.** The app checks when it opens and when it
+returns to the foreground, throttled to once an hour by
+`PREF_KEYS.UPDATE_LAST_CHECK_AT`. Unauthenticated GitHub allows sixty requests an
+hour *per address* — shared with everyone else behind the same router — and a
+one-minute poll would spend that on an app people open for a minute a day. The
+timestamp is written even when the check fails, so a rate limit is not hammered.
+
+**A downloaded APK is verified twice before it is offered.** Against the
+release's `.sha256` when there is one, and otherwise against the ZIP structure —
+an APK must open with a local file header and close with an End Of Central
+Directory record inside its last 64KB. A truncated download has the first and not
+the second, and is exactly what Android rejects, after the user has tapped
+through the installer, as "There's a problem with the app file". A file that
+fails either check is deleted so the panel offers a fresh download instead of a
+broken install.
+
+**"Later" is persisted.** `UPDATE_SNOOZED_VERSION` and `UPDATE_SNOOZE_UNTIL` keep
+a deferred version quiet for a day across restarts. A session-only dismissal
+would re-ask on the next launch, which for a once-a-day app is nearly every
+launch. A *newer* version carries a different number and prompts as normal.
+
+**Nothing is asked in front of the deck** — including this. `useAppUpdateCheck`
+takes `enabled`, and `AppInitializer` passes false while a calibration is open.
+
+**The install writes a CSV snapshot first**, to
+`values-pre-update-<timestamp>.csv` in the documents directory, keeping three. It
+is the same export the settings screen writes, built without a name resolver so
+it carries value keys — which is what import matches on anyway. It can never
+block an install: a snapshot that fails is logged and the update proceeds.
