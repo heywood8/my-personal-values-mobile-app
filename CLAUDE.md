@@ -103,6 +103,14 @@ releases wrote: change the columns by adding, never by renaming. Import trusts
 `score` and `scale` and recomputes `normalized`, because the column can be edited
 in a spreadsheet and the stored pair has to agree.
 
+**`app/services/ApkInstaller.js` is never imported statically.** It is the only
+module touching expo-file-system and expo-intent-launcher, and the latter has no
+web implementation — a static import puts it in the web bundle's module graph and
+evaluates it on load. `AppUpdateService.js` reaches it with `await import()` from
+behind `canInstallUpdates()`. Metro splits it into its own chunk; if
+`ApkInstaller` stops appearing as a separate bundle in `bun run build:web`
+output, something started importing it eagerly.
+
 ## Conventions
 
 - New user-facing strings go in **both** `assets/i18n/*.json`. The parity test

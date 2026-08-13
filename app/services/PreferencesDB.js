@@ -23,6 +23,15 @@ export const PREF_KEYS = {
   // in ValuesDB. Remembering which ones were handled is what stops the retirement
   // from re-running on a value the user has since restored by hand.
   RETIRED_VALUES: 'retired_catalogue_values',
+  // When this install last asked GitHub for a newer release (ISO). Read by the
+  // throttle in useAppUpdateCheck: unauthenticated GitHub allows 60 requests an
+  // hour from an address, shared with everyone else behind it.
+  UPDATE_LAST_CHECK_AT: 'update_last_check_at',
+  // The version the user was last prompted about and answered "later" to, with
+  // the instant that answer stops applying (ISO). Together they are what makes
+  // "later" survive a restart instead of re-asking on the next launch.
+  UPDATE_SNOOZED_VERSION: 'update_snoozed_version',
+  UPDATE_SNOOZE_UNTIL: 'update_snooze_until',
 };
 
 /**

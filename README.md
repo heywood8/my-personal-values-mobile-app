@@ -40,6 +40,9 @@ changes over months rather than trusting your memory of what mattered last year.
 - **Your own values** — add values the catalogue does not have, archive the ones
   you do not care about
 - **Light and dark themes**, following the system by default
+- **In-app updates on Android** — the app checks its own GitHub releases, and
+  downloads, verifies and installs the APK itself, since there is no store
+  listing to do it
 
 ## Platforms
 

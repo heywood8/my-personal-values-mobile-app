@@ -131,11 +131,28 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: curl -fsSL --retry 3 -o "values-${TAG}.apk" "${APK_URL}"
 
-      - name: Attach the APK to the release
+      # The in-app updater hashes what it downloaded and compares it against
+      # this file, so a transfer that was truncated or interrupted is discarded
+      # instead of being handed to the Android installer — which rejects it much
+      # later, with "There's a problem with the app file" and no way to tell that
+      # from a broken build. `sha256sum` output is the format the app parses;
+      # `basename` keeps the runner's directory out of the recorded name.
+      - name: Checksum the APK
+        env:
+          TAG: ${{ inputs.tag }}
+        run: sha256sum "values-${TAG}.apk" > "values-${TAG}.apk.sha256"
+
+      - name: Attach the APK and its checksum to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-        # --clobber so a manual re-run replaces the asset rather than failing on
-        # a name that is already taken.
-        run: gh release upload "${TAG}" "values-${TAG}.apk" --clobber
+        # --clobber so a manual re-run replaces the assets rather than failing on
+        # names that are already taken. Both go up in one call: the app looks for
+        # `<apk>.sha256` beside the APK, and a release carrying only half the pair
+        # falls back to a weaker check for no reason.
+        run: |
+          gh release upload "${TAG}" \
+            "values-${TAG}.apk" \
+            "values-${TAG}.apk.sha256" \
+            --clobber

@@ -7,6 +7,7 @@ import { ThemeColorsProvider } from './contexts/ThemeColorsContext';
 import { DialogProvider } from './contexts/DialogContext';
 import { ValuesProvider } from './contexts/ValuesContext';
 import { AssessmentProvider } from './contexts/AssessmentContext';
+import { UpdateDownloadProvider } from './contexts/UpdateDownloadContext';
 import { useMaterialTheme } from './hooks/useMaterialTheme';
 
 /**
@@ -43,6 +44,11 @@ ThemedPaperProvider.propTypes = {
  *   Values         seeds the catalogue.
  *   Assessment     joins against the catalogue, so it waits on Values rather
  *                  than racing it.
+ *   UpdateDownload holds one APK download for the whole app, so it has to sit
+ *                  above every screen that can start or report one — the
+ *                  settings panel and the update prompt both read this one.
+ *                  It depends on nothing above it; the position is about
+ *                  outliving its consumers, not about what it needs.
  */
 export default function AppProviders({ children }) {
   return (
@@ -53,7 +59,9 @@ export default function AppProviders({ children }) {
             <DialogProvider>
               <ValuesProvider>
                 <AssessmentProvider>
-                  {children}
+                  <UpdateDownloadProvider>
+                    {children}
+                  </UpdateDownloadProvider>
                 </AssessmentProvider>
               </ValuesProvider>
             </DialogProvider>

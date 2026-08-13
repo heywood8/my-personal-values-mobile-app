@@ -4,9 +4,13 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
+import { useUpdateDownload } from '../contexts/UpdateDownloadContext';
 import { getBooleanPreference, PREF_KEYS } from '../services/PreferencesDB';
+import useAppUpdateCheck from '../hooks/useAppUpdateCheck';
 import AssessmentScreen from './AssessmentScreen';
 import SimpleTabs from '../navigation/SimpleTabs';
+import UpdateDownloadBanner from '../components/UpdateDownloadBanner';
+import UpdatePrompt from '../components/UpdatePrompt';
 import { formatDateKey } from '../utils/dateUtils';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 
@@ -31,6 +35,7 @@ const AppInitializer = () => {
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
   const { isLoading: assessmentLoading, hasResults } = useAssessment();
+  const { startDownload } = useUpdateDownload();
 
   const [onboardingComplete, setOnboardingComplete] = useState(null);
   // Set while the user is in the deck. Distinct from the onboarding step so a
@@ -84,6 +89,21 @@ const AppInitializer = () => {
   // to fail, and the deck itself is the whole of that run.
   const canLeaveTheDeck = onboardingComplete === true || hasResults;
 
+  // Nothing is asked in front of the deck, and that includes this. An available
+  // update is not more urgent than the run the user is in the middle of, so the
+  // check only runs on the main screens; a version found there is still there
+  // when the deck is closed.
+  const { pendingUpdate, dismiss, accept } = useAppUpdateCheck({ enabled: step === STEP.MAIN });
+
+  const handleUpdateAccept = useCallback(() => {
+    const update = accept();
+    if (!update) return;
+    startDownload(update.downloadUrl, {
+      checksumUrl: update.checksumUrl,
+      onError: () => showDialog(t('error'), t('update_download_failed'), [{ text: t('ok') }]),
+    });
+  }, [accept, startDownload, showDialog, t]);
+
   switch (step) {
   case STEP.LOADING:
     return (
@@ -103,7 +123,17 @@ const AppInitializer = () => {
 
   case STEP.MAIN:
   default:
-    return <SimpleTabs onStartCalibration={() => setCalibrating(true)} />;
+    return (
+      <>
+        <SimpleTabs onStartCalibration={() => setCalibrating(true)} />
+        <UpdateDownloadBanner />
+        <UpdatePrompt
+          update={pendingUpdate}
+          onDismiss={dismiss}
+          onAccept={handleUpdateAccept}
+        />
+      </>
+    );
   }
 };
 
