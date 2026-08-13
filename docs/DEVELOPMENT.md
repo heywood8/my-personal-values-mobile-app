@@ -269,7 +269,10 @@ regardless: it merges the release PR only when the PAT exists, because a
 `release-apk.yml` builds an APK on EAS and uploads it to the GitHub release as
 `values-<tag>.apk`. It is a reusable workflow, reached two ways: `release-please`
 calls it as a job once it has published a release, and **Actions → Release APK →
-Run workflow** re-runs it for any tag that already exists.
+Run workflow** re-runs it for any tag that already exists. Give that box the tag
+in full — `values-v0.3.0`, with the component prefix release-please puts there,
+not `v0.3.0`. A tag that does not resolve fails in the checkout with a bare `git
+failed with exit code 1`, which reads like a network fault and is not one.
 
 It is called from inside `release-please.yml` rather than triggered by
 `on: release`, because a release created with the default `GITHUB_TOKEN` raises

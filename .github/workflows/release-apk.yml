@@ -26,8 +26,13 @@ on:
         type: string
   workflow_dispatch:
     inputs:
+      # release-please prefixes its tags with the component name, so they read
+      # `values-v0.3.0` and not `v0.3.0`. Spelling the prefix out here is not
+      # pedantry: the shorter form was typed once, and `actions/checkout` failed
+      # on it with a bare "git failed with exit code 1" that names neither the
+      # ref it wanted nor the fact that it was the input that was wrong.
       tag:
-        description: Tag of an existing release, e.g. v0.1.0
+        description: Tag of an existing release, e.g. values-v0.3.0
         required: true
         type: string
 
