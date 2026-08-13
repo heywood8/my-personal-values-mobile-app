@@ -79,7 +79,7 @@ describe('PreferencesDB', () => {
 
     await resetDatabase();
 
-    // Clearing the language is what sends the app back to the first-run picker.
+    // Clearing the onboarding flag is what sends the app back to a first run.
     expect(await getAllPreferences()).toEqual({});
   });
 

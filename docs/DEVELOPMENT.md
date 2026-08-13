@@ -65,8 +65,8 @@ The database is the store of record, but on the web it lives in the
 origin-private file system — which a browser is free not to provide, and which
 `db.js` then substitutes with an in-memory database that lasts until the tab is
 reloaded. Losing a few ratings that way is a disappointment; losing the language,
-the rating scale and the onboarding flags means being asked all of them again on
-every single visit, which is what actually drove people away.
+the rating scale and the onboarding flag means being re-dealt all 47 cards in the
+wrong language on every single visit, which is what actually drove people away.
 
 So `app/services/preferenceMirror.js` keeps a copy of `app_metadata` — that table
 only — in `localStorage`. Every write through `PreferencesDB` updates it, and

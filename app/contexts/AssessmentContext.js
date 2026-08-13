@@ -97,10 +97,16 @@ export const AssessmentProvider = ({ children }) => {
   /**
    * Change the rating scale.
    *
-   * Only ever affects the NEXT calibration. Past assessments store their own
-   * scale, and rewriting them here would silently restate answers the user never
-   * gave. The one exception is a run already open today, which startAssessment
-   * re-expresses on reopen so a single day's record cannot mix two scales.
+   * Past assessments store their own scale and keep it — rewriting them here
+   * would silently restate answers the user never gave. What does change is the
+   * run currently open, if there is one: the scale switch lives on the first card
+   * of the deck now, so "change the scale" and "I am in the middle of rating"
+   * overlap by design, and leaving the open deck on the old scale would mean the
+   * buttons under the switch ignoring it.
+   *
+   * The re-expression is startAssessment's, not a second one: resolving the same
+   * day again is what rescales the rows already written, keeping each answer's
+   * normalised position and rounding the raw score into the new scale's steps.
    */
   const setScale = useCallback(async (scaleId) => {
     if (!isValidScaleId(scaleId)) return;
@@ -109,6 +115,25 @@ export const AssessmentProvider = ({ children }) => {
       await setPreference(PREF_KEYS.SCALE, scaleId);
     } catch (e) {
       console.warn('[Assessment] Could not persist the scale:', e);
+    }
+
+    const current = sessionRef.current;
+    if (!current || current.assessment.scale === scaleId) return;
+
+    try {
+      const reopened = await startAssessment(scaleId, { today: current.assessment.assessedOn });
+      const rescaled = await getRatingsForAssessment(reopened.id);
+      const scores = new Map(rescaled.map((rating) => [rating.valueId, rating.score]));
+      setSession((prev) => (prev ? {
+        ...prev,
+        assessment: { ...prev.assessment, scale: scaleId },
+        scores,
+        // `isRecalibration` is a fact about the day, not about this call:
+        // startAssessment reports "reopened" for any existing row, including the
+        // one this very session created a moment ago.
+      } : prev));
+    } catch (e) {
+      console.error('[Assessment] Could not re-express the open run:', e);
     }
   }, []);
 
