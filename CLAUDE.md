@@ -48,6 +48,14 @@ hides its close button. Restoring one without somewhere to land strands the app 
 a spinner: `cancelCalibration()` clears the session, and the screen's start guard
 will not deal a second one.
 
+**The rating buttons do not move between cards.** Descriptions run one line to
+four, so a self-sizing card walks the buttons up and down the screen and the
+answer under the thumb changes from card to card. `DeckCardText` lays the whole
+deck out once in a hidden zero-height layer and reserves the tallest result plus
+one line as a `minHeight` — measured, not guessed, because line count depends on
+width, language and font scale. Rendering the name and description straight into
+the card again brings the jumping back.
+
 **Every rating stores both `score` and `normalized`.** Raw score is what the user
 sees; the 0..1 value is what every chart, sort and delta reads. They must always
 agree — after a lossy scale conversion, recompute `normalized` from the rounded
