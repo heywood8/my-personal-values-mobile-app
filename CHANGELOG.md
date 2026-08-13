@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.5.0...values-v0.5.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* **calibration:** scale the card description's line height with the font size ([#34](https://github.com/heywood8/my-personal-values-mobile-app/issues/34)) ([241228b](https://github.com/heywood8/my-personal-values-mobile-app/commit/241228be9a0e39a9fa6e1c92c9307adf06cdfb3b))
+
 ## [0.5.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.4.0...values-v0.5.0) (2026-08-13)
 
 
