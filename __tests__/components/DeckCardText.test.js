@@ -1,4 +1,5 @@
 import React from 'react';
+import { PixelRatio } from 'react-native';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import DeckCardText from '../../app/components/DeckCardText';
 import { ThemeOnlyProviders } from '../../test-utils/renderWithProviders';
@@ -6,6 +7,11 @@ import { __resetDatabaseHandleForTests } from '../../app/services/db';
 
 beforeEach(() => {
   __resetDatabaseHandleForTests();
+  jest.spyOn(PixelRatio, 'getFontScale').mockReturnValue(1);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // Three catalogue keys with descriptions of visibly different lengths — the
@@ -115,6 +121,45 @@ describe('DeckCardText', () => {
 
     // Two events, one card measured — a counter would have called it done at
     // three and reserved the height of a short card.
+    expect(measureLayer()).toBeTruthy();
+  });
+
+  it('scales the description\'s line height with the reader\'s font size', async () => {
+    // A lineHeight in a stylesheet is left where it was written while the font
+    // around it grows, so at 200% the description prints on top of itself.
+    PixelRatio.getFontScale.mockReturnValue(2);
+    await render(<DeckCardText deck={DECK} value={DECK[1]} />, { wrapper: ThemeOnlyProviders });
+
+    expect(screen.getByText(/adventurous/i)).toHaveStyle({ lineHeight: 44 });
+  });
+
+  it('reserves a scaled line on top of the tallest card', async () => {
+    PixelRatio.getFontScale.mockReturnValue(2);
+    await render(<DeckCardText deck={DECK} value={DECK[0]} />, { wrapper: ThemeOnlyProviders });
+    await layout(screen.getByTestId('deck-card-text'), { width: 320 });
+    await measureDeck([80, 212, 168]);
+
+    // The spare line has to be one of the reader's lines, not one of the
+    // designer's — 212 + 44, not 212 + 22.
+    expect(screen.getByTestId('deck-card-text')).toHaveStyle({ minHeight: 256 });
+  });
+
+  it('measures again when the font scale changes', async () => {
+    const view = await render(
+      <DeckCardText deck={DECK} value={DECK[0]} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+    await layout(screen.getByTestId('deck-card-text'), { width: 320 });
+    await measureDeck([40, 106, 84]);
+    expect(measureLayer()).toBeNull();
+
+    // Same width, same language, bigger text: every card is taller than it was,
+    // so a reservation made at the old scale is the one thing not to keep.
+    PixelRatio.getFontScale.mockReturnValue(1.5);
+    await act(async () => {
+      view.rerender(<DeckCardText deck={DECK} value={DECK[0]} />);
+    });
+
     expect(measureLayer()).toBeTruthy();
   });
 });
