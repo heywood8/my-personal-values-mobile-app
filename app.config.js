@@ -35,7 +35,7 @@ module.exports = {
   expo: {
     name: 'Values',
     slug: 'values',
-    version: '0.4.0', // x-release-please-version
+    version: '0.5.0', // x-release-please-version
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.4.0...values-v0.5.0) (2026-08-13)
+
+
+### Features
+
+* **android:** check GitHub for updates and install the APK in-app ([#31](https://github.com/heywood8/my-personal-values-mobile-app/issues/31)) ([1cd49f1](https://github.com/heywood8/my-personal-values-mobile-app/commit/1cd49f19acb1e83de95dec46165ad36700378a73))
+
+
+### Continuous Integration
+
+* stop doubling the prefix in the APK's file name ([#30](https://github.com/heywood8/my-personal-values-mobile-app/issues/30)) ([3c479c2](https://github.com/heywood8/my-personal-values-mobile-app/commit/3c479c288cd31e1f543e6e43930ec6dd7119c436))
+
 ## [0.4.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.3.0...values-v0.4.0) (2026-08-13)
 
 
