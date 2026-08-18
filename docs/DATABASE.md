@@ -109,6 +109,60 @@ always agrees with the number shown on screen.
 Cascades depend on `PRAGMA foreign_keys = ON`, which `db.js` sets per connection
 — SQLite has foreign keys off by default.
 
+### `alignment_checkins`
+
+One filling-in of the wheel — the second trackable list. Where `assessments` asks
+how much each value matters, this asks, for the values that matter most, how far
+behaviour currently matches them.
+
+| column | type | notes |
+|---|---|---|
+| `id` | text | primary key |
+| `checked_on` | text | local `YYYY-MM-DD`, **UNIQUE** |
+
+Same constraint, same rule, same shape of resolver: `startCheckin()` either finds
+today's row or creates one, and nothing else writes here.
+
+There is no `completed_at`. An assessment has one because the deck is a guided run
+of 47 cards with a finish button at the end; a check-in is a short list — as many
+rows as the reader called very important — edited in place, and a partly filled
+wheel is a legible answer rather than an unfinished one. The job that flag was
+also doing, keeping an empty record out of every list, is done by `getCheckins()`
+instead: it returns only check-ins that have at least one score. *A check-in
+exists* means *a check-in has at least one score*. The empty row itself is kept,
+for the same reason an abandoned calibration is — the next score given that day
+belongs in it.
+
+`updated_at` is written by the row's score writers rather than by the row itself,
+which has no state of its own to change.
+
+### `alignment_ratings`
+
+One value's alignment within one check-in.
+
+| column | type | notes |
+|---|---|---|
+| `id` | text | primary key |
+| `checkin_id` | text | → `alignment_checkins.id`, ON DELETE CASCADE |
+| `value_id` | text | → `personal_values.id`, ON DELETE CASCADE |
+| `score` | integer | 1..10 — which ring out of ten behaviour reaches |
+
+Unique on `(checkin_id, value_id)`, so changing an answer during the day replaces
+it rather than stacking a second.
+
+**No `normalized` column, on purpose.** `ratings` carries one because
+`assessments.scale` is a per-assessment fact the reader can change, so a raw 4
+means different things in different records. The wheel has ten rings and always
+will — one scale, so the raw score is already comparable across every check-in,
+and a stored 0..1 copy would be a second number to keep in agreement with nothing
+reading it. `app/utils/alignment.js` derives the fraction on demand for the chart.
+
+Which values a check-in covers is **not** stored. It does not need to be: the rows
+themselves are the record of what was on the wheel that day, which is what lets a
+past check-in be redrawn exactly as it was filled in, however the ranking has moved
+since. What *is* derived, and only for today, is the current membership — the
+latest completed assessment's top priority band, minus anything archived.
+
 ## Getting the data out, and back in
 
 `app/services/RecordsCsv.js` writes every completed assessment as one row per
@@ -133,6 +187,41 @@ A value is matched by `value_key`, then by `value_name`, and anything still
 unmatched is added as a custom value. That is what makes a file from another
 device import as records rather than as nothing — its custom values carry keys
 this install has never seen.
+
+### The check-ins file, and why it is a second file
+
+`app/services/AlignmentCsv.js` does the same three steps for the wheel, into a
+file of its own:
+
+```
+checked_on,value_key,value_name,score,rings
+2026-08-12,love,Love,7,10
+```
+
+The obvious alternative — extra rows in the records file — is the one thing that
+cannot be done. Every already-shipped release reads that file by column name and
+would take those rows as *importance* ratings against that date, replacing through
+`startAssessment` the very record they were meant to sit beside. A separate file
+is simply skipped by an older release, and each file still opens in a spreadsheet
+as the one legible table it is.
+
+`rings` is the denominator, and it lives here rather than in the database because
+a database row can be migrated when an instrument changes and a file saved to
+somebody's phone last year cannot — a 7 means nothing without the 10 beside it. A
+file written before the column existed is a ten-ring file by definition; a file
+naming any other denominator has its rows skipped and counted, because rescaling
+would restate an answer nobody gave.
+
+Import resolves every record through `startCheckin({ today: <the file's date> })`
+and clears that day first, so the same-day rule and the "importing twice is
+importing once" property hold exactly as they do for records. It does **not**
+filter against current membership: a backup restored months later names the values
+that mattered then, which is the situation the file exists for.
+
+The split has one cost, and it is paid at both ends rather than left to the
+reader: `writePreUpdateSnapshot()` writes both files before an in-app APK install
+(pruned per prefix, so three updates never leave a records snapshot without its
+alignment twin), and the settings screen offers both exports.
 
 ## Storage locations
 

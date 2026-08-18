@@ -82,8 +82,11 @@ export const ValuesProvider = ({ children }) => {
     await dbDeleteCustomValue(id);
     await reload();
     // Ratings went with it (ON DELETE CASCADE), so anything showing results has
-    // to re-read rather than keep plotting a value that no longer exists.
+    // to re-read rather than keep plotting a value that no longer exists. The
+    // cascade reaches the alignment check-ins as well, and that provider is not
+    // listening for an assessment change.
     appEvents.emit(EVENTS.ASSESSMENTS_CHANGED);
+    appEvents.emit(EVENTS.ALIGNMENT_CHANGED);
   }, [reload]);
 
   const value = useMemo(() => ({

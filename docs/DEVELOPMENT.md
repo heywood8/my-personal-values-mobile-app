@@ -33,16 +33,16 @@ bun run web          # web only
 ```
 app/
   AppProviders.js     the provider stack, shared by App.js and the tests
-  components/         reusable UI; components/charts/ holds the three charts
-  contexts/           localisation, theme, dialogs, catalogue, assessments
+  components/         reusable UI; components/charts/ holds the four charts
+  contexts/           localisation, theme, dialogs, catalogue, assessments, alignment
   db/schema.js        Drizzle schema — the source migrations are generated from
   defaults/           the shipped value catalogue
   hooks/              cross-component hooks
-  navigation/         the three-tab shell
+  navigation/         the four-tab shell
   screens/            one file per screen
   services/           database access; one module per table plus db.js
   styles/             design tokens, semantic colours, the chart palette
-  utils/              scales, dates, name resolution, language tables
+  utils/              scales, dates, name resolution, language tables, wheel geometry
 assets/i18n/          one flat key/value JSON per language
 drizzle/              generated migrations (do not hand-edit)
 test-utils/           provider wrappers for tests
@@ -74,12 +74,18 @@ only — in `localStorage`. Every write through `PreferencesDB` updates it, and
 overriding. Anything writing a preference by some other route is invisible to it;
 go through `setPreference()`.
 
-### Scores are stored twice
+### Importance scores are stored twice
 
 Every rating keeps the raw score the user chose *and* that score normalised to
 0..1. The raw score is what gets shown back to them; the normalised value is what
 every chart, sort and delta reads. Without it, a history spanning a change of
 rating scale would rank 4-out-of-5 below 6-out-of-10.
+
+The reason is that the *scale* is a per-assessment fact the reader can change.
+Alignment check-ins have no such freedom — the wheel has ten rings and always
+will — so `alignment_ratings` stores the raw score only, and derives the 0..1
+reading in `app/utils/alignment.js` when a chart needs one. That is the escape
+condition for the rule, and the only case that meets it.
 
 ### One record per calendar day
 
@@ -87,16 +93,57 @@ rating scale would rank 4-out-of-5 below 6-out-of-10.
 That single constraint is the whole "same day overwrites, another day is a new
 record" rule — no caller has to remember it.
 
+`alignment_checkins.checked_on` repeats it exactly, resolved through
+`startCheckin()`. Both CSV imports go through those two functions rather than
+around them, which is what makes importing a date you already have an overwrite
+instead of a duplicate.
+
+### The second list
+
+The deck answers "how much does this matter". The wheel answers the other half of
+the same instrument: for the values that came out at the top, how far does
+behaviour currently match them. It is ten rings, one sector per very important
+value, filled from the centre out — the centre reading "my behaviour does not
+correspond to my values" and the rim "I live fully in accordance with them".
+
+| file | what it does |
+| --- | --- |
+| `app/utils/alignment.js` | the ten rings, and what counts as very important |
+| `app/utils/wheelGeometry.js` | the arcs, as pure numbers — see below |
+| `app/services/AlignmentDB.js` | check-ins and their scores; the same-day rule again |
+| `app/services/AlignmentCsv.js` | the second backup file, and why it is a second one |
+| `app/contexts/AlignmentContext.js` | today's scores, and any past date's |
+| `app/components/charts/AlignmentWheel.js` | the drawing |
+| `app/screens/AlignmentScreen.js` | the tab |
+
+Membership is derived rather than chosen: the latest completed assessment's top
+priority band (`core`), minus archived values, plus anything today already carries
+a score for. That last clause is not tidiness — reopening a calibration clears
+`completed_at`, so an abandoned recalibration would otherwise empty a wheel that is
+sitting there fully answered. A *past* check-in is drawn from its own stored rows
+instead, because the ranking moves and its record must not.
+
+The wheel's maths lives in `app/utils/wheelGeometry.js`, away from the component,
+because that is the half no render test can see: under jest an SVG element accepts
+a negative radius and a `d` full of `NaN` without a murmur, and only a browser
+refuses to draw them. Assert the arithmetic as numbers there, assert structure in
+the component test, and open the web export for the rest.
+
 ### The web target breaks in ways tests do not catch
 
-Two real bugs found by opening the export in a browser, neither of which any
-render test would have caught:
+Three ways this target behaves differently, none of which any render test would
+have caught. The first two were found the hard way, by opening the export in a
+browser; the third is the same class of problem, caught while writing the wheel:
 
 - Paper's `ProgressBar` ignores the height given to it on react-native-web and
   stretches to fill the column, covering the screen and eating every tap.
 - A Paper `Portal` mounted above its `PaperProvider` throws on first render. The
   provider order now lives in one file (`app/AppProviders.js`) that both the app
   and the tests use, so the two cannot drift.
+- An `<Svg>` given an explicit pixel width and no `viewBox` cannot shrink into a
+  narrower column, and react-native-web only reports a layout after the first
+  paint — so the alignment wheel overflowed its column for a frame on a 320px
+  viewport. The `viewBox` is what lets it scale instead.
 
 If you touch layout, portals or storage, run `bun run build:web` and actually
 open `dist/index.html` before calling it done. CI runs the export on every PR,
@@ -209,7 +256,7 @@ slots sit below 3:1 contrast and are only legal because every surface that uses
 them prints a visible label next to the mark — on the trend chart, the legend that
 does so is also the selector.
 
-## Records as a CSV file
+## Records as CSV files
 
 `app/services/RecordsCsv.js` is the export and the import;
 `app/utils/fileTransfer.js` is the platform half. On the web a save is a real
@@ -218,8 +265,17 @@ phone has neither without a native picker, so a save goes to the share sheet and
 load is a paste — the UI asks `canPickFile()` rather than branching on `Platform`,
 so a screen never has to know which is which.
 
-The file's contract, and why import writes through `startAssessment`, is in
+There are two files: the ranking and the alignment check-ins. They are separate
+because appending alignment rows to a records file would make every already-shipped
+release read them as importance ratings and overwrite the record for that date.
+Both contracts, and why each import writes through the app's own resolver, are in
 [DATABASE.md](./DATABASE.md).
+
+Because a complete backup is now two files, both ends are joined deliberately:
+`writePreUpdateSnapshot()` writes both before an in-app APK install and prunes
+each prefix separately, and the settings screen offers both exports. A change that
+adds a third record type has to do the same, or it ships a backup with a hole in
+it.
 
 ## Tests
 

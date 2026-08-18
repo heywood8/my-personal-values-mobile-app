@@ -183,9 +183,12 @@ export async function withTransaction(work) {
 export async function resetDatabase() {
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {
-    // Order matters even with cascades on: ratings reference both other tables.
+    // Order matters even with cascades on: both rating tables reference
+    // personal_values, so the leaves go first and the catalogue last.
     await db.execAsync('DELETE FROM ratings');
     await db.execAsync('DELETE FROM assessments');
+    await db.execAsync('DELETE FROM alignment_ratings');
+    await db.execAsync('DELETE FROM alignment_checkins');
     await db.execAsync('DELETE FROM personal_values');
     await db.execAsync('DELETE FROM app_metadata');
   });

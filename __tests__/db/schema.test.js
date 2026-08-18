@@ -1,5 +1,7 @@
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { appMetadata, personalValues, assessments, ratings } from '../../app/db/schema';
+import {
+  appMetadata, personalValues, assessments, ratings, alignmentCheckins, alignmentRatings,
+} from '../../app/db/schema';
 import migrations from '../../drizzle/migrations.generated';
 import { queryAll, __resetDatabaseHandleForTests } from '../../app/services/db';
 
@@ -19,14 +21,26 @@ import { queryAll, __resetDatabaseHandleForTests } from '../../app/services/db';
  * and the database the app actually builds from it.
  */
 
-const declaredTables = { appMetadata, personalValues, assessments, ratings };
+// Every table, and it has to stay every table: the drift check below only sees
+// what is listed here, so a new table left out of this object is a new table
+// with no guard at all.
+const declaredTables = {
+  appMetadata, personalValues, assessments, ratings, alignmentCheckins, alignmentRatings,
+};
 
 const allSql = migrations.entries.flatMap((entry) => entry.statements).join('\n');
 
 describe('the declared schema', () => {
-  it('declares the four tables the app uses', () => {
+  it('declares the six tables the app uses', () => {
     const names = Object.values(declaredTables).map((table) => getTableConfig(table).name).sort();
-    expect(names).toEqual(['app_metadata', 'assessments', 'personal_values', 'ratings']);
+    expect(names).toEqual([
+      'alignment_checkins',
+      'alignment_ratings',
+      'app_metadata',
+      'assessments',
+      'personal_values',
+      'ratings',
+    ]);
   });
 
   it('has a generated migration for every declared table', () => {
@@ -90,6 +104,47 @@ describe('the migrated database', () => {
     const keys = await queryAll('PRAGMA foreign_key_list(`ratings`)');
     expect(keys.map((k) => k.table).sort()).toEqual(['assessments', 'personal_values']);
     keys.forEach((key) => expect(key.on_delete).toBe('CASCADE'));
+  });
+
+  it('enforces one check-in per calendar day', async () => {
+    // The same-day rule, the second time: `checked_on` is to a check-in what
+    // `assessed_on` is to a calibration, and startCheckin() resolves through it.
+    const indexes = await queryAll('PRAGMA index_list(`alignment_checkins`)');
+    const unique = indexes.filter((index) => index.unique === 1);
+    const columns = [];
+    for (const index of unique) {
+      const info = await queryAll(`PRAGMA index_info(\`${index.name}\`)`);
+      columns.push(...info.map((row) => row.name));
+    }
+    expect(columns).toContain('checked_on');
+  });
+
+  it('enforces one alignment score per (check-in, value)', async () => {
+    const indexes = await queryAll('PRAGMA index_list(`alignment_ratings`)');
+    const unique = indexes.filter((index) => index.unique === 1);
+    const pairs = [];
+    for (const index of unique) {
+      const info = await queryAll(`PRAGMA index_info(\`${index.name}\`)`);
+      pairs.push(info.map((row) => row.name).sort().join(','));
+    }
+    expect(pairs).toContain('checkin_id,value_id');
+  });
+
+  it('cascades alignment score deletes from both parents', async () => {
+    const keys = await queryAll('PRAGMA foreign_key_list(`alignment_ratings`)');
+    expect(keys.map((k) => k.table).sort()).toEqual(['alignment_checkins', 'personal_values']);
+    keys.forEach((key) => expect(key.on_delete).toBe('CASCADE'));
+  });
+
+  it('keeps no normalised copy of an alignment score', async () => {
+    // Deliberate, and the reason is that alignment has ONE scale — ten rings,
+    // for good — so the raw score is already comparable across every check-in.
+    // `ratings.normalized` exists because the importance scale is a
+    // per-assessment fact the reader can change. A column added here would be a
+    // second number to keep in agreement with no reader for it.
+    const columns = (await queryAll('PRAGMA table_info(`alignment_ratings`)')).map((r) => r.name);
+    expect(columns).not.toContain('normalized');
+    expect(columns).toContain('score');
   });
 
   it('stamps the schema version so migrations are applied once', async () => {

@@ -206,7 +206,7 @@ export async function deleteAssessment(assessmentId) {
 export async function getRankedResults(assessmentId) {
   const rows = await queryAll(
     `SELECT r.id, r.score, r.normalized, r.value_id,
-            v.key, v.is_custom, v.custom_name
+            v.key, v.is_custom, v.custom_name, v.archived
        FROM ratings r
        JOIN personal_values v ON v.id = r.value_id
       WHERE r.assessment_id = ?
@@ -220,6 +220,12 @@ export async function getRankedResults(assessmentId) {
     key: row.key,
     isCustom: row.is_custom === 1,
     customName: row.custom_name ?? null,
+    // Reported, not filtered on. A record is a record: a value archived after
+    // this run still belongs to it, and leaving it out would make the results
+    // screen disagree with the file this same data exports as. What the flag is
+    // for is the alignment wheel, which asks a present-tense question and must
+    // not ask it about a card the deck no longer deals.
+    archived: row.archived === 1,
     score: row.score,
     normalized: row.normalized,
   }));
