@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.5.1...values-v0.6.0) (2026-08-18)
+
+
+### Features
+
+* **alignment:** track how far behaviour matches the values that matter most ([#36](https://github.com/heywood8/my-personal-values-mobile-app/issues/36)) ([969e718](https://github.com/heywood8/my-personal-values-mobile-app/commit/969e718d5cd90acf13ac9b9a41c08eae18b05276))
+
 ## [0.5.1](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.5.0...values-v0.5.1) (2026-08-13)
 
 
