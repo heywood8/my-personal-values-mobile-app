@@ -6,6 +6,7 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useAlignment } from '../contexts/AlignmentContext';
+import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import AlignmentWheel from '../components/charts/AlignmentWheel';
 import ScaleInput from '../components/ScaleInput';
@@ -42,13 +43,17 @@ const AlignmentScreen = ({ onStartCalibration }) => {
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
   const { latest, results, isLoading: assessmentLoading } = useAssessment();
+  const { values } = useValues();
   const {
     checkins, history, todayScores, previous, entriesOn, previousBefore, isLoading,
     setAlignment, clearToday, deleteCheckin,
   } = useAlignment();
 
-  // The date being looked at, or null for today — the only one that can be
-  // answered, because a score written now belongs to now.
+  // The date being looked at, or null for today. Today is the only one that can
+  // be answered, because a score written now belongs to now — but "today" is a
+  // property of the date, not of how the reader got here: today's own row is in
+  // the records list below, and tapping it must land on the live wheel rather
+  // than on a read-only copy of it.
   const [viewing, setViewing] = useState(null);
 
   /**
@@ -66,14 +71,28 @@ const AlignmentScreen = ({ onStartCalibration }) => {
    */
   const tracked = useMemo(() => trackedValues(results), [results]);
 
+  const valuesById = useMemo(() => new Map(values.map((value) => [value.id, value])), [values]);
+
   const todayRows = useMemo(() => {
-    const today = localDateKey();
     const asked = new Set(tracked.map((value) => value.valueId));
-    const carried = history.filter(
-      (row) => row.checkedOn === today && !asked.has(row.valueId),
-    );
+    // Read off today's scores, which are the live truth — not off `history`,
+    // which is re-read on an event and therefore does not yet contain an answer
+    // given a moment ago. A recalibration finished in this session moves a value
+    // out of the top band the instant it lands, and reading the stale copy would
+    // take this morning's score off the wheel while leaving it in the database.
+    const carried = [...todayScores.keys()]
+      .filter((valueId) => !asked.has(valueId))
+      .map((valueId) => valuesById.get(valueId))
+      .filter(Boolean)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((value) => ({
+        valueId: value.id,
+        key: value.key,
+        isCustom: value.isCustom,
+        customName: value.customName,
+      }));
     return [...tracked, ...carried];
-  }, [tracked, history]);
+  }, [tracked, todayScores, valuesById]);
 
   /**
    * The wheel being looked at, whichever it is.
@@ -84,15 +103,22 @@ const AlignmentScreen = ({ onStartCalibration }) => {
    * for, and it is what the dashed outline and the "was" below are matched on.
    */
   const view = useMemo(() => {
-    const entries = viewing ? entriesOn(viewing) : null;
+    const today = localDateKey();
+    // Not `!viewing`: selecting today's own record from the list below sets a
+    // date like any other row, and reading that back as "a past check-in" would
+    // render today from `history` — which does not yet hold the answers given in
+    // this session, because those are written optimistically. The screen went
+    // blank exactly there.
+    const isToday = !viewing || viewing === today;
+    const entries = isToday ? null : entriesOn(viewing);
     return {
-      date: viewing || localDateKey(),
-      isToday: !viewing,
+      date: isToday ? today : viewing,
+      isToday,
       rows: (entries || todayRows).map((row, index) => ({ ...row, sector: index + 1 })),
       scores: entries
         ? new Map(entries.map((row) => [row.valueId, row.score]))
         : todayScores,
-      previous: viewing ? previousBefore(viewing) : previous,
+      previous: isToday ? previous : previousBefore(viewing),
     };
   }, [viewing, entriesOn, todayRows, todayScores, previous, previousBefore]);
 

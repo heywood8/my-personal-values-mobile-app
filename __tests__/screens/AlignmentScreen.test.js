@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-
 import AlignmentScreen from '../../app/screens/AlignmentScreen';
 import { AllProviders } from '../../test-utils/renderWithProviders';
 import { seedDefaultValues, setValueArchived } from '../../app/services/ValuesDB';
+import { appEvents, EVENTS } from '../../app/services/eventEmitter';
 import {
   startAssessment,
   saveRating,
@@ -92,6 +93,31 @@ describe('who is on the wheel', () => {
     await mount('alignment-empty');
 
     expect(screen.getByTestId('alignment-empty-action')).toBeTruthy();
+  });
+
+  it('keeps an answer given this session when a recalibration drops the value', async () => {
+    // The recalibration lands while the screen is open, so the value leaves the
+    // top band the instant it does. Its score for today is already in the
+    // database; reading the carried rows off the re-read-on-event history copy
+    // would take it off the wheel and leave it in the file.
+    await rank({ health: 5, love: 5 });
+    await mount();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('alignment-love-step-4'));
+    });
+    await waitFor(async () => expect(await getAlignmentHistory()).toHaveLength(1));
+
+    await act(async () => {
+      const redone = await startAssessment(SCALE_IDS.NUMERIC_5, { today: TODAY });
+      await saveRating(redone.id, 'love', 2, SCALE_IDS.NUMERIC_5);
+      await completeAssessment(redone.id);
+      appEvents.emit(EVENTS.ASSESSMENTS_CHANGED);
+    });
+
+    await waitFor(() => expect(rowKeys()).toContain('health'));
+    expect(rowKeys()).toContain('love');
+    expect(screen.getByTestId('alignment-status')).toHaveTextContent(/filled in: 1 of 2/);
   });
 
   it('keeps today\'s answers when a recalibration is opened and abandoned', async () => {
@@ -215,6 +241,30 @@ describe('looking back', () => {
 
     expect(screen.queryByTestId('alignment-viewing')).toBeNull();
     expect(rowKeys()).toEqual(['health']);
+  });
+
+  it("lands on the live wheel when today's own record is tapped", async () => {
+    // Today's row is in the records list like any other. Reading the date it
+    // sets as "a past check-in" would render today out of `history` — which does
+    // not hold the answers given in this session, because those are written
+    // optimistically — and the screen went blank.
+    await rank({ health: 5, love: 5 });
+    await mount();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('alignment-health-step-7'));
+    });
+    await waitFor(() => expect(screen.getByTestId(`checkin-${TODAY}`)).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${TODAY}`));
+    });
+
+    expect(screen.queryByTestId('alignment-viewing')).toBeNull();
+    expect(rowKeys().sort()).toEqual(['health', 'love']);
+    expect(screen.getByTestId('alignment-sector-health')).toBeTruthy();
+    // Still answerable, which is the whole difference between today and a record.
+    expect(screen.getByTestId('alignment-love-input')).toBeTruthy();
   });
 
   it('lists a check-in only once it holds a score', async () => {
