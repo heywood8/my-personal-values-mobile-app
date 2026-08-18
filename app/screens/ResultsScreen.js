@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, TextInput } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useCsvTransfer } from '../hooks/useCsvTransfer';
+import { useResultsShare } from '../hooks/useResultsShare';
 import { getPreference, setPreference, PREF_KEYS } from '../services/PreferencesDB';
 import RankedValueBars from '../components/charts/RankedValueBars';
 import SegmentedToggle from '../components/SegmentedToggle';
@@ -29,12 +30,21 @@ const SORT_DESC = 'desc';
  * There used to be a second reading here, by value group. The groups are gone —
  * the source checklist is a flat list of values and this app now is too — so what
  * is left is the ranking, with each value's own description a hover or a tap away.
+ *
+ * Two ways out of the screen, and they are not the same thing. The CSV file is a
+ * backup — it comes back in through import, and it is the only backup there is.
+ * The link is for somebody else: it carries this ranking inside itself and lands
+ * as a read-only page, so a friend needs no app, no account and no copy of the
+ * database. The link is shown as well as sent, because what is being handed over
+ * is the data itself and an app that promises nothing leaves the device should
+ * say precisely what does.
  */
 const ResultsScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { latest, results, isLoading, hasResults } = useAssessment();
   const { exportCsv, busy } = useCsvTransfer();
+  const { shareResults, busy: sharing, link } = useResultsShare();
 
   const [sort, setSort] = useState(SORT_DESC);
 
@@ -113,6 +123,37 @@ const ResultsScreen = ({ onStartCalibration }) => {
         <RankedValueBars items={ordered} scaleId={latest.scale} />
 
         <Button
+          mode="contained-tonal"
+          icon="share-variant"
+          onPress={shareResults}
+          disabled={sharing}
+          style={styles.share}
+          testID="results-share"
+        >
+          {t('share_action')}
+        </Button>
+        <Text style={[styles.note, { color: colors.mutedText }]}>
+          {t('share_hint')}
+        </Text>
+
+        {/* Read-only rather than hidden: this is the ranking, encoded, and the
+            reader is about to hand it to somebody. It is also the way to copy the
+            link on a browser that refused the clipboard. */}
+        {!!link && (
+          <TextInput
+            mode="outlined"
+            dense
+            multiline
+            editable={false}
+            selectTextOnFocus
+            label={t('share_link_label')}
+            value={link}
+            style={styles.link}
+            testID="results-share-link"
+          />
+        )}
+
+        <Button
           mode="outlined"
           icon="file-download-outline"
           onPress={exportCsv}
@@ -126,7 +167,7 @@ const ResultsScreen = ({ onStartCalibration }) => {
             A complete backup is two files now — the alignment check-ins are the
             other — and someone whose backup habit is this button would otherwise
             find that out at restore time. */}
-        <Text style={[styles.exportNote, { color: colors.mutedText }]}>
+        <Text style={[styles.note, { color: colors.mutedText }]}>
           {t('csv_export_alignment_note')}
         </Text>
 
@@ -160,12 +201,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   export: {
-    marginTop: SPACING.xxl,
-  },
-  exportNote: {
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.xl,
   },
   fill: {
     flex: 1,
@@ -174,15 +210,29 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     width: '100%',
   },
+  link: {
+    // A share link is a long string. Boxed and scrollable rather than allowed to
+    // grow: it is there to be selected, not to be read.
+    marginTop: SPACING.sm,
+    maxHeight: 96,
+  },
   meta: {
     fontSize: FONT_SIZE.sm,
     marginBottom: SPACING.md,
+  },
+  note: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
+    marginTop: SPACING.sm,
   },
   recalibrate: {
     marginTop: SPACING.md,
   },
   rowHint: {
     fontSize: FONT_SIZE.sm,
+  },
+  share: {
+    marginTop: SPACING.xxl,
   },
 });
 

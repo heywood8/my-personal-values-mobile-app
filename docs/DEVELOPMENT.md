@@ -42,7 +42,8 @@ app/
   screens/            one file per screen
   services/           database access; one module per table plus db.js
   styles/             design tokens, semantic colours, the chart palette
-  utils/              scales, dates, name resolution, language tables, wheel geometry
+  utils/              scales, dates, name resolution, language tables, wheel
+                      geometry, file and link transfer
 assets/i18n/          one flat key/value JSON per language
 drizzle/              generated migrations (do not hand-edit)
 test-utils/           provider wrappers for tests
@@ -276,6 +277,54 @@ Because a complete backup is now two files, both ends are joined deliberately:
 each prefix separately, and the settings screen offers both exports. A change that
 adds a third record type has to do the same, or it ships a backup with a hole in
 it.
+
+## Sharing a result as a link
+
+The results screen can hand the ranking to somebody else. There is no server to
+put it on, so the link carries the reading itself:
+
+```
+https://heywood8.github.io/my-personal-values-mobile-app/?r=1a0mjed.MSoyMDI2LTA4...
+```
+
+| file | what it does |
+| --- | --- |
+| `app/services/ResultsShare.js` | the format: what goes in a code, and how it is read back |
+| `app/utils/linkSharing.js` | the platform: where a link points, how it is sent, how it arrives |
+| `app/hooks/useResultsShare.js` | the flow, and what is said about each outcome |
+| `app/screens/SharedResultsScreen.js` | what the friend sees |
+
+Inside the parameter is a base36 fingerprint, a dot, and a base64url body holding
+the date, the scale and one `key,score` pair per rated value. A full 47-value deck
+comes to about 900 characters with the URL in front of it.
+
+Four properties are worth knowing before changing any of it:
+
+- **It is an encoding, not encryption.** Anyone with the link can read it, and the
+  screen that offers the link says exactly that. The fingerprint is a checksum
+  against a link that arrived in half — the failure that actually happens, when a
+  chat client wraps a long URL and only the first line gets copied. It is not a
+  signature and proves nothing about who made the link.
+- **Values travel as keys.** `love`, not "Love" — so a ranking shared in Russian
+  reads in English on the other side, resolved by the app that opens it. Only a
+  custom value travels as text, because no other install can name it.
+- **Nothing is written on arrival.** The shared screen renders and closes; it
+  never touches the database. An import would resolve the sender's date through
+  `startAssessment()` and overwrite the reader's own record for that day, and a
+  friend's ranking is not a backup of yours. That is what the CSV import is for.
+- **Sending is universal; receiving is the web's.** A phone hands the link to the
+  system share sheet, a browser to its own share sheet or the clipboard. Nothing
+  reads a link on a phone: that would need a deep link registered against
+  `com.heywood8.values://`, which only opens for somebody who already has the app
+  — the opposite of sharing with a friend. So every link points at the published
+  web export, which opens in any browser. A copy of the app running on the web
+  shares *itself*, so a fork's deployment and a local export both produce links
+  that work; `EXPO_SHARE_URL` overrides the fallback for native builds.
+
+The format's header row carries `SHARE_FORMAT`. A link outlives the release that
+wrote it, so a code from a newer format is reported as needing a newer app rather
+than read with the columns this build happens to know. Adding a trailing column is
+not a format change — a reader takes the columns it knows and ignores the rest.
 
 ## Tests
 

@@ -223,6 +223,28 @@ reader: `writePreUpdateSnapshot()` writes both files before an in-app APK instal
 (pruned per prefix, so three updates never leave a records snapshot without its
 alignment twin), and the settings screen offers both exports.
 
+### The share link, and why it never comes back in
+
+There is a third way data leaves the device, and it is not a backup.
+`app/services/ResultsShare.js` packs the latest ranking into a link —
+`?r=<fingerprint>.<body>`, holding the date, the scale and one `key,score` pair
+per rated value — which the reader hands to somebody else. Nothing is uploaded:
+the reading *is* the string, which is what lets a static export with no server
+behind it show a friend's results.
+
+It has no import path, deliberately. Writing it would mean resolving the sender's
+date through `startAssessment()`, which is the same-day rule, which means
+overwriting the reader's own record for that day with somebody else's answers.
+The two CSV files are how records travel between installs that mean to keep them;
+a link is a reading, and `SharedResultsScreen` renders it without touching the
+database at all.
+
+Values travel as keys for the same reason the CSV matches on `value_key` — the
+key is the stable identity across installs and languages — with one difference:
+the shared code omits the *name* of a catalogue value entirely, so the app that
+opens the link names it in its own reader's language. A custom value has no key
+anyone else knows and travels as text.
+
 ## Storage locations
 
 | Platform | Where |

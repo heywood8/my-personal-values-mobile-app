@@ -8,14 +8,16 @@ import { useUpdateDownload } from '../contexts/UpdateDownloadContext';
 import { getBooleanPreference, PREF_KEYS } from '../services/PreferencesDB';
 import useAppUpdateCheck from '../hooks/useAppUpdateCheck';
 import AssessmentScreen from './AssessmentScreen';
+import SharedResultsScreen from './SharedResultsScreen';
 import SimpleTabs from '../navigation/SimpleTabs';
 import UpdateDownloadBanner from '../components/UpdateDownloadBanner';
 import UpdatePrompt from '../components/UpdatePrompt';
 import { formatDateKey } from '../utils/dateUtils';
+import { currentShareCode, clearShareCode } from '../utils/linkSharing';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 
 /**
- * Decides which of three things the app is currently showing.
+ * Decides which of four things the app is currently showing.
  *
  * There is no setup sequence in front of the deck. A first run opens on the first
  * card, with the language and scale switches sitting on that card — the two
@@ -23,9 +25,16 @@ import { appEvents, EVENTS } from '../services/eventEmitter';
  * had seen anything they applied to. Both have a working default, so the only
  * step left is the one the app is for, and it is the one that resumes: closing
  * the app mid-deck comes back to the same card rather than to a question.
+ *
+ * The fourth is a different kind of thing: a shared ranking, which is not a step
+ * in this app's own sequence but the reason a visitor arrived at all. It comes
+ * before everything else — including the deck on a first run — because somebody
+ * who followed a friend's link came to read that link, and it asks nothing,
+ * writes nothing and is closed in one tap.
  */
 const STEP = {
   LOADING: 'loading',
+  SHARED: 'shared',
   CALIBRATION: 'calibration',
   MAIN: 'main',
 };
@@ -36,6 +45,10 @@ const AppInitializer = () => {
   const { showDialog } = useDialog();
   const { isLoading: assessmentLoading, hasResults } = useAssessment();
   const { startDownload } = useUpdateDownload();
+
+  // Read once, at mount: the address bar is the input, and re-reading it later
+  // would fight the `history.replaceState` that closing the screen performs.
+  const [sharedCode, setSharedCode] = useState(currentShareCode);
 
   const [onboardingComplete, setOnboardingComplete] = useState(null);
   // Set while the user is in the deck. Distinct from the onboarding step so a
@@ -75,10 +88,24 @@ const AppInitializer = () => {
     setCalibrating(false);
   }, []);
 
+  // Closing a shared ranking takes the code out of the URL as well as off the
+  // screen, so that reloading the tab afterwards lands the reader in their own
+  // app rather than back in somebody else's results.
+  const handleSharedClose = useCallback(() => {
+    clearShareCode();
+    setSharedCode(null);
+  }, []);
+
   // While the stored preferences are still loading, render nothing so the native
   // splash stays up rather than flashing a half-configured deck.
   const step = (() => {
-    if (isLoading || onboardingComplete === null || assessmentLoading) return STEP.LOADING;
+    // Localisation gates everything: there is nothing to render before there are
+    // words to render it in.
+    if (isLoading) return STEP.LOADING;
+    // A shared ranking is entirely contained in the link, so it does not wait on
+    // the database, the catalogue or the onboarding flag — none of which it reads.
+    if (sharedCode) return STEP.SHARED;
+    if (onboardingComplete === null || assessmentLoading) return STEP.LOADING;
     if (calibrating) return STEP.CALIBRATION;
     if (!onboardingComplete && !hasResults) return STEP.CALIBRATION;
     return STEP.MAIN;
@@ -111,6 +138,9 @@ const AppInitializer = () => {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+
+  case STEP.SHARED:
+    return <SharedResultsScreen code={sharedCode} onClose={handleSharedClose} />;
 
   case STEP.CALIBRATION:
     return (
