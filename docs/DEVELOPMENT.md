@@ -33,7 +33,7 @@ bun run web          # web only
 ```
 app/
   AppProviders.js     the provider stack, shared by App.js and the tests
-  components/         reusable UI; components/charts/ holds the four charts
+  components/         reusable UI; components/charts/ holds the three charts
   contexts/           localisation, theme, dialogs, catalogue, assessments, alignment
   db/schema.js        Drizzle schema — the source migrations are generated from
   defaults/           the shipped value catalogue
@@ -117,11 +117,21 @@ correspond to my values" and the rim "I live fully in accordance with them".
 | `app/screens/AlignmentScreen.js` | the tab |
 
 Membership is derived rather than chosen: the latest completed assessment's top
-priority band (`core`), minus archived values, plus anything today already carries
-a score for. That last clause is not tidiness — reopening a calibration clears
-`completed_at`, so an abandoned recalibration would otherwise empty a wheel that is
-sitting there fully answered. A *past* check-in is drawn from its own stored rows
-instead, because the ranking moves and its record must not.
+priority band (`core`), minus whatever the catalogue currently has archived, plus
+anything today already carries a score for. Neither qualifier is tidiness. The
+archived set comes from the catalogue rather than the ranking because the ranking
+is a snapshot, so a rule read off it would drop an archived value and never
+restore a restored one. And reopening a calibration clears `completed_at`, so an
+abandoned recalibration would otherwise empty a wheel that is sitting there fully
+answered. A *past* check-in is drawn from its own stored rows instead, because the
+ranking moves and its record must not.
+
+`AlignmentContext` folds every write into its `history` copy as it lands, rather
+than waiting for the next `reload()`. Everything reads that copy — the coverage
+counts, the previous check-in, the rows a past wheel is drawn from — and a
+snapshot taken at mount is missing this whole session. A repair keyed on the
+provider re-rendering is not enough: opening a record is state inside the screen
+and never re-renders the provider.
 
 The wheel's maths lives in `app/utils/wheelGeometry.js`, away from the component,
 because that is the half no render test can see: under jest an SVG element accepts

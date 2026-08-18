@@ -30,7 +30,6 @@ const ranked = (entries) => entries.map(([key, score, scale, extra = {}]) => ({
   customName: null,
   score,
   normalized: normalised(score, scale),
-  archived: false,
   ...extra,
 }));
 
@@ -117,17 +116,39 @@ describe('trackedValues', () => {
     expect(tracked.map((value) => value.sector)).toEqual([1, 2]);
   });
 
-  it('leaves out a value the reader has archived', () => {
+  it('leaves out a value the catalogue currently has archived', () => {
     // The results screen shows a record and has to stay complete; this is a
     // question being asked now, and a card the deck no longer deals is not one
     // to ask about. It matters on upgrade too: retireRemovedValues() archives
     // every dropped catalogue entry in bulk, ratings and all.
-    const tracked = trackedValues(ranked([
+    const results = ranked([
       ['health', 5, SCALE_IDS.NUMERIC_5],
-      ['fame', 5, SCALE_IDS.NUMERIC_5, { archived: true }],
-    ]));
+      ['fame', 5, SCALE_IDS.NUMERIC_5],
+    ]);
 
-    expect(tracked.map((value) => value.key)).toEqual(['health']);
+    expect(trackedValues(results, new Set(['fame'])).map((v) => v.key)).toEqual(['health']);
+  });
+
+  it('answers restoring as readily as archiving', () => {
+    // The whole reason the archived set is passed in rather than read off the
+    // ranking: the ranking is a snapshot re-read when an assessment changes,
+    // while archiving and restoring change the catalogue. Reading the snapshot
+    // made the rule work in one direction only.
+    const results = ranked([
+      ['health', 5, SCALE_IDS.NUMERIC_5],
+      ['fame', 5, SCALE_IDS.NUMERIC_5],
+    ]);
+
+    expect(trackedValues(results, new Set(['fame'])).map((v) => v.key)).toEqual(['health']);
+    expect(trackedValues(results, new Set()).map((v) => v.key)).toEqual(['health', 'fame']);
+  });
+
+  it('ignores an `archived` flag carried on the ranking itself', () => {
+    // If a snapshot ever grows one again, it must not become a second source
+    // that disagrees with the catalogue.
+    const results = ranked([['fame', 5, SCALE_IDS.NUMERIC_5, { archived: true }]]);
+
+    expect(trackedValues(results, new Set()).map((v) => v.key)).toEqual(['fame']);
   });
 
   it('is empty rather than guessing when nothing reached the top', () => {

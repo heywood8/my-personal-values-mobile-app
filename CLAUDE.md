@@ -108,12 +108,32 @@ anything **today already carries a score for**, because reopening a calibration
 clears `completed_at` and an abandoned recalibration would otherwise empty a wheel
 that is sitting there fully answered.
 
+Which values are archived is asked of the **catalogue**, passed into
+`trackedValues()`, and never read off the ranking. The ranking is a snapshot —
+re-read when an assessment changes — while archiving and restoring change the
+catalogue, so a rule applied to the snapshot works in one direction only: it drops
+a value the moment it is archived and never brings it back when it is restored.
+One source answers both.
+
 **A past check-in is drawn from its own rows.** Never from today's membership: a
 recalibration changes what the wheel asks about, so redrawing June's answers on
 July's wheel would invent sectors that were never scored and hide the ones that
-were. Sector *numbers* are a legend key for the wheel currently on screen — they
-are never stored, exported, or used to line a value up across two dates. `valueId`
-is what does that, and it is what the dashed previous-check-in outline matches on.
+were. Those rows are ordered by the *current* ranking, then by deck order —
+the ranking of the day it was filled in is not recoverable, and most important is
+still at the top. Sector *numbers* are a legend key for the wheel currently on
+screen — they are never stored, exported, or used to line a value up across two
+dates. `valueId` is what does that, and it is what the dashed previous-check-in
+outline matches on.
+
+**Every alignment write is folded into `AlignmentContext`'s `history` as it
+lands.** That copy is otherwise only assigned by `reload()`, which makes it a
+snapshot silently missing everything answered in this session — and it is what the
+coverage counts, the previous check-in and a past wheel's rows are all read from.
+The day it hurts is the one that has just stopped being today: open the app across
+midnight, tap yesterday's record first, and it opened onto an empty wheel, because
+tapping a record row is state inside the screen and never re-renders the provider
+at all. Do not add a repair that depends on the provider re-rendering; keep the
+copy true continuously.
 
 **On the wheel, "not answered" must not look like "zero".** The centre means "my
 behaviour does not correspond to this value", so an unanswered sector is left
