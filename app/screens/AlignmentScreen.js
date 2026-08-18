@@ -45,7 +45,7 @@ const AlignmentScreen = ({ onStartCalibration }) => {
   const { latest, results, isLoading: assessmentLoading } = useAssessment();
   const { values } = useValues();
   const {
-    checkins, history, todayScores, previous, entriesOn, previousBefore, isLoading,
+    checkins, todayScores, coverage, previous, entriesOn, previousBefore, isLoading,
     setAlignment, clearToday, deleteCheckin,
   } = useAlignment();
 
@@ -69,9 +69,21 @@ const AlignmentScreen = ({ onStartCalibration }) => {
    * the same shape: this morning's score stays visible and editable for the rest
    * of the day rather than disappearing mid-sentence.
    */
-  const tracked = useMemo(() => trackedValues(results), [results]);
-
   const valuesById = useMemo(() => new Map(values.map((value) => [value.id, value])), [values]);
+
+  /**
+   * The current ask.
+   *
+   * `trackedValues()` drops archived values off the ranking it is handed, and
+   * that ranking is a snapshot: `results` is re-read when an assessment changes,
+   * and archiving a value changes the catalogue instead. So a value archived
+   * from the deck panel while the app is open would stay on the wheel — and stay
+   * answerable — until the next launch. The catalogue is the live copy, so it
+   * gets the last word.
+   */
+  const tracked = useMemo(() => trackedValues(results).filter(
+    (value) => !valuesById.get(value.valueId)?.archived,
+  ), [results, valuesById]);
 
   const todayRows = useMemo(() => {
     const asked = new Set(tracked.map((value) => value.valueId));
@@ -133,21 +145,6 @@ const AlignmentScreen = ({ onStartCalibration }) => {
     () => sectors.filter((sector) => sector.score !== undefined).length,
     [sectors],
   );
-
-  /**
-   * How many values each check-in actually holds. A day somebody tapped once and
-   * a day they filled in completely are otherwise the same row — and the more
-   * recent of the two is what every comparison on this screen is drawn against,
-   * so its coverage is worth stating rather than leaving to be discovered.
-   */
-  const coverage = useMemo(() => {
-    const counts = new Map();
-    for (const row of history) {
-      counts.set(row.checkedOn, (counts.get(row.checkedOn) ?? 0) + 1);
-    }
-    counts.set(localDateKey(), todayScores.size);
-    return counts;
-  }, [history, todayScores]);
 
   const handleDelete = useCallback((checkin) => {
     showDialog(

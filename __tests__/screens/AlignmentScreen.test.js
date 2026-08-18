@@ -81,6 +81,23 @@ describe('who is on the wheel', () => {
     expect(rowKeys()).toEqual(['health']);
   });
 
+  it('drops a value archived while the screen is open', async () => {
+    // The ranking is a snapshot — it is re-read when an assessment changes, and
+    // archiving changes the catalogue instead. Reading only the snapshot leaves
+    // the value on the wheel, and answerable, until the next launch.
+    await rank({ health: 5, love: 5 });
+    await mount();
+    expect(rowKeys()).toEqual(['health', 'love']);
+
+    await act(async () => {
+      await setValueArchived('love', true);
+      appEvents.emit(EVENTS.VALUES_CHANGED);
+    });
+
+    await waitFor(() => expect(rowKeys()).toEqual(['health']));
+    expect(screen.queryByTestId('alignment-love-input')).toBeNull();
+  });
+
   it('says so, without sending the reader back through the deck, when nothing reached the top', async () => {
     await rank({ order: 3, humour: 2 });
     await mount('alignment-none');
@@ -203,6 +220,48 @@ describe('the comparison with last time', () => {
     // otherwise the same row, and the recent one is what every comparison here
     // is drawn against.
     expect(screen.getByTestId('alignment-previous-hint')).toHaveTextContent(/filled in there: 1/);
+  });
+});
+
+describe('across midnight', () => {
+  // A once-a-day app is exactly the kind that sits open on a phone while the
+  // date changes underneath it.
+  afterEach(() => { jest.useRealTimers(); });
+
+  it("stops presenting yesterday's answers as today's", async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    jest.setSystemTime(new Date(2026, 7, 18, 23, 55, 0));
+
+    await rank({ health: 5, love: 5 }, { on: '2026-08-18' });
+    await mount();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('alignment-health-step-7'));
+    });
+    await waitFor(async () => expect(await getAlignmentHistory()).toHaveLength(1));
+    expect(screen.getByTestId('alignment-status')).toHaveTextContent(/filled in: 1 of 2/);
+
+    jest.setSystemTime(new Date(2026, 7, 19, 0, 30, 0));
+    // Any interaction re-renders; the date stamp is what makes the state correct
+    // itself rather than carry yesterday forward.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('alignment-love-step-4'));
+    });
+
+    // Yesterday's 7 is not today's answer, and the clear button that would have
+    // deleted nothing from the new day's record is not offered for it.
+    await waitFor(() => expect(screen.getByTestId('alignment-status')).toHaveTextContent(/filled in: 1 of 2/));
+    expect(screen.queryByTestId('alignment-clear-health')).toBeNull();
+    expect(screen.getByTestId('alignment-clear-love')).toBeTruthy();
+
+    // Both days are on record, each with its own answer.
+    const stored = (await getAlignmentHistory()).map((row) => `${row.checkedOn}:${row.key}=${row.score}`);
+    expect(stored.sort()).toEqual(['2026-08-18:health=7', '2026-08-19:love=4']);
+
+    // And yesterday's row still says what it holds. Its score was written
+    // optimistically and never re-read, so counting it off the history copy
+    // would report a fully answered day as empty.
+    expect(screen.getByTestId('checkin-2026-08-18')).toHaveTextContent(/filled in: 1/);
+    expect(screen.getByTestId('checkin-2026-08-19')).toHaveTextContent(/filled in: 1/);
   });
 });
 
