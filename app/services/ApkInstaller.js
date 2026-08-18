@@ -250,34 +250,63 @@ export const installApk = async (localUri) => {
 };
 
 /**
- * Write the CSV export to the documents directory before installing.
+ * Keep only the newest SNAPSHOT_KEEP_COUNT files of one prefix.
+ *
+ * Per prefix, not across all of them, and that is the whole reason this is a
+ * function. The two snapshots below are one backup in two files — the ranking
+ * and the check-ins — so a single rotation over both would prune three updates'
+ * worth down to one and a half, deleting a records file while keeping its
+ * alignment twin. Neither half is a complete record on its own.
+ */
+export const pruneSnapshots = async (prefix) => {
+  const names = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
+  const snapshots = names
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.csv'))
+    .sort();
+  // Timestamped names sort oldest-first, so the excess is at the front.
+  for (const name of snapshots.slice(0, Math.max(0, snapshots.length - SNAPSHOT_KEEP_COUNT))) {
+    await FileSystem.deleteAsync(`${FileSystem.documentDirectory}${name}`, { idempotent: true });
+  }
+};
+
+/**
+ * Write the CSV exports to the documents directory before installing.
  *
  * The CSV file is the only backup this app has, and an update is the one moment
- * it is knowingly about to be replaced. `buildRecordsCsv` is called without a
- * name resolver, so the snapshot carries value keys rather than translated
- * names — which is what import matches on anyway.
+ * it is knowingly about to be replaced. There are two of them now — the ranking
+ * and the alignment check-ins, kept apart so that neither can be misread as the
+ * other (see app/services/AlignmentCsv.js) — and both are written here, or the
+ * second list would be dropped on the floor by every in-app update.
+ *
+ * Both builders are called without a name resolver, so the snapshots carry value
+ * keys rather than translated names — which is what import matches on anyway.
  *
  * Never allowed to stop an install: a snapshot that could not be written is
  * logged, and the update proceeds.
  */
 const writePreUpdateSnapshot = async () => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+
+  const write = async (prefix, build) => {
+    const csv = await build();
+    await FileSystem.writeAsStringAsync(`${FileSystem.documentDirectory}${prefix}${stamp}.csv`, csv);
+    await pruneSnapshots(prefix);
+  };
+
   try {
     const { buildRecordsCsv } = await import('./RecordsCsv');
-    const csv = await buildRecordsCsv();
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    const uri = `${FileSystem.documentDirectory}values-pre-update-${stamp}.csv`;
-    await FileSystem.writeAsStringAsync(uri, csv);
-
-    const names = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
-    const snapshots = names
-      .filter((name) => name.startsWith('values-pre-update-') && name.endsWith('.csv'))
-      .sort();
-    // Timestamped names sort oldest-first, so the excess is at the front.
-    for (const name of snapshots.slice(0, Math.max(0, snapshots.length - SNAPSHOT_KEEP_COUNT))) {
-      await FileSystem.deleteAsync(`${FileSystem.documentDirectory}${name}`, { idempotent: true });
-    }
+    await write('values-pre-update-', buildRecordsCsv);
   } catch (error) {
     console.warn('[AppUpdate] Pre-update snapshot failed; installing anyway:', error?.message);
+  }
+
+  // Its own try: a check-ins export that fails must not take the ranking
+  // snapshot with it, and vice versa. Half a backup beats none.
+  try {
+    const { buildAlignmentCsv } = await import('./AlignmentCsv');
+    await write('values-alignment-pre-update-', buildAlignmentCsv);
+  } catch (error) {
+    console.warn('[AppUpdate] Pre-update check-in snapshot failed; installing anyway:', error?.message);
   }
 };
 

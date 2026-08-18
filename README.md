@@ -10,6 +10,12 @@ Native and Expo. You rate a deck of value cards, see where each one sits relativ
 to the others, and recalibrate whenever you like — so you can watch what actually
 changes over months rather than trusting your memory of what mattered last year.
 
+Then it asks the other half of the question. For the values you called very
+important, a wheel of ten rings asks how far your behaviour currently matches
+them: the centre is "my behaviour does not correspond to my values", the outer
+edge is "I live fully in accordance with them". Each filling-in is dated, so that
+list is tracked over time too.
+
 ## How it works
 
 1. **Pick a language** — English or Russian.
@@ -21,9 +27,13 @@ changes over months rather than trusting your memory of what mattered last year.
    you left off.
 4. **Read the result** — a ranking, most important first. Point at a row (or tap
    it) to read what the value means.
-5. **Recalibrate** — whenever you want. Recalibrating on the same day overwrites
+5. **Fill in the wheel** — one sector per value you called very important, ten
+   rings deep. It is a check-in, one per day, and the previous one stays visible
+   behind it as a dotted outline.
+6. **Recalibrate** — whenever you want. Recalibrating on the same day overwrites
    that day's record; on a different day it becomes a new one, and the History
-   screen shows what moved between them.
+   screen shows what moved between them. The wheel follows the ranking: whatever
+   comes out at the top is what it asks about next time.
 
 ## Features
 
@@ -33,10 +43,14 @@ changes over months rather than trusting your memory of what mattered last year.
   history that spans a change of scale stays comparable
 - **Results** — a ranked bar list, most important first, with each value's own
   wording a hover or a tap away
+- **The alignment wheel** — a second tracked list, for the values at the top of
+  the ranking only: how far behaviour matches each of them, on ten rings, dated
+  and comparable with every earlier check-in
 - **History** — biggest movers between the last two calibrations, and a trend
   chart for up to five values at once
-- **CSV in and out** — save every record as a spreadsheet-readable file and read
-  it back on another device
+- **CSV in and out** — save your records as spreadsheet-readable files and read
+  them back on another device; the ranking and the check-ins are two files, so a
+  file written today still imports into an older version of the app
 - **Your own values** — add values the catalogue does not have, archive the ones
   you do not care about
 - **Light and dark themes**, following the system by default
@@ -50,9 +64,10 @@ Android, iOS and web from one codebase. All data is stored locally on the device
 — in SQLite on Android and iOS, and in the browser's origin-private file system
 on the web. Nothing is sent anywhere.
 
-Which also means nothing is backed up anywhere, so records can be saved as a CSV
-file and read back in — on the web as a download and a file dialog, on a phone
-through the share sheet and a paste box.
+Which also means nothing is backed up anywhere, so records can be saved as CSV
+files and read back in — on the web as a download and a file dialog, on a phone
+through the share sheet and a paste box. A complete backup is two files: the
+ranking, and the wheel check-ins.
 
 ## The value catalogue
 

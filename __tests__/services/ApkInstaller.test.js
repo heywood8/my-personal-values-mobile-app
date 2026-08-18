@@ -57,6 +57,7 @@ const {
   installApk,
   listDownloadedApks,
   sanitizeFilename,
+  pruneSnapshots,
   verifyApkStructure,
   verifyCachedApk,
 } = require('../../app/services/ApkInstaller');
@@ -284,5 +285,54 @@ describe('the documents directory', () => {
     // the OS may clear before the user ever needs it.
     expect(FileSystem.documentDirectory).toBe(DOCS);
     expect(FileSystem.cacheDirectory).not.toBe(DOCS);
+  });
+});
+
+describe('rotating the pre-update snapshots', () => {
+  // An install writes TWO backups now, the ranking and the check-ins, because a
+  // complete backup is two files (see app/services/AlignmentCsv.js). The
+  // rotation therefore has to be per family: one pass over both prefixes would
+  // keep three files across two of them, deleting a records snapshot while
+  // keeping its alignment twin, and neither half is a complete record alone.
+  const docNames = () => [...mockFiles.keys()]
+    .filter((uri) => uri.startsWith(DOCS))
+    .map((uri) => uri.slice(DOCS.length))
+    .sort();
+
+  const seed = (name) => mockFiles.set(`${DOCS}${name}`, { size: 1, content: null });
+
+  beforeEach(() => {
+    for (const stamp of ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04']) {
+      seed(`values-pre-update-${stamp}.csv`);
+      seed(`values-alignment-pre-update-${stamp}.csv`);
+    }
+  });
+
+  it('keeps the newest three of one family and leaves the other alone', async () => {
+    await pruneSnapshots('values-pre-update-');
+
+    const names = docNames();
+    expect(names.filter((n) => n.startsWith('values-alignment-pre-update-'))).toHaveLength(4);
+    expect(names.filter((n) => n.startsWith('values-pre-update-'))).toEqual([
+      'values-pre-update-2026-01-02.csv',
+      'values-pre-update-2026-01-03.csv',
+      'values-pre-update-2026-01-04.csv',
+    ]);
+  });
+
+  it('leaves matching pairs behind when both families are rotated', async () => {
+    await pruneSnapshots('values-pre-update-');
+    await pruneSnapshots('values-alignment-pre-update-');
+
+    const stampsOf = (prefix) => docNames()
+      .filter((n) => n.startsWith(prefix))
+      .map((n) => n.slice(prefix.length));
+
+    expect(stampsOf('values-pre-update-')).toEqual(stampsOf('values-alignment-pre-update-'));
+  });
+
+  it('does nothing when there is nothing to spare', async () => {
+    await pruneSnapshots('values-nothing-here-');
+    expect(docNames()).toHaveLength(8);
   });
 });

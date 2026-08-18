@@ -7,6 +7,7 @@ import { ThemeColorsProvider } from './contexts/ThemeColorsContext';
 import { DialogProvider } from './contexts/DialogContext';
 import { ValuesProvider } from './contexts/ValuesContext';
 import { AssessmentProvider } from './contexts/AssessmentContext';
+import { AlignmentProvider } from './contexts/AlignmentContext';
 import { UpdateDownloadProvider } from './contexts/UpdateDownloadContext';
 import { useMaterialTheme } from './hooks/useMaterialTheme';
 
@@ -44,6 +45,9 @@ ThemedPaperProvider.propTypes = {
  *   Values         seeds the catalogue.
  *   Assessment     joins against the catalogue, so it waits on Values rather
  *                  than racing it.
+ *   Alignment      the second list. Below Assessment because the alignment
+ *                  screen reads both — which values are very important comes
+ *                  from up there, the scores against them from here.
  *   UpdateDownload holds one APK download for the whole app, so it has to sit
  *                  above every screen that can start or report one — the
  *                  settings panel and the update prompt both read this one.
@@ -59,9 +63,11 @@ export default function AppProviders({ children }) {
             <DialogProvider>
               <ValuesProvider>
                 <AssessmentProvider>
-                  <UpdateDownloadProvider>
-                    {children}
-                  </UpdateDownloadProvider>
+                  <AlignmentProvider>
+                    <UpdateDownloadProvider>
+                      {children}
+                    </UpdateDownloadProvider>
+                  </AlignmentProvider>
                 </AssessmentProvider>
               </ValuesProvider>
             </DialogProvider>

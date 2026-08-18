@@ -24,7 +24,7 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../styles/designToke
  * the left: a row of "10 9 8 …" is a scale printed backwards, not a scale
  * re-ordered.
  */
-const ScaleInput = ({ scaleId, value, onChange, disabled }) => {
+const ScaleInput = ({ scaleId, value, onChange, disabled, testIDPrefix = 'scale' }) => {
   const { colors } = useThemeColors();
   const { t } = useLocalization();
   const scale = getScale(scaleId);
@@ -34,7 +34,7 @@ const ScaleInput = ({ scaleId, value, onChange, disabled }) => {
   return (
     <View
       style={[styles.container, isWordScale ? styles.stacked : styles.row]}
-      testID="scale-input"
+      testID={`${testIDPrefix}-input`}
       accessibilityRole="radiogroup"
     >
       {steps.map((step) => {
@@ -49,7 +49,7 @@ const ScaleInput = ({ scaleId, value, onChange, disabled }) => {
             accessibilityRole="radio"
             accessibilityState={{ selected, disabled: !!disabled }}
             accessibilityLabel={label}
-            testID={`scale-step-${step}`}
+            testID={`${testIDPrefix}-step-${step}`}
             style={[
               styles.step,
               isWordScale ? styles.stepWide : styles.stepNarrow,
@@ -125,6 +125,12 @@ ScaleInput.propTypes = {
   value: PropTypes.number,
   onChange: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
+  // Every testID this renders is built from this prefix, defaulted to what the
+  // deck's single instance has always been called. The alignment screen renders
+  // one of these per row, and a dozen buttons all answering to `scale-step-7`
+  // makes every query for one ambiguous — RNTL throws on a duplicate testID
+  // rather than picking the first, so it fails loudly and unhelpfully.
+  testIDPrefix: PropTypes.string,
 };
 
 export default ScaleInput;

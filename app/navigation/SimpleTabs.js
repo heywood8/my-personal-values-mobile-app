@@ -7,13 +7,20 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import ResultsScreen from '../screens/ResultsScreen';
+import AlignmentScreen from '../screens/AlignmentScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 import { SPACING, FONT_SIZE, HEIGHTS } from '../styles/designTokens';
 
+/**
+ * Alignment sits directly after Values, because it is derived from it: the wheel
+ * only has sectors for what the ranking put at the top. History follows both,
+ * since it reads across time rather than across values.
+ */
 const TABS = [
   { key: 'results', icon: 'scale-balance', labelKey: 'tab_results' },
+  { key: 'alignment', icon: 'target', labelKey: 'tab_alignment' },
   { key: 'history', icon: 'chart-line-variant', labelKey: 'tab_history' },
   { key: 'settings', icon: 'cog-outline', labelKey: 'tab_settings' },
 ];
@@ -45,6 +52,7 @@ const SimpleTabs = ({ onStartCalibration }) => {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         {active === 'results' && <ResultsScreen onStartCalibration={startCalibration} />}
+        {active === 'alignment' && <AlignmentScreen onStartCalibration={startCalibration} />}
         {active === 'history' && <HistoryScreen onStartCalibration={startCalibration} />}
         {active === 'settings' && <SettingsScreen onStartCalibration={startCalibration} />}
       </View>

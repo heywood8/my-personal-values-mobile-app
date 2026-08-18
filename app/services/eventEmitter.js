@@ -49,6 +49,9 @@ export const EVENTS = {
   ASSESSMENTS_CHANGED: 'assessments:changed',
   // The catalogue changed (a value archived, restored, or added).
   VALUES_CHANGED: 'values:changed',
+  // An alignment check-in was written from outside its own provider — a CSV
+  // import, or a deleted custom value taking its check-in scores with it.
+  ALIGNMENT_CHANGED: 'alignment:changed',
   // Ask the shell to open the calibration flow (from the Results empty state,
   // the History screen, or Settings).
   START_CALIBRATION: 'navigate:calibration',

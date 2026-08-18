@@ -3,6 +3,12 @@
 A personal-values tracker for Android, iOS and web. Expo + React Native, SQLite
 via expo-sqlite, Drizzle for the schema, no navigation library.
 
+Two lists are tracked, not one: how much each value matters (the deck, ranked)
+and — for the values that matter most — how far behaviour currently matches them
+(the wheel, ten rings). They are separate tables, separate screens and separate
+CSV files, and the notes below say where each of those separations is
+load-bearing.
+
 Read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands and layout and
 [docs/DATABASE.md](docs/DATABASE.md) for the data model. This file is the short
 list of things that are easy to break.
@@ -56,10 +62,19 @@ one line as a `minHeight` — measured, not guessed, because line count depends 
 width, language and font scale. Rendering the name and description straight into
 the card again brings the jumping back.
 
-**Every rating stores both `score` and `normalized`.** Raw score is what the user
-sees; the 0..1 value is what every chart, sort and delta reads. They must always
-agree — after a lossy scale conversion, recompute `normalized` from the rounded
-score, never carry the old one across.
+**Every *importance* rating stores both `score` and `normalized`.** Raw score is
+what the user sees; the 0..1 value is what every chart, sort and delta reads. They
+must always agree — after a lossy scale conversion, recompute `normalized` from
+the rounded score, never carry the old one across.
+
+The rule exists because `assessments.scale` is a per-assessment fact the reader
+can change, so a raw 4 means different things in different records. A rating table
+may omit `normalized` only where its scale is fixed for all time and is not a
+per-record fact. `alignment_ratings` is the one such case — the wheel has ten
+rings and always will — and it derives the 0..1 reading on demand in
+`app/utils/alignment.js`. Adding the column there would be a second number to keep
+in agreement with no reader for it; adding a *scale* to that table would be worse,
+because it would invite a second instrument.
 
 **`assessments.assessed_on` is UNIQUE, and that is the same-day rule.** Resolve
 through `startAssessment()`; do not add a second path that writes an assessment.
@@ -67,10 +82,48 @@ The CSV import is not an exception — it calls `startAssessment(scale, { today:
 <date from the file> })` for every record, which is what makes importing a date
 you already have an overwrite rather than a duplicate.
 
+The second list repeats the rule exactly: `alignment_checkins.checked_on` is
+UNIQUE and everything resolves through `startCheckin()`, import included. One
+difference is worth knowing — a check-in has no `completed_at`, because it is a
+short list edited in place rather than a guided run with a finish button. The
+sentence that flag used to carry is enforced by `getCheckins()` instead: *a
+check-in exists when it has at least one score*, so a day whose only answer was
+cleared stops being a record rather than becoming an entry that opens onto
+nothing.
+
 **Most important is at the top, everywhere.** The stacked rating scale deals
 "very important" first, `getRankedResults()` returns strongest-first, and the
 results screen defaults to that. One direction across the whole app: if a new
 surface orders values, it orders them that way unless the user flips it.
+
+**The wheel's membership is derived, and the wheel is only for the top band.**
+`trackedValues()` takes the latest *completed* assessment's ranked results and
+keeps what `priorityBand()` calls `core` — which on the qualitative scale is
+exactly the step labelled "very important", and on 1..5 and 1..10 is the same rule
+expressed in the normalised score. Two things it also does, both load-bearing:
+it drops **archived** values, because the results screen shows a record and this
+asks a present-tense question (and `retireRemovedValues()` archives dropped
+catalogue entries in bulk on upgrade, ratings intact); and the screen adds back
+anything **today already carries a score for**, because reopening a calibration
+clears `completed_at` and an abandoned recalibration would otherwise empty a wheel
+that is sitting there fully answered.
+
+**A past check-in is drawn from its own rows.** Never from today's membership: a
+recalibration changes what the wheel asks about, so redrawing June's answers on
+July's wheel would invent sectors that were never scored and hide the ones that
+were. Sector *numbers* are a legend key for the wheel currently on screen — they
+are never stored, exported, or used to line a value up across two dates. `valueId`
+is what does that, and it is what the dashed previous-check-in outline matches on.
+
+**On the wheel, "not answered" must not look like "zero".** The centre means "my
+behaviour does not correspond to this value", so an unanswered sector is left
+blank over a surface-coloured disc rather than filled with the track colour that
+means "the rest of the range" elsewhere. Most days start with a wheel that is
+almost entirely unanswered; drawing that as a picture of total failure would be a
+claim the reader never made. For the same reason the previous check-in appears as
+a dashed *shape* while an answer is being decided, and its number appears beside a
+row only after that row is answered — the deck's refusal to prefill is the same
+rule, and alignment is the more anchor-prone of the two measurements.
 
 **Provider order lives in `app/AppProviders.js` only.** Both `App.js` and the test
 wrappers import it. Listing providers separately is how the app once shipped a
@@ -105,11 +158,22 @@ separation as an ordered set. Reordering the slots degrades it silently. Three
 light-mode slots are below 3:1 contrast and are legal only because every surface
 using them prints a visible label beside the mark.
 
-**The CSV file is the only backup this app has.** Nothing leaves the device
+**The CSV files are the only backup this app has.** Nothing leaves the device
 otherwise, so `app/services/RecordsCsv.js` has to keep reading files older
 releases wrote: change the columns by adding, never by renaming. Import trusts
 `score` and `scale` and recomputes `normalized`, because the column can be edited
 in a spreadsheet and the stored pair has to agree.
+
+There are **two** files, and they must stay two: the ranking and the check-ins
+(`app/services/AlignmentCsv.js`). Alignment scores appended to a records file
+would be read by every already-shipped release as *importance* ratings for that
+date, replacing the record they were meant to sit beside. The cost of the split is
+that "back up my data" is now two actions, so both ends are joined by hand:
+`writePreUpdateSnapshot()` in `ApkInstaller.js` writes both files before an APK
+install (each pruned under its own prefix, or three updates leave mismatched
+halves), and the settings panel offers both. The check-ins file carries a `rings`
+column purely so it is self-describing — a database row can be migrated when the
+instrument changes and a file on somebody's phone cannot.
 
 **`app/services/ApkInstaller.js` is never imported statically.** It is the only
 module touching expo-file-system and expo-intent-launcher, and the latter has no

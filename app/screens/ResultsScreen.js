@@ -122,6 +122,13 @@ const ResultsScreen = ({ onStartCalibration }) => {
         >
           {t('csv_export')}
         </Button>
+        {/* This button exports the ranking, which is what this screen is showing.
+            A complete backup is two files now — the alignment check-ins are the
+            other — and someone whose backup habit is this button would otherwise
+            find that out at restore time. */}
+        <Text style={[styles.exportNote, { color: colors.mutedText }]}>
+          {t('csv_export_alignment_note')}
+        </Text>
 
         <Button
           mode="outlined"
@@ -154,6 +161,11 @@ const styles = StyleSheet.create({
   },
   export: {
     marginTop: SPACING.xxl,
+  },
+  exportNote: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
+    marginTop: SPACING.sm,
   },
   fill: {
     flex: 1,

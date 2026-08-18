@@ -84,3 +84,54 @@ export const ratings = sqliteTable('ratings', {
   assessmentIdx: index('idx_ratings_assessment').on(table.assessmentId),
   valueIdx: index('idx_ratings_value').on(table.valueId),
 }));
+
+/**
+ * One alignment check-in — the second trackable list.
+ *
+ * The first list asks how much a value matters. This one asks the other
+ * question the printed instrument asks: for the values that matter most, how far
+ * does your behaviour currently match them. It is a wheel of ten rings, and a
+ * check-in is one filling-in of that wheel.
+ *
+ * `checkedOn` is UNIQUE for the same reason `assessments.assessedOn` is: one
+ * record per calendar day, and a second check-in on the same day edits the first.
+ * `startCheckin()` in app/services/AlignmentDB.js is the only path to a row here,
+ * exactly as `startAssessment()` is over there.
+ *
+ * There is no `completedAt`. An assessment has one because the deck is a guided
+ * run of 47 cards with a finish button at the end; a check-in is a short list —
+ * as many rows as the reader called very important — edited in place, and a
+ * partly filled wheel is a legible answer rather than an unfinished one.
+ */
+export const alignmentCheckins = sqliteTable('alignment_checkins', {
+  id: text('id').primaryKey(),
+  checkedOn: text('checked_on').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => ({
+  dateIdx: unique('idx_alignment_checkins_date').on(table.checkedOn),
+}));
+
+/**
+ * One value's alignment score within one check-in.
+ *
+ * Note what is NOT here: a `normalized` column. `ratings` carries one because the
+ * importance scale is a per-assessment fact the reader is free to change, so a
+ * raw 4 means different things in different records. The wheel has ten rings and
+ * always will — there is one alignment scale, so the raw score is already
+ * comparable across every check-in, and a second copy of the same number would be
+ * a column with no reader. See app/utils/alignment.js.
+ */
+export const alignmentRatings = sqliteTable('alignment_ratings', {
+  id: text('id').primaryKey(),
+  checkinId: text('checkin_id').notNull().references(() => alignmentCheckins.id, { onDelete: 'cascade' }),
+  valueId: text('value_id').notNull().references(() => personalValues.id, { onDelete: 'cascade' }),
+  // 1..10 — which ring out of ten the reader's behaviour currently reaches.
+  score: integer('score').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => ({
+  pairIdx: unique('idx_alignment_ratings_checkin_value').on(table.checkinId, table.valueId),
+  checkinIdx: index('idx_alignment_ratings_checkin').on(table.checkinId),
+  valueIdx: index('idx_alignment_ratings_value').on(table.valueId),
+}));
