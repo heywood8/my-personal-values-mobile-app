@@ -9,6 +9,7 @@ import {
   getAlignmentHistory,
 } from '../services/AlignmentDB';
 import { localDateKey } from '../utils/dateUtils';
+import { useValues } from './ValuesContext';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 
 const AlignmentContext = createContext(null);
@@ -20,7 +21,15 @@ const scoresOn = (history, dateKey) => new Map(
     .map((row) => [row.valueId, row.score]),
 );
 
+/** History rows in the order the query returns them: oldest date, then deck order. */
+const inReadOrder = (rows, orderOf) => [...rows].sort((a, b) => (
+  a.checkedOn === b.checkedOn
+    ? orderOf(a.valueId) - orderOf(b.valueId)
+    : a.checkedOn.localeCompare(b.checkedOn)
+));
+
 export const AlignmentProvider = ({ children }) => {
+  const { values } = useValues();
   const [checkins, setCheckins] = useState([]);
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,8 +54,44 @@ export const AlignmentProvider = ({ children }) => {
   // act on a copy from before midnight — or from before the last reload.
   const entryRef = useRef(entry);
   const historyRef = useRef(history);
+  const valuesRef = useRef(values);
   useEffect(() => { entryRef.current = entry; }, [entry]);
   useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { valuesRef.current = values; }, [values]);
+
+  /**
+   * Write a score that just landed in the database into `history` as well.
+   *
+   * `history` is otherwise only ever assigned by `reload()`, which makes it a
+   * snapshot that silently omits everything answered in this session — and
+   * everything reads it: the coverage counts, the previous check-in, and the rows
+   * a past wheel is drawn from. The day that gets hurt is the one that has just
+   * stopped being today: open the app across midnight, tap yesterday's record as
+   * the first thing you do, and it opened onto an empty wheel, because a tap on a
+   * record row is state inside the screen and never re-renders this provider at
+   * all. Folding each write in as it succeeds is what makes the copy true
+   * continuously, instead of true only after something happens to re-read it.
+   */
+  const foldIntoHistory = useCallback((checkin, valueId, score) => {
+    setHistory((prev) => {
+      const without = prev.filter(
+        (row) => !(row.checkedOn === checkin.checkedOn && row.valueId === valueId),
+      );
+      if (score === null) return without;
+
+      const value = valuesRef.current.find((entry_) => entry_.id === valueId);
+      const order = new Map(valuesRef.current.map((entry_) => [entry_.id, entry_.displayOrder]));
+      return inReadOrder([...without, {
+        checkinId: checkin.id,
+        checkedOn: checkin.checkedOn,
+        valueId,
+        key: value?.key ?? valueId,
+        isCustom: value?.isCustom ?? false,
+        customName: value?.customName ?? null,
+        score,
+      }], (id) => order.get(id) ?? 0);
+    });
+  }, []);
 
   /** The scores that belong to the current date, whatever the state was stamped with. */
   const scoresForToday = useCallback(() => {
@@ -111,11 +156,12 @@ export const AlignmentProvider = ({ children }) => {
   /**
    * The date changed under a resident app: re-read.
    *
-   * The optimistic copy is stamped with the day it belongs to and is about to
-   * stop being the live one, so the database has to become the source again —
-   * otherwise yesterday's answers, which were only ever written optimistically,
-   * are absent from every count until the next launch. Settles in one pass:
-   * `reload` re-stamps the entry with today, and the condition is then false.
+   * A tidy-up rather than a load-bearing repair — `history` is kept true by the
+   * fold below, so nothing depends on this firing. It cannot be depended on
+   * either: it is keyed on a date computed during THIS provider's render, and the
+   * screen's own state (which check-in is being looked at) re-renders the screen
+   * without ever re-rendering the provider. Settles in one pass, since `reload`
+   * re-stamps the entry with today.
    */
   useEffect(() => {
     if (entry.dateKey !== todayDateKey) reload();
@@ -169,10 +215,6 @@ export const AlignmentProvider = ({ children }) => {
   /** Record one value's alignment into today's check-in, creating it if needed. */
   const setAlignment = useCallback(async (valueId, score) => {
     const dateKey = localDateKey();
-    // A write is what crosses midnight here, and it stamps the new date itself —
-    // so the effect above never sees the transition, and this is where the
-    // superseded day gets re-read instead.
-    const crossedMidnight = entryRef.current.dateKey !== dateKey;
     const base = scoresForToday();
     const previousScore = base.get(valueId);
 
@@ -181,7 +223,7 @@ export const AlignmentProvider = ({ children }) => {
     try {
       const checkin = await ensureCheckin();
       await saveAlignment(checkin.id, valueId, score);
-      if (crossedMidnight) await reload();
+      foldIntoHistory(checkin, valueId, score);
       // The row may be brand new; the records list below the wheel has to know
       // about it without a full re-read of the history.
       setCheckins((prev) => (
@@ -197,7 +239,7 @@ export const AlignmentProvider = ({ children }) => {
       else reverted.set(valueId, previousScore);
       setEntry({ dateKey, scores: reverted });
     }
-  }, [ensureCheckin, scoresForToday, reload]);
+  }, [ensureCheckin, scoresForToday, foldIntoHistory]);
 
   /** Drop one value's answer for today, emptying its sector again. */
   const clearToday = useCallback(async (valueId) => {
@@ -206,7 +248,6 @@ export const AlignmentProvider = ({ children }) => {
     const previousScore = base.get(valueId);
     if (previousScore === undefined) return;
 
-    const crossedMidnight = entryRef.current.dateKey !== dateKey;
     const cleared = new Map(base);
     cleared.delete(valueId);
     setEntry({ dateKey, scores: cleared });
@@ -214,12 +255,12 @@ export const AlignmentProvider = ({ children }) => {
     try {
       const checkin = await ensureCheckin();
       await clearAlignment(checkin.id, valueId);
-      if (crossedMidnight) await reload();
+      foldIntoHistory(checkin, valueId, null);
     } catch (e) {
       console.error('[Alignment] Failed to clear a check-in score:', e);
       setEntry({ dateKey, scores: new Map(base).set(valueId, previousScore) });
     }
-  }, [ensureCheckin, scoresForToday, reload]);
+  }, [ensureCheckin, scoresForToday, foldIntoHistory]);
 
   const deleteCheckin = useCallback(async (checkinId) => {
     await dbDeleteCheckin(checkinId);
@@ -228,24 +269,17 @@ export const AlignmentProvider = ({ children }) => {
   }, [reload]);
 
   /**
-   * How many scores each date carries.
-   *
-   * `history` is exact for every date it holds, but it is re-read on an event and
-   * so knows nothing about answers written optimistically — which includes every
-   * answer given in this session. Those belong to the date the entry was stamped
-   * with, not to whatever "today" happens to be by the time this is read: an app
-   * open across midnight would otherwise report yesterday's fully answered wheel
-   * as empty in the records list, while attributing its count to a day nothing
-   * was said about.
+   * How many scores each date carries. One source, because `history` is folded
+   * into as each write lands and is therefore true for today as well as for every
+   * date behind it.
    */
   const coverage = useMemo(() => {
     const counts = new Map();
     for (const row of history) {
       counts.set(row.checkedOn, (counts.get(row.checkedOn) ?? 0) + 1);
     }
-    counts.set(entry.dateKey, entry.scores.size);
     return counts;
-  }, [history, entry]);
+  }, [history]);
 
   /**
    * The records list. Today's row is in it only while it still carries a score:
@@ -266,7 +300,6 @@ export const AlignmentProvider = ({ children }) => {
     previous,
     entriesOn,
     previousBefore,
-    hasCheckedInToday: todayScores.size > 0,
     setAlignment,
     clearToday,
     deleteCheckin,

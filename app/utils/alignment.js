@@ -106,13 +106,23 @@ export function isVeryImportant(normalized) {
  * said they are done with. Scores already recorded against such a value stay in
  * the database and in the export; it simply stops being asked about.
  *
+ * Which values those are is asked of the CATALOGUE, passed in as `archived`, and
+ * never read off the ranking. The ranking is a snapshot re-read when an
+ * assessment changes, and archiving changes the catalogue instead — so a rule
+ * applied to the snapshot takes effect in one direction only, dropping a value
+ * the moment it is archived and never bringing it back when it is restored. One
+ * source, and it answers both directions at once.
+ *
  * `sector` is a position in THIS list and nothing more. It changes whenever the
  * ranking does, so it is a legend key for one screen and is never stored,
  * exported, or used to line a value up across two dates — that is what
  * `valueId` is for.
+ *
+ * @param {Array} results ranked results, strongest first
+ * @param {Set<string>} archived ids the catalogue currently has archived
  */
-export function trackedValues(results) {
+export function trackedValues(results, archived = new Set()) {
   return (results || [])
-    .filter((result) => isVeryImportant(result.normalized) && !result.archived)
+    .filter((result) => isVeryImportant(result.normalized) && !archived.has(result.valueId))
     .map((result, index) => ({ ...result, sector: index + 1 }));
 }

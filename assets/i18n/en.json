@@ -86,7 +86,6 @@
   "history_delete_confirm_title": "Delete this calibration?",
   "history_delete_confirm_message": "The record for {{date}} and all of its ratings are removed. This cannot be undone.",
 
-  "alignment_title": "Living your values",
   "alignment_intro": "The second list. For each value you called very important, how far does your behaviour match it right now? Ten rings: the centre is \"my behaviour does not match this value\", the outer edge is \"I live fully in line with it\".",
   "alignment_outer_label": "I live fully in accordance with my values",
   "alignment_inner_label": "My behaviour does not correspond to my values",
@@ -110,7 +109,7 @@
   "alignment_delete_confirm_title": "Delete this check-in?",
   "alignment_delete_confirm_message": "The wheel recorded on {{date}} is removed. This cannot be undone.",
   "alignment_record_coverage": "filled in: {{count}}",
-  "alignment_open_record": "Open this check-in",
+  "alignment_record_open": "now showing",
   "alignment_viewing_title": "Check-in of {{date}}",
   "alignment_viewing_body": "A past wheel, drawn from what it recorded. Only today's can be answered.",
   "alignment_back_to_today": "Back to today",

@@ -15,7 +15,7 @@ import { valueName } from '../utils/valueNames';
 import { formatDateKey, localDateKey } from '../utils/dateUtils';
 import { ALIGNMENT_INPUT_SCALE, ALIGNMENT_MAX, trackedValues } from '../utils/alignment';
 import {
-  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH,
+  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, HEIGHTS,
 } from '../styles/designTokens';
 
 /**
@@ -71,19 +71,17 @@ const AlignmentScreen = ({ onStartCalibration }) => {
    */
   const valuesById = useMemo(() => new Map(values.map((value) => [value.id, value])), [values]);
 
+  const archivedIds = useMemo(
+    () => new Set(values.filter((value) => value.archived).map((value) => value.id)),
+    [values],
+  );
+
   /**
-   * The current ask.
-   *
-   * `trackedValues()` drops archived values off the ranking it is handed, and
-   * that ranking is a snapshot: `results` is re-read when an assessment changes,
-   * and archiving a value changes the catalogue instead. So a value archived
-   * from the deck panel while the app is open would stay on the wheel — and stay
-   * answerable — until the next launch. The catalogue is the live copy, so it
-   * gets the last word.
+   * The current ask. The archived set comes from the catalogue rather than from
+   * the ranking, because the ranking is a snapshot and archiving is not — see
+   * `trackedValues`.
    */
-  const tracked = useMemo(() => trackedValues(results).filter(
-    (value) => !valuesById.get(value.valueId)?.archived,
-  ), [results, valuesById]);
+  const tracked = useMemo(() => trackedValues(results, archivedIds), [results, archivedIds]);
 
   const todayRows = useMemo(() => {
     const asked = new Set(tracked.map((value) => value.valueId));
@@ -114,6 +112,20 @@ const AlignmentScreen = ({ onStartCalibration }) => {
    * and it never lines a value up across two dates. That is what `valueId` is
    * for, and it is what the dashed outline and the "was" below are matched on.
    */
+  /**
+   * Most important is at the top, everywhere — including inside a record.
+   *
+   * A past check-in's own rows come back in deck order, which is the order they
+   * were stored in and no kind of ranking at all. The importance ranking of the
+   * day it was filled in is not recoverable, so the current one is used and
+   * anything it does not name follows in deck order. That keeps a record's rows
+   * reading the same direction as today's, which is what the whole app does.
+   */
+  const rankOf = useMemo(() => {
+    const positions = new Map(tracked.map((value, index) => [value.valueId, index]));
+    return (valueId) => (positions.has(valueId) ? positions.get(valueId) : Number.MAX_SAFE_INTEGER);
+  }, [tracked]);
+
   const view = useMemo(() => {
     const today = localDateKey();
     // Not `!viewing`: selecting today's own record from the list below sets a
@@ -122,7 +134,9 @@ const AlignmentScreen = ({ onStartCalibration }) => {
     // this session, because those are written optimistically. The screen went
     // blank exactly there.
     const isToday = !viewing || viewing === today;
-    const entries = isToday ? null : entriesOn(viewing);
+    const entries = isToday ? null : [...entriesOn(viewing)].sort(
+      (a, b) => rankOf(a.valueId) - rankOf(b.valueId),
+    );
     return {
       date: isToday ? today : viewing,
       isToday,
@@ -132,7 +146,7 @@ const AlignmentScreen = ({ onStartCalibration }) => {
         : todayScores,
       previous: isToday ? previous : previousBefore(viewing),
     };
-  }, [viewing, entriesOn, todayRows, todayScores, previous, previousBefore]);
+  }, [viewing, entriesOn, todayRows, todayScores, previous, previousBefore, rankOf]);
 
   const sectors = useMemo(() => view.rows.map((row) => ({
     valueId: row.valueId,
@@ -144,6 +158,18 @@ const AlignmentScreen = ({ onStartCalibration }) => {
   const ratedCount = useMemo(
     () => sectors.filter((sector) => sector.score !== undefined).length,
     [sectors],
+  );
+
+  /**
+   * Whether the earlier check-in shares any value with the wheel on screen.
+   *
+   * Two check-ins routinely cover different sets, and when they overlap in
+   * nothing the wheel draws no outline at all — so the sentence pointing at "the
+   * dotted outline" had nothing to point at.
+   */
+  const previousIsDrawn = useMemo(
+    () => !!view.previous && sectors.some((sector) => view.previous.scores.has(sector.valueId)),
+    [view, sectors],
   );
 
   const handleDelete = useCallback((checkin) => {
@@ -237,121 +263,141 @@ const AlignmentScreen = ({ onStartCalibration }) => {
           </View>
         )}
 
-        {/* The two annotations from the instrument, kept as sentences on the
+        {/* Nothing is on the wheel, but there are records to look through: the
+            annotations, the wheel and the rating rows all describe a wheel that
+            is not being drawn, so none of them is rendered. The records list
+            below still is — it is the way back to a check-in that does have
+            something in it. */}
+        {view.rows.length === 0 && (
+          <View style={[styles.notice, { backgroundColor: colors.selected }]} testID="alignment-notice">
+            <Text style={[styles.viewingTitle, { color: colors.text }]}>
+              {t('alignment_none_title')}
+            </Text>
+            <Text style={[styles.intro, { color: colors.mutedText }]}>
+              {t('alignment_none_body')}
+            </Text>
+          </View>
+        )}
+
+        {view.rows.length > 0 && (
+          <>
+            {/* The two annotations from the instrument, kept as sentences on the
             app's type scale rather than pushed inside the SVG. Position carries
             the binding — the rim's sentence above the wheel, the centre's below
             it — and `alignment_row_hint` names both ends in words for the reader
             who is about to answer. */}
-        <Text style={[styles.edgeLabel, { color: colors.text }]} testID="alignment-outer-label">
-          {t('alignment_outer_label')}
-        </Text>
+            <Text style={[styles.edgeLabel, { color: colors.text }]} testID="alignment-outer-label">
+              {t('alignment_outer_label')}
+            </Text>
 
-        <AlignmentWheel
-          sectors={sectors}
-          previousScores={view.previous?.scores}
-          accessibilityLabel={t('alignment_wheel_label', {
-            rated: ratedCount,
-            total: view.rows.length,
-          })}
-        />
+            <AlignmentWheel
+              sectors={sectors}
+              previousScores={view.previous?.scores}
+              accessibilityLabel={t('alignment_wheel_label', {
+                rated: ratedCount,
+                total: view.rows.length,
+              })}
+            />
 
-        <Text style={[styles.edgeLabel, { color: colors.text }]} testID="alignment-inner-label">
-          {t('alignment_inner_label')}
-        </Text>
+            <Text style={[styles.edgeLabel, { color: colors.text }]} testID="alignment-inner-label">
+              {t('alignment_inner_label')}
+            </Text>
 
-        {view.isToday && (
-          <Text style={[styles.status, { color: colors.mutedText }]} testID="alignment-status">
-            {ratedCount > 0
-              ? t('alignment_checked_today', { rated: ratedCount, total: view.rows.length })
-              : t('alignment_not_checked_today')}
-          </Text>
-        )}
+            {view.isToday && (
+              <Text style={[styles.status, { color: colors.mutedText }]} testID="alignment-status">
+                {ratedCount > 0
+                  ? t('alignment_checked_today', { rated: ratedCount, total: view.rows.length })
+                  : t('alignment_not_checked_today')}
+              </Text>
+            )}
 
-        {!!view.previous && (
-          <Text
-            style={[styles.status, { color: colors.mutedText }]}
-            testID="alignment-previous-hint"
-          >
-            {t('alignment_previous_hint', {
-              date: formatDateKey(view.previous.checkedOn, language),
-              count: view.previous.count,
-            })}
-          </Text>
-        )}
-
-        {view.isToday && (
-          <Text style={[styles.rowHint, { color: colors.mutedText }]}>
-            {t('alignment_row_hint')}
-          </Text>
-        )}
-
-        <View style={styles.rows}>
-          {sectors.map((sector, index) => {
-            const rated = sector.score !== undefined;
-            // Shown only once this row has been answered: feedback on what was
-            // just given, rather than a number sitting above the buttons while
-            // the reader is still deciding.
-            const was = rated ? view.previous?.scores.get(sector.valueId) : undefined;
-
-            return (
-              <View
-                key={sector.valueId}
-                style={[styles.row, { borderColor: colors.border }]}
-                testID={`alignment-row-${sector.key}`}
+            {previousIsDrawn && (
+              <Text
+                style={[styles.status, { color: colors.mutedText }]}
+                testID="alignment-previous-hint"
               >
-                <View style={styles.rowHeader}>
-                  {/* The number IS the sector's label on the wheel — this list is
+                {t('alignment_previous_hint', {
+                  date: formatDateKey(view.previous.checkedOn, language),
+                  count: view.previous.count,
+                })}
+              </Text>
+            )}
+
+            {view.isToday && (
+              <Text style={[styles.rowHint, { color: colors.mutedText }]}>
+                {t('alignment_row_hint')}
+              </Text>
+            )}
+
+            <View style={styles.rows}>
+              {sectors.map((sector, index) => {
+                const rated = sector.score !== undefined;
+                // Shown only once this row has been answered: feedback on what was
+                // just given, rather than a number sitting above the buttons while
+                // the reader is still deciding.
+                const was = rated ? view.previous?.scores.get(sector.valueId) : undefined;
+
+                return (
+                  <View
+                    key={sector.valueId}
+                    style={[styles.row, { borderColor: colors.border }]}
+                    testID={`alignment-row-${sector.key}`}
+                  >
+                    <View style={styles.rowHeader}>
+                      {/* The number IS the sector's label on the wheel — this list is
                       the legend, which is what lets the wheel stay readable at
                       twenty-five values as well as at eight. */}
-                  <View style={[styles.badge, { backgroundColor: colors.selected }]}>
-                    <Text style={[styles.badgeLabel, { color: colors.text }]}>
-                      {String(sector.sector)}
-                    </Text>
-                  </View>
+                      <View style={[styles.badge, { backgroundColor: colors.selected }]}>
+                        <Text style={[styles.badgeLabel, { color: colors.text }]}>
+                          {String(sector.sector)}
+                        </Text>
+                      </View>
 
-                  <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-                    {valueName(view.rows[index], t)}
-                  </Text>
+                      <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
+                        {valueName(view.rows[index], t)}
+                      </Text>
 
-                  <Text style={[styles.score, { color: colors.mutedText }]}>
-                    {rated ? `${sector.score}/${ALIGNMENT_MAX}` : t('alignment_unrated')}
-                  </Text>
+                      <Text style={[styles.score, { color: colors.mutedText }]}>
+                        {rated ? `${sector.score}/${ALIGNMENT_MAX}` : t('alignment_unrated')}
+                      </Text>
 
-                  {view.isToday && rated && (
-                    <IconButton
-                      icon="close"
-                      size={16}
-                      iconColor={colors.mutedText}
-                      accessibilityLabel={t('alignment_clear')}
-                      onPress={() => clearToday(sector.valueId)}
-                      testID={`alignment-clear-${sector.key}`}
-                    />
-                  )}
-                </View>
+                      {view.isToday && rated && (
+                        <IconButton
+                          icon="close"
+                          size={16}
+                          iconColor={colors.mutedText}
+                          accessibilityLabel={t('alignment_clear')}
+                          onPress={() => clearToday(sector.valueId)}
+                          testID={`alignment-clear-${sector.key}`}
+                        />
+                      )}
+                    </View>
 
-                {/* The dashed outline is a shape, and a shape cannot be read
+                    {/* The dashed outline is a shape, and a shape cannot be read
                     aloud — this is the same comparison in words. */}
-                {was !== undefined && (
-                  <Text
-                    style={[styles.was, { color: colors.mutedText }]}
-                    testID={`alignment-was-${sector.key}`}
-                  >
-                    {t('alignment_was', { score: `${was}/${ALIGNMENT_MAX}` })}
-                  </Text>
-                )}
+                    {was !== undefined && (
+                      <Text
+                        style={[styles.was, { color: colors.mutedText }]}
+                        testID={`alignment-was-${sector.key}`}
+                      >
+                        {t('alignment_was', { score: `${was}/${ALIGNMENT_MAX}` })}
+                      </Text>
+                    )}
 
-                {view.isToday && (
-                  <ScaleInput
-                    scaleId={ALIGNMENT_INPUT_SCALE}
-                    value={sector.score}
-                    onChange={(score) => setAlignment(sector.valueId, score)}
-                    testIDPrefix={`alignment-${sector.key}`}
-                  />
-                )}
-              </View>
-            );
-          })}
-        </View>
+                    {view.isToday && (
+                      <ScaleInput
+                        scaleId={ALIGNMENT_INPUT_SCALE}
+                        value={sector.score}
+                        onChange={(score) => setAlignment(sector.valueId, score)}
+                        testIDPrefix={`alignment-${sector.key}`}
+                      />
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {checkins.length > 0 && (
           <View style={styles.section}>
@@ -377,12 +423,34 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                     style={styles.recordOpen}
                     onPress={() => setViewing(open ? null : checkin.checkedOn)}
                     accessibilityRole="button"
-                    accessibilityLabel={t('alignment_open_record')}
-                    accessibilityState={{ selected: open }}
+                    // Named by the row it opens. Every row reading "open this
+                    // check-in" leaves a screen reader with a list of identical
+                    // buttons, and which one is open said in colour only.
+                    accessibilityLabel={[
+                      formatDateKey(checkin.checkedOn, language),
+                      t('alignment_record_coverage', {
+                        count: coverage.get(checkin.checkedOn) ?? 0,
+                      }),
+                      // Said in the name, because neither accessibilityState
+                      // flag reaches the DOM on react-native-web — verified in
+                      // the browser — and the open row would otherwise be marked
+                      // by its weight and colour alone.
+                      open ? t('alignment_record_open') : null,
+                    ].filter(Boolean).join(' — ')}
+                    // `expanded`, not `selected`: the row opens the wheel above
+                    // it, and it is the state a button actually exposes — web
+                    // maps this to aria-expanded, while aria-selected is dropped
+                    // on a button role and the open row would be marked by its
+                    // weight and colour alone.
+                    accessibilityState={{ expanded: open }}
                     testID={`open-checkin-${checkin.checkedOn}`}
                   >
                     <Text
-                      style={[styles.recordDate, { color: open ? colors.primary : colors.text }]}
+                      style={[
+                        styles.recordDate,
+                        open && styles.recordDateOpen,
+                        { color: open ? colors.primary : colors.text },
+                      ]}
                     >
                       {formatDateKey(checkin.checkedOn, language)}
                     </Text>
@@ -464,11 +532,21 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
   },
+  notice: {
+    borderRadius: BORDER_RADIUS.md,
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+  },
   recordCoverage: {
     fontSize: FONT_SIZE.sm,
   },
   recordDate: {
     fontSize: FONT_SIZE.base,
+  },
+  recordDateOpen: {
+    // Weight as well as colour: which record is open must survive a monochrome
+    // or colour-vision-deficient reading, as everything else in this app does.
+    fontWeight: '700',
   },
   recordOpen: {
     flex: 1,
@@ -490,6 +568,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: SPACING.sm,
+    // Tall enough for the clear button whether or not it is there. Without it
+    // the row grew the moment it was answered and pushed every row below it
+    // down — the list-shaped version of the deck's rule that the rating buttons
+    // do not move under the thumb.
+    minHeight: HEIGHTS.scaleStep,
   },
   rowHint: {
     fontSize: FONT_SIZE.sm,

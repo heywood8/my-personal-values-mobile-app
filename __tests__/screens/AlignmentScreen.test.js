@@ -58,8 +58,11 @@ const mount = async (testID = 'alignment-screen') => {
   await waitFor(() => expect(screen.getByTestId(testID)).toBeTruthy());
 };
 
+// queryAll rather than getAll: "no rows at all" is a legitimate state of this
+// screen — nothing is tracked but there are records to look through — and
+// getAllByTestId throws on it instead of returning [].
 const rowKeys = () => screen
-  .getAllByTestId(/^alignment-row-/)
+  .queryAllByTestId(/^alignment-row-/)
   .map((row) => row.props.testID.replace('alignment-row-', ''));
 
 describe('who is on the wheel', () => {
@@ -96,6 +99,24 @@ describe('who is on the wheel', () => {
 
     await waitFor(() => expect(rowKeys()).toEqual(['health']));
     expect(screen.queryByTestId('alignment-love-input')).toBeNull();
+  });
+
+  it('puts a restored value back without waiting for a relaunch', async () => {
+    // Archived before the ranking was read, so the snapshot carries the flag —
+    // which is the case that stayed broken while the rule was applied to the
+    // snapshot as well as to the catalogue. Restoring updates the catalogue and
+    // nothing else, so a rule reading the snapshot never hears about it.
+    await rank({ health: 5, love: 5 });
+    await setValueArchived('love', true);
+    await mount();
+    expect(rowKeys()).toEqual(['health']);
+
+    await act(async () => {
+      await setValueArchived('love', false);
+      appEvents.emit(EVENTS.VALUES_CHANGED);
+    });
+
+    await waitFor(() => expect(rowKeys()).toEqual(['health', 'love']));
   });
 
   it('says so, without sending the reader back through the deck, when nothing reached the top', async () => {
@@ -211,6 +232,16 @@ describe('the comparison with last time', () => {
     await waitFor(() => expect(screen.getByTestId('alignment-was-health')).toHaveTextContent(/was 3\/10/));
   });
 
+  it('says nothing about a dotted outline when none is drawn', async () => {
+    // Two check-ins routinely cover different sets. Sharing nothing means no
+    // outline at all, and a sentence pointing at it had nothing to point at.
+    await rank({ health: 5, love: 5 });
+    await checkIn(EARLIER, { order: 6 });
+    await mount();
+
+    expect(screen.queryByTestId('alignment-previous-hint')).toBeNull();
+  });
+
   it('says how much of the earlier check-in there is to compare against', async () => {
     await rank({ health: 5, love: 5 });
     await checkIn(EARLIER, { health: 3 });
@@ -266,6 +297,74 @@ describe('across midnight', () => {
 });
 
 describe('looking back', () => {
+  it('opens a record whose answers were only ever written in this session', async () => {
+    // The sharp version of the midnight case: the FIRST thing done after the
+    // date rolls over is a read. Tapping a record row is state inside the
+    // screen, so the provider never re-renders and no repair effect fires — the
+    // copy the wheel is drawn from has to be true already.
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    try {
+      jest.setSystemTime(new Date(2026, 7, 18, 23, 55, 0));
+
+      await rank({ health: 5, love: 5 }, { on: '2026-08-18' });
+      await mount();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('alignment-health-step-7'));
+      });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('alignment-love-step-3'));
+      });
+      await waitFor(async () => expect(await getAlignmentHistory()).toHaveLength(2));
+
+      jest.setSystemTime(new Date(2026, 7, 19, 0, 30, 0));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('open-checkin-2026-08-18'));
+      });
+
+      expect(screen.getByTestId('alignment-viewing')).toBeTruthy();
+      expect(rowKeys().sort()).toEqual(['health', 'love']);
+      expect(screen.getByTestId('alignment-wheel')).toBeTruthy();
+      expect(screen.getByTestId('alignment-sector-health')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reads a record most-important-first, like everything else', async () => {
+    // Its own rows come back in deck order, which is no ranking at all. The
+    // ranking of the day it was filled in is not recoverable, so the current one
+    // orders it — and the app reads one direction throughout.
+    await rank({ love: 5, health: 4 });
+    await checkIn(EARLIER, { health: 6, love: 2 });
+    await mount();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${EARLIER}`));
+    });
+
+    expect(rowKeys()).toEqual(['love', 'health']);
+  });
+
+  it('offers the records even when nothing is tracked any more', async () => {
+    // Nothing is in the top band, but there are check-ins to look through. The
+    // annotations, the wheel and the rating rows all describe a wheel that is
+    // not being drawn; the way back to a record must survive anyway.
+    await rank({ order: 3 });
+    await checkIn(EARLIER, { order: 6 });
+    await mount();
+
+    expect(screen.getByTestId('alignment-notice')).toBeTruthy();
+    expect(screen.queryByTestId('alignment-wheel')).toBeNull();
+    expect(screen.queryByTestId('alignment-outer-label')).toBeNull();
+    expect(rowKeys()).toEqual([]);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${EARLIER}`));
+    });
+    expect(rowKeys()).toEqual(['order']);
+    expect(screen.getByTestId('alignment-wheel')).toBeTruthy();
+  });
+
   it('draws a past check-in from its own rows, not from today\'s ranking', async () => {
     // Family was very important in January and was scored then; the July ranking
     // does not include it. Its wheel still has to show what it recorded.
@@ -324,6 +423,23 @@ describe('looking back', () => {
     expect(screen.getByTestId('alignment-sector-health')).toBeTruthy();
     // Still answerable, which is the whole difference between today and a record.
     expect(screen.getByTestId('alignment-love-input')).toBeTruthy();
+  });
+
+  it('names each record row, and says which one is open', async () => {
+    // A list of buttons all called "open this check-in" tells a screen reader
+    // nothing, and neither accessibilityState flag reaches the DOM on
+    // react-native-web — so the state is said in the name.
+    await rank({ health: 5 });
+    await checkIn(EARLIER, { health: 6 });
+    await mount();
+
+    const row = () => screen.getByTestId(`open-checkin-${EARLIER}`);
+    expect(row().props.accessibilityLabel).toContain('filled in: 1');
+    expect(row().props.accessibilityLabel).not.toContain('now showing');
+
+    await act(async () => { fireEvent.press(row()); });
+
+    expect(row().props.accessibilityLabel).toContain('now showing');
   });
 
   it('lists a check-in only once it holds a score', async () => {
