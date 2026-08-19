@@ -75,7 +75,7 @@ export const SHARE_FORMAT = 1;
  * needs nothing installed. A fork can point its own builds elsewhere with
  * EXPO_SHARE_URL; see app.config.js.
  */
-export const DEFAULT_SHARE_URL = 'https://heywood8.github.io/my-personal-values-mobile-app/';
+export const DEFAULT_SHARE_URL = 'https://values.heywood8.com/';
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
