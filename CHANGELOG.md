@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.10.0...values-v0.11.0) (2026-08-19)
+
+
+### Features
+
+* **web:** serve the site from values.heywood8.com ([#51](https://github.com/heywood8/my-personal-values-mobile-app/issues/51)) ([cfaae69](https://github.com/heywood8/my-personal-values-mobile-app/commit/cfaae69fcd27248f80059cfbfec96236dd96f2f7))
+
 ## [0.10.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.9.0...values-v0.10.0) (2026-08-19)
 
 
