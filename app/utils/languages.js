@@ -77,3 +77,21 @@ export const detectDeviceLanguage = (supported, fallback = 'en') => {
   }
   return fallback;
 };
+
+/**
+ * Tell the document which language it is being read in.
+ *
+ * The web export ships a template with `<html lang="en">` hard-coded, and the
+ * language switch on the first card never touched it — so a reader who picked
+ * Русский got 47 Russian value names pronounced with English phonetics by a
+ * screen reader, and the page kept claiming to be English to anything else that
+ * asked. Native has no document to label, hence the predicate rather than a
+ * `Platform` branch: this is a capability the platform either has or does not.
+ *
+ * @returns {boolean} whether there was a document to label.
+ */
+export const applyDocumentLanguage = (code) => {
+  if (typeof document === 'undefined' || !document.documentElement) return false;
+  document.documentElement.lang = code;
+  return true;
+};

@@ -116,6 +116,22 @@ describe('LocalizationProvider', () => {
     await waitFor(() => expect(screen.getByTestId('interpolated')).toHaveTextContent('3 of 48'));
   });
 
+  // On the web the document keeps claiming to be English otherwise, and a
+  // screen reader pronounces 47 Russian value names with English phonetics.
+  it('labels the document with the language on screen', async () => {
+    const element = { lang: 'en' };
+    global.document = { documentElement: element };
+    try {
+      await setPreference(PREF_KEYS.LANGUAGE, 'ru');
+
+      await renderProbe();
+
+      await waitFor(() => expect(element.lang).toBe('ru'));
+    } finally {
+      delete global.document;
+    }
+  });
+
   it('drops the chosen language when the database is reset', async () => {
     await setPreference(PREF_KEYS.LANGUAGE, 'ru');
     await renderProbe();

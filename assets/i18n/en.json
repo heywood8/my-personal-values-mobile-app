@@ -29,6 +29,7 @@
 
   "assessment_title": "Calibration",
   "assessment_progress": "{{current}} of {{total}}",
+  "assessment_progress_label": "Calibration progress",
   "assessment_rated_count": "{{count}} rated",
   "assessment_unrated_remaining": "{{count}} still unrated",
   "assessment_finish": "Finish",

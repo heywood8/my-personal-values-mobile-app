@@ -544,18 +544,19 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                       t('alignment_record_coverage', {
                         count: coverage.get(checkin.checkedOn) ?? 0,
                       }),
-                      // Said in the name, because neither accessibilityState
-                      // flag reaches the DOM on react-native-web — verified in
-                      // the browser — and the open row would otherwise be marked
-                      // by its weight and colour alone.
+                      // Said in the name as well as in `aria-expanded`: a
+                      // record row is a date and a coverage count, and "which
+                      // one am I looking at" is worth stating outright rather
+                      // than leaving to a state flag the reader has to ask for.
                       open ? t('alignment_record_open') : null,
                     ].filter(Boolean).join(' — ')}
                     // `expanded`, not `selected`: the row opens the wheel above
-                    // it, and it is the state a button actually exposes — web
-                    // maps this to aria-expanded, while aria-selected is dropped
-                    // on a button role and the open row would be marked by its
-                    // weight and colour alone.
-                    accessibilityState={{ expanded: open }}
+                    // it, and it is the state a button actually exposes —
+                    // `aria-selected` is dropped on a button role. Written as an
+                    // `aria-*` prop because react-native-web ignores
+                    // `accessibilityState`; React Native folds it back for
+                    // native.
+                    aria-expanded={open}
                     testID={`open-checkin-${checkin.checkedOn}`}
                   >
                     <Text

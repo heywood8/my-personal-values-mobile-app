@@ -96,7 +96,8 @@ const TrendGrid = ({
             onPress={() => onToggle(item.valueId)}
             disabled={atCap}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: !!focused, disabled: atCap }}
+            aria-checked={!!focused}
+            aria-disabled={atCap}
             accessibilityLabel={item.name}
             testID={`trend-card-${item.key}`}
             style={[

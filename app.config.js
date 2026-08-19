@@ -82,6 +82,22 @@ module.exports = {
       output: 'single',
       bundler: 'metro',
       favicon: './assets/favicon.png',
+      // Both of these become `<meta>` tags in the exported index.html —
+      // `createTemplateHtmlFromExpoConfigAsync` reads them off `expo.web`, which
+      // is why neither needs a forked HTML template. The description is the one
+      // Lighthouse asks for and the one a link preview shows: the site renders
+      // client-side into an empty `#root`, so without it a crawler has nothing
+      // at all to quote, and the "share with a friend" links this app exists to
+      // hand out are exactly the ones being previewed.
+      //
+      // English only, unavoidably — there is one static document and the
+      // language is not known until the app has started. The runtime keeps
+      // `<html lang>` honest instead (see applyDocumentLanguage).
+      description:
+        'Rate a deck of 47 personal values, see how they rank against each other, '
+        + 'and track how far your behaviour matches them. Everything stays on '
+        + 'your device.',
+      themeColor: '#ffffff',
     },
     ...(WEB_BASE_URL && { experiments: { baseUrl: WEB_BASE_URL } }),
     extra: {

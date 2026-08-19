@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 import enTranslations from '../../assets/i18n/en.json';
 import { getPreference, setPreference, deletePreference, PREF_KEYS } from '../services/PreferencesDB';
 import { appEvents, EVENTS } from '../services/eventEmitter';
-import { detectDeviceLanguage } from '../utils/languages';
+import { applyDocumentLanguage, detectDeviceLanguage } from '../utils/languages';
 
 const defaultLang = 'en';
 
@@ -122,6 +122,12 @@ export function LocalizationProvider({ children }) {
       console.warn('[Localization] Could not persist the language:', e);
     }
   }, []);
+
+  // Keep `<html lang>` in step with the language actually on screen. A no-op
+  // off the web, where there is no document to label.
+  useEffect(() => {
+    applyDocumentLanguage(language);
+  }, [language]);
 
   const t = useCallback(
     (key, params) => interpolate(loadTranslations(language)?.[key] || key, params),
