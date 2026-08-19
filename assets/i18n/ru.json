@@ -100,6 +100,7 @@
   "alignment_checked_today": "Отметка за сегодня — заполнено: {{rated}} из {{total}}.",
   "alignment_not_checked_today": "Сегодня отметки ещё нет. Ответьте в любой строке — и сегодняшний день запишется.",
   "alignment_previous_hint": "Пунктиром показана отметка от {{date}} — там заполнено: {{count}}.",
+  "alignment_sector_hint": "Наведите на сектор или коснитесь его, чтобы увидеть, какая это ценность.",
   "alignment_row_hint": "1 — центр колеса, 10 — внешний край.",
   "alignment_was": "было {{score}}",
   "alignment_unrated": "Нет ответа",

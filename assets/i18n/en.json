@@ -100,6 +100,7 @@
   "alignment_checked_today": "Checked in today — filled in: {{rated}} of {{total}}.",
   "alignment_not_checked_today": "No check-in today yet. Answer one row and today is recorded.",
   "alignment_previous_hint": "The dotted outline is the check-in of {{date}} — filled in there: {{count}}.",
+  "alignment_sector_hint": "Point at a sector — or tap one — to see which value it stands for.",
   "alignment_row_hint": "1 is the centre of the wheel, 10 is the outer edge.",
   "alignment_was": "was {{score}}",
   "alignment_unrated": "Not answered",
