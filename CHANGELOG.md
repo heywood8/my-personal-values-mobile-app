@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.6.0...values-v0.7.0) (2026-08-19)
+
+
+### Features
+
+* **results:** share a ranking as a link that carries it ([#39](https://github.com/heywood8/my-personal-values-mobile-app/issues/39)) ([5e62b88](https://github.com/heywood8/my-personal-values-mobile-app/commit/5e62b88c6424b54ab18f37b688fffc8fb138f2e0))
+
+
+### Bug Fixes
+
+* **alignment:** make the wheel's copies of the truth stay true ([#38](https://github.com/heywood8/my-personal-values-mobile-app/issues/38)) ([534831d](https://github.com/heywood8/my-personal-values-mobile-app/commit/534831d30121290fdb12cb16c5e8ce9a89028694))
+
 ## [0.6.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.5.1...values-v0.6.0) (2026-08-18)
 
 
