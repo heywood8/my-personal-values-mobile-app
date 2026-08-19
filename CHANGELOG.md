@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.11.0...values-v1.0.0) (2026-08-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **backup:** save and restore everything as one file, and freeze the deck ([#55](https://github.com/heywood8/my-personal-values-mobile-app/issues/55))
+
+### Features
+
+* **backup:** save and restore everything as one file, and freeze the deck ([#55](https://github.com/heywood8/my-personal-values-mobile-app/issues/55)) ([69bf969](https://github.com/heywood8/my-personal-values-mobile-app/commit/69bf969d341d3f20def02a0e7eb2e44bb4fae9ac))
+
+
+### Bug Fixes
+
+* **a11y:** write accessibility state as aria props, and describe the page ([#53](https://github.com/heywood8/my-personal-values-mobile-app/issues/53)) ([b2b2d33](https://github.com/heywood8/my-personal-values-mobile-app/commit/b2b2d33a4b7ee046300ea9135fcfa7fe1eb5433f))
+
 ## [0.11.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.10.0...values-v0.11.0) (2026-08-19)
 
 
