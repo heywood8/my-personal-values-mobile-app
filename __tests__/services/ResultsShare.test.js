@@ -23,21 +23,30 @@ const t = (key) => en[key] || key;
 const assessment = { assessedOn: '2026-08-12', scale: SCALE_IDS.NUMERIC_5 };
 
 const results = [
-  { key: 'love', isCustom: false, customName: null, score: 5, normalized: 1 },
-  { key: 'health', isCustom: false, customName: null, score: 4, normalized: 0.75 },
-  { key: 'learning', isCustom: false, customName: null, score: 1, normalized: 0 },
+  { key: 'love', valueId: 'love', isCustom: false, customName: null, score: 5, normalized: 1 },
+  { key: 'health', valueId: 'health', isCustom: false, customName: null, score: 4, normalized: 0.75 },
+  { key: 'learning', valueId: 'learning', isCustom: false, customName: null, score: 1, normalized: 0 },
 ];
 
-const codeFor = (rows = results, meta = assessment) => encodeShareCode(
-  buildSharePayload(meta, rows, (value) => value.customName || value.key),
+const codeFor = (rows = results, meta = assessment, alignment = null) => encodeShareCode(
+  buildSharePayload(meta, rows, (value) => value.customName || value.key, alignment),
 );
 
+/** A check-in as the share hook hands it over: keyed by value id, with its date. */
+const checkin = (scores, checkedOn = '2026-08-13') => ({
+  checkedOn,
+  scores: new Map(Object.entries(scores)),
+});
+
 /** A code with a header and rows this release would never write itself. */
-const handMade = ([format, assessedOn, scale], entries = [['love', 5]]) => encodeShareCode({
+const handMade = ([format, assessedOn, scale, checkedOn = null], entries = [['love', 5]]) => encodeShareCode({
   format,
   assessedOn,
   scale,
-  entries: entries.map(([key, score, name = '']) => ({ key, score, name })),
+  checkedOn,
+  entries: entries.map(([key, score, name = '', alignment = null]) => ({
+    key, score, name, alignment,
+  })),
 });
 
 describe('a shared code', () => {
@@ -205,6 +214,90 @@ describe('rendering what arrived', () => {
         normalized: expect.any(Number),
       }));
     }
+  });
+});
+
+describe('the wheel, when it is sent along', () => {
+  const withWheel = () => codeFor(results, assessment, checkin({ love: 8, health: 3 }));
+
+  it('carries one check-in score per value, and the date it was filled in', () => {
+    const { payload } = decodeShareCode(withWheel());
+
+    expect(payload.checkedOn).toBe('2026-08-13');
+    expect(payload.entries.map((entry) => [entry.key, entry.alignment]))
+      .toEqual([['love', 8], ['health', 3], ['learning', null]]);
+  });
+
+  it('leaves the ranking’s own columns exactly where they were', () => {
+    // The whole reason this did not need a format bump: the wheel is a column
+    // AFTER the ones every shipped release already reads, so a reader that has
+    // never heard of it takes the first three and ignores the rest.
+    const columns = (code) => decodeShareCode(code).payload.entries
+      .map((entry) => [entry.key, entry.score, entry.name]);
+
+    expect(columns(withWheel())).toEqual(columns(codeFor()));
+  });
+
+  it('keeps a custom value’s name and its wheel score together', () => {
+    // The name column sits between the two, so an entry with a score and no name
+    // has to write the name empty rather than let the score slide into it.
+    const rows = [
+      { key: 'love', valueId: 'love', isCustom: false, score: 5, normalized: 1 },
+      { key: 'a-uuid', valueId: 'a-uuid', isCustom: true, customName: 'Sailing', score: 3, normalized: 0.5 },
+    ];
+    const { payload } = decodeShareCode(
+      codeFor(rows, assessment, checkin({ love: 9, 'a-uuid': 4 })),
+    );
+
+    expect(payload.entries).toEqual([
+      expect.objectContaining({ key: 'love', name: '', score: 5, alignment: 9 }),
+      expect.objectContaining({ key: 'a-uuid', name: 'Sailing', score: 3, alignment: 4 }),
+    ]);
+  });
+
+  it('says nothing about the wheel when the sender kept it', () => {
+    const { payload } = decodeShareCode(codeFor());
+
+    expect(payload.checkedOn).toBeNull();
+    expect(payload.entries.every((entry) => entry.alignment === null)).toBe(true);
+  });
+
+  it('drops a score the wheel cannot express without losing the row', () => {
+    // The importance rating beside it is still a perfectly good answer, so this
+    // costs the row its wheel reading and nothing else.
+    const { payload, skipped } = decodeShareCode(handMade(
+      [SHARE_FORMAT, '2026-08-12', 'numeric5', '2026-08-13'],
+      [['love', 5, '', 11], ['health', 4, '', 7]],
+    ));
+
+    expect(payload.entries.map((entry) => entry.alignment)).toEqual([null, 7]);
+    expect(skipped).toBe(0);
+  });
+
+  it('refuses to date a check-in that arrived with nothing in it', () => {
+    const { payload } = decodeShareCode(handMade(
+      [SHARE_FORMAT, '2026-08-12', 'numeric5', '2026-08-13'], [['love', 5]],
+    ));
+
+    expect(payload.checkedOn).toBeNull();
+  });
+
+  it('hands the wheel score on to whatever draws the list', () => {
+    const { payload } = decodeShareCode(withWheel());
+    const items = sharedResultItems(payload, t);
+
+    expect(items.map((item) => item.alignment)).toEqual([8, 3, null]);
+  });
+
+  it('still holds the whole shipped deck, wheel and all, in a workable link', () => {
+    const deck = catalogue.values.map((value, i) => ({
+      key: value.key, valueId: value.key, isCustom: false, score: (i % 5) + 1, normalized: 0,
+    }));
+    const scores = Object.fromEntries(deck.slice(0, 12).map((value) => [value.key, 7]));
+    const code = codeFor(deck, assessment, checkin(scores));
+
+    expect(decodeShareCode(code).payload.entries).toHaveLength(catalogue.values.length);
+    expect(code.length).toBeLessThan(1400);
   });
 });
 

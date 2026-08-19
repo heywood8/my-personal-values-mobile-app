@@ -9,6 +9,7 @@ import {
   saveRating,
   completeAssessment,
 } from '../../app/services/AssessmentsDB';
+import { startCheckin, saveAlignment } from '../../app/services/AlignmentDB';
 import { __resetDatabaseHandleForTests } from '../../app/services/db';
 import { getPreference, setPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
 import { readShareCode, decodeShareCode } from '../../app/services/ResultsShare';
@@ -27,6 +28,13 @@ const recordToday = async (scores) => {
     await saveRating(assessment.id, valueId, score, SCALE_IDS.NUMERIC_5);
   }
   await completeAssessment(assessment.id);
+};
+
+const checkInToday = async (scores) => {
+  const checkin = await startCheckin({ today: localDateKey() });
+  for (const [valueId, score] of Object.entries(scores)) {
+    await saveAlignment(checkin.id, valueId, score);
+  }
 };
 
 const mount = async () => {
@@ -100,6 +108,60 @@ describe('ResultsScreen', () => {
     expect(decodeShareCode(readShareCode(shownLink)).payload.entries.map((entry) => entry.key))
       .toEqual(['love', 'health']);
 
+    share.mockRestore();
+  });
+
+  it('offers to send the wheel only where there is a check-in to send', async () => {
+    await recordToday({ love: 5 });
+    await mount();
+
+    // A switch promising to send a wheel nobody has filled in is a choice about
+    // nothing.
+    expect(screen.queryByTestId('results-share-alignment')).toBeNull();
+  });
+
+  it('sends the wheel beside the ranking when the switch is on', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    await recordToday({ love: 5, health: 3 });
+    await checkInToday({ love: 7 });
+    await mount();
+
+    await waitFor(() => expect(screen.getByTestId('results-share-alignment')).toBeTruthy());
+    await act(async () => {
+      fireEvent(screen.getByTestId('results-share-alignment'), 'valueChange', true);
+    });
+    // The line under the switch names what would actually leave the device.
+    expect(screen.getByTestId('results-share-alignment-hint')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('results-share'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('results-share-link')).toBeTruthy());
+    const shownLink = screen.getByTestId('results-share-link').props.value;
+    const { payload } = decodeShareCode(readShareCode(shownLink));
+
+    expect(payload.checkedOn).toBe(localDateKey());
+    expect(payload.entries.map((entry) => [entry.key, entry.alignment]))
+      .toEqual([['love', 7], ['health', null]]);
+
+    share.mockRestore();
+  });
+
+  it('leaves the wheel out of a link nobody asked for it in', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    await recordToday({ love: 5 });
+    await checkInToday({ love: 7 });
+    await mount();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('results-share'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('results-share-link')).toBeTruthy());
+    const shownLink = screen.getByTestId('results-share-link').props.value;
+
+    expect(decodeShareCode(readShareCode(shownLink)).payload.checkedOn).toBeNull();
     share.mockRestore();
   });
 

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Button, TextInput } from 'react-native-paper';
+import { Text, Button, TextInput, Switch } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
+import { useAlignment } from '../contexts/AlignmentContext';
 import { useCsvTransfer } from '../hooks/useCsvTransfer';
 import { useResultsShare } from '../hooks/useResultsShare';
 import { getPreference, setPreference, PREF_KEYS } from '../services/PreferencesDB';
@@ -38,15 +39,25 @@ const SORT_DESC = 'desc';
  * database. The link is shown as well as sent, because what is being handed over
  * is the data itself and an app that promises nothing leaves the device should
  * say precisely what does.
+ *
+ * The wheel can go with it, and it is a switch rather than a default. Importance
+ * is a list of what you care about; alignment is a list of where you are falling
+ * short of it, and the second is not automatically as easy to hand somebody as
+ * the first. The switch also starts off on every visit — deliberately not
+ * persisted, so the decision is made about *this* link rather than inherited from
+ * one made weeks ago — and the line under it names the date and the number of
+ * answers that would travel, because that is the actual thing leaving the device.
  */
 const ResultsScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { latest, results, isLoading, hasResults } = useAssessment();
+  const { latestCheckin } = useAlignment();
   const { exportCsv, busy } = useCsvTransfer();
   const { shareResults, busy: sharing, link } = useResultsShare();
 
   const [sort, setSort] = useState(SORT_DESC);
+  const [includeAlignment, setIncludeAlignment] = useState(false);
 
   // The toggle persists — it is a reading preference, and resetting it on every
   // launch would make the screen feel like it forgot.
@@ -125,7 +136,7 @@ const ResultsScreen = ({ onStartCalibration }) => {
         <Button
           mode="contained-tonal"
           icon="share-variant"
-          onPress={shareResults}
+          onPress={() => shareResults({ includeAlignment })}
           disabled={sharing}
           style={styles.share}
           testID="results-share"
@@ -135,6 +146,35 @@ const ResultsScreen = ({ onStartCalibration }) => {
         <Text style={[styles.note, { color: colors.mutedText }]}>
           {t('share_hint')}
         </Text>
+
+        {/* Offered only where there is a check-in to offer. A switch promising to
+            send a wheel nobody has filled in would be a choice about nothing. */}
+        {!!latestCheckin && (
+          <View style={styles.shareOption}>
+            <View style={styles.shareOptionRow}>
+              <Text style={[styles.shareOptionLabel, { color: colors.text }]}>
+                {t('share_include_alignment')}
+              </Text>
+              <Switch
+                value={includeAlignment}
+                onValueChange={setIncludeAlignment}
+                accessibilityLabel={t('share_include_alignment')}
+                testID="results-share-alignment"
+              />
+            </View>
+            {includeAlignment && (
+              <Text
+                style={[styles.note, { color: colors.mutedText }]}
+                testID="results-share-alignment-hint"
+              >
+                {t('share_include_alignment_hint', {
+                  count: latestCheckin.count,
+                  date: formatDateKey(latestCheckin.checkedOn, language),
+                })}
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Read-only rather than hidden: this is the ranking, encoded, and the
             reader is about to hand it to somebody. It is also the way to copy the
@@ -233,6 +273,18 @@ const styles = StyleSheet.create({
   },
   share: {
     marginTop: SPACING.xxl,
+  },
+  shareOption: {
+    marginTop: SPACING.md,
+  },
+  shareOptionLabel: {
+    flex: 1,
+    fontSize: FONT_SIZE.base,
+  },
+  shareOptionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: SPACING.md,
   },
 });
 

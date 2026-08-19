@@ -9,6 +9,7 @@ import {
   saveRating,
   completeAssessment,
 } from '../../app/services/AssessmentsDB';
+import { startCheckin, saveAlignment } from '../../app/services/AlignmentDB';
 import { __resetDatabaseHandleForTests } from '../../app/services/db';
 import { readShareCode, decodeShareCode } from '../../app/services/ResultsShare';
 import { shareLink } from '../../app/utils/linkSharing';
@@ -40,6 +41,14 @@ function Harness() {
 const mount = async () => {
   await render(<Harness />, { wrapper: AllProviders });
   await waitFor(() => expect(screen.getByTestId('link')).toBeTruthy());
+};
+
+const checkInToday = async (scores) => {
+  const checkin = await startCheckin({ today: localDateKey() });
+  for (const [valueId, score] of Object.entries(scores)) {
+    await saveAlignment(checkin.id, valueId, score);
+  }
+  return checkin;
 };
 
 const recordToday = async (scores) => {
@@ -177,5 +186,37 @@ describe('what the reader is told afterwards', () => {
 
     expect(screen.getByText('the share sheet fell over')).toBeTruthy();
     logged.mockRestore();
+  });
+});
+
+describe('the wheel, which goes only when it is asked for', () => {
+  beforeEach(async () => {
+    await recordToday({ love: 5, health: 4 });
+    await checkInToday({ love: 9 });
+  });
+
+  it('is left out of an ordinary share', async () => {
+    await mount();
+    await waitFor(() => expect(api.busy).toBe(false));
+
+    await act(async () => { await api.shareResults(); });
+
+    const { payload } = shared(shareLink.mock.calls[0][0]);
+    // The default, and the one a button press produces: a ranking, and nothing
+    // about how far the sender is from living it.
+    expect(payload.checkedOn).toBeNull();
+    expect(payload.entries.every((entry) => entry.alignment === null)).toBe(true);
+  });
+
+  it('travels beside the ranking when it is, without disturbing it', async () => {
+    await mount();
+    await waitFor(() => expect(api.busy).toBe(false));
+
+    await act(async () => { await api.shareResults({ includeAlignment: true }); });
+
+    const { payload } = shared(shareLink.mock.calls[0][0]);
+    expect(payload.checkedOn).toBe(localDateKey());
+    expect(payload.entries.map((entry) => [entry.key, entry.score, entry.alignment]))
+      .toEqual([['love', 5, 9], ['health', 4, null]]);
   });
 });

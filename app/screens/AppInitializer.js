@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
+import { useAlignment } from '../contexts/AlignmentContext';
 import { useDialog } from '../contexts/DialogContext';
 import { useUpdateDownload } from '../contexts/UpdateDownloadContext';
 import { getBooleanPreference, setBooleanPreference, PREF_KEYS } from '../services/PreferencesDB';
@@ -31,6 +32,14 @@ import { appEvents, EVENTS } from '../services/eventEmitter';
  * before everything else — including the deck on a first run — because somebody
  * who followed a friend's link came to read that link, and it asks nothing,
  * writes nothing and is closed in one tap.
+ *
+ * With one exception, and it is the deck: a visitor can start rating from that
+ * screen, so a run in progress outranks the link that sent them into it. The code
+ * is kept while they rate, which is what makes finishing land back on the link
+ * with both rankings on it — the only way a comparison reaches somebody who
+ * arrived without an app at all. It is also why leaving the deck is allowed on
+ * that path: the first run's exit is hidden because there is nowhere to land, and
+ * here there is.
  */
 const STEP = {
   LOADING: 'loading',
@@ -43,7 +52,10 @@ const AppInitializer = () => {
   const { isLoading, t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
-  const { isLoading: assessmentLoading, hasResults, cancelCalibration } = useAssessment();
+  const {
+    isLoading: assessmentLoading, hasResults, cancelCalibration, latest, results,
+  } = useAssessment();
+  const { latestCheckin } = useAlignment();
   const { startDownload } = useUpdateDownload();
 
   // Read once, at mount: the address bar is the input, and re-reading it later
@@ -119,25 +131,58 @@ const AppInitializer = () => {
     setSharedCode(null);
   }, []);
 
+  /**
+   * Rate the deck from a friend's link, without losing the link.
+   *
+   * Nothing is cleared here on purpose: the code stays in state and in the
+   * address bar, so finishing — or backing out — returns to the shared screen,
+   * which by then has the reader's own ranking to set beside the sender's.
+   */
+  const handleSharedCalibrate = useCallback(() => {
+    setCalibrating(true);
+  }, []);
+
+  /**
+   * The reader's half of a comparison, gathered here because this is where both
+   * contexts already are. The shared screen takes it as a prop and reads no
+   * database of its own — see its own note about the visitor it exists for.
+   */
+  const ownReading = useMemo(() => (latest && results.length > 0
+    ? { assessment: latest, results, alignment: latestCheckin }
+    : null), [latest, results, latestCheckin]);
+
   // While the stored preferences are still loading, render nothing so the native
   // splash stays up rather than flashing a half-configured deck.
   const step = (() => {
     // Localisation gates everything: there is nothing to render before there are
     // words to render it in.
     if (isLoading) return STEP.LOADING;
+    // Above the link, and only here: a deck the reader opened FROM the shared
+    // screen is the one thing that outranks it, and `calibrating` is false until
+    // they ask for one.
+    if (calibrating) return STEP.CALIBRATION;
     // A shared ranking is entirely contained in the link, so it does not wait on
     // the database, the catalogue or the onboarding flag — none of which it reads.
+    // The comparison beside it does, and arrives when it arrives.
     if (sharedCode) return STEP.SHARED;
     if (onboardingComplete === null || assessmentLoading) return STEP.LOADING;
-    if (calibrating) return STEP.CALIBRATION;
     if (!onboardingComplete && !hasResults) return STEP.CALIBRATION;
     return STEP.MAIN;
   })();
 
+  // Whether this reader has been through the door: a record of their own, or the
+  // flag that says they finished a run. It is what decides both of the questions
+  // below, and they are not the same question.
+  const hasOwnRecords = onboardingComplete === true || hasResults;
+
   // Leaving the deck needs somewhere to land, and on a first run there is
   // nowhere: no results, so no main screen. The exit is hidden rather than made
   // to fail, and the deck itself is the whole of that run.
-  const canLeaveTheDeck = onboardingComplete === true || hasResults;
+  //
+  // A held share code is somewhere to land — the screen the reader started the
+  // deck from — so a first run entered through a friend's link is the one that
+  // can be backed out of.
+  const canLeaveTheDeck = hasOwnRecords || !!sharedCode;
 
   // Nothing is asked in front of the deck, and that includes this. An available
   // update is not more urgent than the run the user is in the middle of, so the
@@ -163,12 +208,23 @@ const AppInitializer = () => {
     );
 
   case STEP.SHARED:
-    return <SharedResultsScreen code={sharedCode} onClose={handleSharedClose} />;
+    return (
+      <SharedResultsScreen
+        code={sharedCode}
+        onClose={handleSharedClose}
+        own={ownReading}
+        onCalibrate={handleSharedCalibrate}
+      />
+    );
 
   case STEP.CALIBRATION:
     return (
       <AssessmentScreen
         canExit={canLeaveTheDeck}
+        // Asked separately from the exit, because a run started from a friend's
+        // link has a way out and still no records — and somebody arriving with a
+        // CSV file has no other door until it does.
+        canImport={!hasOwnRecords}
         onExit={handleCalibrationExit}
         onFinished={handleCalibrationFinished}
         onImported={handleImportedRecords}

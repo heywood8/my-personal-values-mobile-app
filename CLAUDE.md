@@ -54,12 +54,20 @@ hides its close button. Restoring one without somewhere to land strands the app 
 a spinner: `cancelCalibration()` clears the session, and the screen's start guard
 will not deal a second one.
 
+The one first run that *can* be left is the one started from a friend's link:
+the shared screen is still held behind it, so there is somewhere to land. That
+is the whole of the exception — `canExit` asks "is there a screen behind this",
+and a held share code is one.
+
 **The first run's other exit is a CSV file.** Every other door to the import is in
 Settings, which is behind the tab shell, which a first run does not reach until it
 has produced a record — so restoring a backup used to mean answering all 47 cards
 and throwing the result away. `DeckImportPanel` puts the ranking import on the
-first card, and only while `canExit` is false; afterwards it would be a second
-door beside a door. Records landing that way end the run, and
+first card, and only while `canImport` is true — that is, while this reader has no
+records at all; afterwards it would be a second door beside a door. It is asked
+separately from `canExit` because the two stopped meaning the same thing when a
+deck could be opened from a shared link: that run has somewhere to land and still
+no records behind it. Records landing that way end the run, and
 `handleImportedRecords()` in `AppInitializer` does two things about it: it marks
 onboarding complete, so deleting every record later lands on an empty results
 screen rather than back in a deck with no way out, and it **drops the open
@@ -222,6 +230,32 @@ to land. And the header row carries `SHARE_FORMAT`, because the link lives in
 somebody's chat history and the app that finally opens it may be older or newer
 than the one that wrote it; a code from a newer format is refused by name rather
 than half-read.
+
+**The wheel travels in that link too, and only when it is asked for.** It is a
+fourth column on each value's row and a fourth column on the header (the check-in's
+date), never a number folded into the importance score — the same separation the
+two CSV files keep. What forced *those* apart does not apply here: a shipped
+release would misread alignment scores appended to a records file as importance
+ratings, while a trailing column it has never heard of is simply ignored, which is
+why one link can carry both lists and `SHARE_FORMAT` is still 1. Adding a column
+in front of those, or reusing one, is the change that would need the bump.
+
+The switch is on the results screen, it starts off on every visit, and it is
+deliberately **not** a stored preference: `shareResults({ includeAlignment })`
+takes it as an argument. "How much this matters to me" and "how far I am from
+living it" are not equally comfortable things to hand somebody, and a switch left
+on would answer the second one silently the next time.
+
+**A comparison is still a reading.** With a ranking of their own, the reader gets
+the two lists side by side (`app/utils/comparison.js`, `ComparisonBars`), and the
+screen stays read-only and stateless: its half of the comparison arrives as a
+**prop** from `AppInitializer`, which already holds both contexts. A version that
+called `useAssessment()` itself would stop rendering for the one visitor the screen
+exists for — somebody who has never opened the app, whose whole data is the link.
+Comparison is on the normalised score, because the two sides need not have used
+the same scale, and matching is on `key`, so two custom values never match: their
+keys are uuids minted on two different phones, and merging them by name would
+merge two strangers' words.
 
 The fingerprint in front of the body is a checksum — it tells a truncated link
 from a whole one, and nothing else. It is not a signature, anyone holding the

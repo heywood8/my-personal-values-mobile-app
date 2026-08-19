@@ -34,11 +34,12 @@ import {
  *
  * The first card also carries the language and scale switches — this screen is
  * where a first run begins, there being no setup in front of it any more, and
- * those two settings have to be reachable before the deck is 47 cards deep. On a
- * first run it carries the CSV import as well, for the same reason: the settings
- * screen that holds it is behind results this reader does not have yet.
+ * those two settings have to be reachable before the deck is 47 cards deep. While
+ * the reader has no records at all it carries the CSV import as well (`canImport`),
+ * for the same reason: the settings screen that holds it is behind results this
+ * reader does not have yet.
  */
-const AssessmentScreen = ({ canExit, onExit, onFinished, onImported }) => {
+const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
@@ -205,7 +206,7 @@ const AssessmentScreen = ({ canExit, onExit, onFinished, onImported }) => {
               reader cannot reach the settings screen's copy of this. On a
               recalibration it would be a second door beside a door, on the
               screen least in need of another thing to scroll past. */}
-          {isFirstCard && !canExit && <DeckImportPanel onImported={onImported} />}
+          {isFirstCard && canImport && <DeckImportPanel onImported={onImported} />}
 
           <View
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -353,6 +354,11 @@ AssessmentScreen.propTypes = {
   // Whether there is anywhere to go back to. False for the very first run, which
   // opens on this screen and has no results behind it.
   canExit: PropTypes.bool,
+  // Whether this reader can reach the CSV import any other way. It used to be
+  // read off `canExit`, which said the same thing until a run could be started
+  // from a friend's link — that has somewhere to land and still no records, so
+  // the two questions came apart and the import needs its own answer.
+  canImport: PropTypes.bool,
   onExit: PropTypes.func,
   onFinished: PropTypes.func,
   // Records arrived from a CSV file instead of from the deck. Only the shell

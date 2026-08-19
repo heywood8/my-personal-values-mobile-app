@@ -212,6 +212,24 @@ export const AlignmentProvider = ({ children }) => {
 
   const previous = useMemo(() => previousBefore(localDateKey()), [previousBefore]);
 
+  /**
+   * The most recent check-in that carries anything: today's once today has been
+   * answered, and otherwise the last day that was.
+   *
+   * What a share link offers to send, and what a comparison against somebody
+   * else's link reads. Built from the same two sources as everything else here —
+   * today's optimistic scores, and a `history` that is folded into as each write
+   * lands — so it is true for an answer given a moment ago as well as for one
+   * from June. `previousBefore` already skips a date whose scores were all
+   * cleared, which is the same "a check-in exists when it has a score" rule the
+   * records list is filtered by.
+   */
+  const latestCheckin = useMemo(() => (
+    todayScores.size > 0
+      ? { checkedOn: todayDateKey, scores: todayScores, count: todayScores.size }
+      : previousBefore(todayDateKey)
+  ), [todayScores, todayDateKey, previousBefore]);
+
   /** Record one value's alignment into today's check-in, creating it if needed. */
   const setAlignment = useCallback(async (valueId, score) => {
     const dateKey = localDateKey();
@@ -298,6 +316,7 @@ export const AlignmentProvider = ({ children }) => {
     todayScores,
     coverage,
     previous,
+    latestCheckin,
     entriesOn,
     previousBefore,
     setAlignment,
@@ -305,8 +324,8 @@ export const AlignmentProvider = ({ children }) => {
     deleteCheckin,
     reload,
   }), [
-    records, history, isLoading, todayScores, coverage, previous, entriesOn, previousBefore,
-    setAlignment, clearToday, deleteCheckin, reload,
+    records, history, isLoading, todayScores, coverage, previous, latestCheckin, entriesOn,
+    previousBefore, setAlignment, clearToday, deleteCheckin, reload,
   ]);
 
   return (

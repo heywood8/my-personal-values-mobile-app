@@ -77,6 +77,12 @@ The one thing that ever leaves is a link you make yourself and hand to somebody:
 so it opens as a read-only page in any browser. Anyone holding that link can read
 the ranking, and opening one changes nothing in the reader's own records.
 
+Open a friend's link with a ranking of your own and the two appear side by side —
+value by value, with each side's score in the words it was answered in, and the
+biggest disagreements a tap away. Your check-in wheel can travel in the link too,
+if you switch it on before sending; it is off by default, and off again next time.
+If you have not rated the deck yet, the link waits while you do.
+
 ## The value catalogue
 
 The deck **is** the values checklist from Russ Harris's *The Confidence Gap*

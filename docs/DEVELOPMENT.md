@@ -33,7 +33,7 @@ bun run web          # web only
 ```
 app/
   AppProviders.js     the provider stack, shared by App.js and the tests
-  components/         reusable UI; components/charts/ holds the three charts
+  components/         reusable UI; components/charts/ holds the four charts
   contexts/           localisation, theme, dialogs, catalogue, assessments, alignment
   db/schema.js        Drizzle schema — the source migrations are generated from
   defaults/           the shipped value catalogue
@@ -296,10 +296,11 @@ each prefix separately, and the settings screen offers both exports. A change th
 adds a third record type has to do the same, or it ships a backup with a hole in
 it.
 
-## Sharing a result as a link
+## Sharing a result as a link, and comparing two
 
-The results screen can hand the ranking to somebody else. There is no server to
-put it on, so the link carries the reading itself:
+The results screen can hand the ranking to somebody else, and a reader who has one
+of their own gets the two side by side. There is no server to put anything on, so
+the link carries the reading itself:
 
 ```
 https://heywood8.github.io/my-personal-values-mobile-app/?r=1a0mjed.MSoyMDI2LTA4...
@@ -311,12 +312,23 @@ https://heywood8.github.io/my-personal-values-mobile-app/?r=1a0mjed.MSoyMDI2LTA4
 | `app/utils/linkSharing.js` | the platform: where a link points, how it is sent, how it arrives |
 | `app/hooks/useResultsShare.js` | the flow, and what is said about each outcome |
 | `app/screens/SharedResultsScreen.js` | what the friend sees |
+| `app/utils/comparison.js` | two readings of one list, matched up and summarised |
+| `app/components/charts/ComparisonBars.js` | one value, twice: a bar per person |
 
 Inside the parameter is a base36 fingerprint, a dot, and a base64url body holding
 the date, the scale and one `key,score` pair per rated value. A full 47-value deck
 comes to about 900 characters with the URL in front of it.
 
-Four properties are worth knowing before changing any of it:
+The wheel can travel with it, when the sender switches it on: the check-in's date
+is a fourth column on the header row and each value's alignment score a fourth
+column on its own row. Both sit *after* the columns every shipped release already
+reads, which is why this needed no format bump — see the last point below. The
+switch is on the results screen, starts off on every visit and is not stored:
+`shareResults({ includeAlignment })` takes it as an argument, because "how far I
+am from living this" is not as easy a thing to hand over as "this matters to me",
+and a remembered switch would decide it silently the next time.
+
+Five properties are worth knowing before changing any of it:
 
 - **It is an encoding, not encryption.** Anyone with the link can read it, and the
   screen that offers the link says exactly that. The fingerprint is a checksum
@@ -330,6 +342,15 @@ Four properties are worth knowing before changing any of it:
   never touches the database. An import would resolve the sender's date through
   `startAssessment()` and overwrite the reader's own record for that day, and a
   friend's ranking is not a backup of yours. That is what the CSV import is for.
+- **A comparison arrives as a prop, not from a context.** A reader who has a
+  ranking of their own opens the link on the two lists side by side, and
+  `SharedResultsScreen` still reads nothing: `AppInitializer` passes its `own`
+  half in. Values are matched on `key` (so two custom values, whose keys are uuids
+  from two different phones, never match) and compared on the normalised score
+  (so a friend on 1–10 and a reader on three words are comparable), while each
+  side prints the raw score it was actually given. A visitor with no ranking is
+  offered the deck instead, and the code is held while they rate — finishing, or
+  backing out, comes back to the link.
 - **Sending is universal; receiving is the web's.** A phone hands the link to the
   system share sheet, a browser to its own share sheet or the clipboard. Nothing
   reads a link on a phone: that would need a deep link registered against

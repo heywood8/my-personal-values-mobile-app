@@ -112,6 +112,25 @@ export function scaleStepLabel(scaleId, step, t) {
 }
 
 /**
+ * How much of a bar a normalised score fills.
+ *
+ * Not the normalised score itself: a value sitting on the very bottom step still
+ * needs a visible mark, and a zero-width bar reads as missing data rather than as
+ * "this barely matters". So the 0..1 reading is squeezed into 0.04..1.
+ *
+ * The wheel deliberately does NOT do this — see `alignmentFraction`, where a
+ * score of 1 fills one ring out of ten and an empty sector means "not answered
+ * yet". The difference is the whole reason both live in code rather than in a
+ * chart: importance has no "unanswered" state to protect, and alignment does.
+ */
+export const MIN_BAR_FRACTION = 0.04;
+
+export function scoreFraction(normalized) {
+  const clamped = Math.min(Math.max(normalized ?? 0, 0), 1);
+  return MIN_BAR_FRACTION + clamped * (1 - MIN_BAR_FRACTION);
+}
+
+/**
  * Priority bands — the "by priority" grouping on the results screen.
  *
  * Cut on the normalised score rather than the raw one so the bands mean the same

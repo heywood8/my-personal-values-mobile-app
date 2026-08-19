@@ -1,4 +1,5 @@
 import { isValidScaleId, isValidScore, normalizeScore } from '../utils/scales';
+import { isValidAlignmentScore } from '../utils/alignment';
 
 /**
  * A calibration result, as a link you can hand to somebody.
@@ -35,9 +36,18 @@ import { isValidScaleId, isValidScore, normalizeScore } from '../utils/scales';
  *   it may be older or newer than the one that wrote it. A code from a newer
  *   format is reported as such rather than half-read.
  *
- * This shares the ranking only. The alignment wheel is a second list with a
- * second file behind it (see AlignmentCsv.js), and folding it in here would put
- * two different questions under one number.
+ * The wheel travels too, when the sender asks for it — as its OWN column beside
+ * each value's importance score, never folded into it. Importance and alignment
+ * are two different questions and one number cannot answer both, which is the
+ * same separation the two CSV files keep. What forced *those* apart was that an
+ * already-shipped release would misread alignment scores appended to a records
+ * file as importance ratings for that date; a trailing column an older reader
+ * has never heard of is ignored instead, which is what lets one link carry both
+ * lists without breaking the app that opened it yesterday.
+ *
+ * It is asked for per share and not remembered. "How much this matters to me"
+ * and "how far I am from living it" are not equally comfortable things to hand
+ * over, and a switch left on would answer the second one silently the next time.
  */
 
 /** The query parameter a shared link carries. */
@@ -47,6 +57,11 @@ export const SHARE_PARAM = 'r';
  * The payload layout. Bump it only when an older reader would *misread* a newer
  * code — adding a trailing column is not that, since a reader takes the columns
  * it knows and ignores the rest.
+ *
+ * Still 1 with the wheel in it, and that is the rule being applied rather than an
+ * omission: the check-in's date is a fourth header column and a value's alignment
+ * score is a fourth column on its row, so a release that predates both reads the
+ * ranking exactly as it always did and never sees the rest.
  */
 export const SHARE_FORMAT = 1;
 
@@ -172,44 +187,87 @@ const fingerprint = (body) => {
  * @param {Array} results rows from `getRankedResults`, strongest first.
  * @param {(value: object) => string} resolveName renders a value's display name;
  *   used for custom values only, which are the ones no other install can name.
+ * @param {{checkedOn: string, scores: Map<string, number>}} [alignment] one
+ *   check-in to send beside the ranking, or nothing at all. Keyed by `valueId`,
+ *   because that is what an alignment row is stored against — a value the
+ *   ranking does not carry simply never finds its score here, which is also what
+ *   keeps the wheel's own membership rule out of this file.
  */
-export function buildSharePayload(assessment, results, resolveName) {
+export function buildSharePayload(assessment, results, resolveName, alignment = null) {
+  const checkedScores = alignment?.scores;
+
+  const entries = (results || []).map((row) => ({
+    key: row.key,
+    name: row.isCustom ? (resolveName?.(row) || row.customName || row.key) : '',
+    score: row.score,
+    normalized: row.normalized,
+    alignment: checkedScores?.get(row.valueId) ?? null,
+  }));
+
   return {
     format: SHARE_FORMAT,
     assessedOn: assessment.assessedOn,
     scale: assessment.scale,
-    entries: (results || []).map((row) => ({
-      key: row.key,
-      name: row.isCustom ? (resolveName?.(row) || row.customName || row.key) : '',
-      score: row.score,
-      normalized: row.normalized,
-    })),
+    // Dated only where there is something to date. A header column naming a
+    // check-in none of the rows carries a score from would be a date with no
+    // reading behind it, and the screen on the other side prints that date.
+    checkedOn: entries.some((entry) => entry.alignment !== null) ? alignment.checkedOn : null,
+    entries,
   };
 }
 
 /**
  * A payload as the string that goes in the URL.
  *
- * The first row is the header — format, date, scale — and every row after it is
- * one rated value: its key, its raw score, and a name only where the other side
- * could not work one out for itself.
+ * The first row is the header — format, date, scale, and the check-in's date
+ * where one is coming along — and every row after it is one rated value: its
+ * key, its raw score, a name only where the other side could not work one out
+ * for itself, and its alignment score where the sender chose to send the wheel.
+ *
+ * Columns are positional, so a later one drags the earlier ones along: a value
+ * with an alignment score but no name of its own writes the name column empty
+ * rather than letting its score slide into it. A column with nothing to say is
+ * left off the end instead, which is what keeps a link carrying the ranking
+ * alone exactly the length it has always been.
  */
 export function encodeShareCode(payload) {
-  const rows = [
+  const header = [
     // The payload's own format rather than this module's constant: everything
     // built here is current, but a reader has to be exercised against a code
     // from a version that is not.
-    [payload.format ?? SHARE_FORMAT, payload.assessedOn, payload.scale],
-    ...payload.entries.map((entry) => (
+    payload.format ?? SHARE_FORMAT,
+    payload.assessedOn,
+    payload.scale,
+  ];
+  if (payload.checkedOn) header.push(payload.checkedOn);
+
+  const rows = [
+    header,
+    ...payload.entries.map((entry) => {
+      const row = [entry.key, entry.score];
       // The name column is written only when it carries something the other side
-      // cannot work out for itself.
-      entry.name ? [entry.key, entry.score, entry.name] : [entry.key, entry.score]
-    )),
+      // cannot work out for itself — or when the alignment column behind it
+      // needs a place to sit.
+      if (entry.name || entry.alignment != null) row.push(entry.name || '');
+      if (entry.alignment != null) row.push(entry.alignment);
+      return row;
+    }),
   ];
 
   const body = toBase64Url(serialize(rows));
   return `${fingerprint(body)}.${body}`;
 }
+
+/**
+ * One value's wheel score, or null where the column is absent, empty, or does not
+ * name one of the wheel's ten rings.
+ */
+const readAlignment = (field) => {
+  const text = String(field ?? '').trim();
+  if (!text) return null;
+  const score = Number(text);
+  return isValidAlignmentScore(score) ? score : null;
+};
 
 /**
  * Read a code back.
@@ -251,6 +309,7 @@ export function decodeShareCode(code) {
 
   const assessedOn = String(header[1] ?? '');
   const scale = String(header[2] ?? '');
+  const checkedOn = String(header[3] ?? '').trim();
   if (!DATE_KEY.test(assessedOn)) return failed('malformed');
   // An unknown scale would silently rescale every score in the link. A code this
   // format can hold names one of the three scales this app has.
@@ -272,13 +331,32 @@ export function decodeShareCode(code) {
       continue;
     }
 
-    entries.push({ key, name, score, normalized: normalizeScore(score, scale) });
+    entries.push({
+      key,
+      name,
+      score,
+      normalized: normalizeScore(score, scale),
+      // An unreadable alignment column costs the row its wheel reading and
+      // nothing else — the importance rating beside it is still a perfectly good
+      // answer, so this is not one of the skips.
+      alignment: readAlignment(row[3]),
+    });
   }
 
   if (entries.length === 0) return failed('no_entries');
 
   return {
-    payload: { format, assessedOn, scale, entries },
+    payload: {
+      format,
+      assessedOn,
+      scale,
+      // Kept only alongside the scores it dates, so a payload can never claim a
+      // check-in that arrived with nothing in it.
+      checkedOn: DATE_KEY.test(checkedOn) && entries.some((entry) => entry.alignment !== null)
+        ? checkedOn
+        : null,
+      entries,
+    },
     skipped,
     error: null,
   };
@@ -307,6 +385,9 @@ export function sharedResultItems(payload, t) {
       customName: known ? null : (entry.name || entry.key),
       score: entry.score,
       normalized: entry.normalized,
+      // Null where the sender kept their wheel to themselves, which is most
+      // links: everything reading this list has to handle a row without one.
+      alignment: entry.alignment ?? null,
     };
   });
 }
