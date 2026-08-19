@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
 import AlignmentScreen from '../../app/screens/AlignmentScreen';
 import { AllProviders } from '../../test-utils/renderWithProviders';
-import { addCustomValue, seedDefaultValues, setValueArchived } from '../../app/services/ValuesDB';
+import { insertOwnValue } from '../../test-utils/legacyValues';
+import { seedDefaultValues, setValueArchived } from '../../app/services/ValuesDB';
 import { appEvents, EVENTS } from '../../app/services/eventEmitter';
 import {
   startAssessment,
@@ -343,9 +344,11 @@ describe('what a row says the value is', () => {
       .toHaveTextContent('To be orderly and organised.');
   });
 
-  it('prints nothing where a custom value has nothing to print', async () => {
+  it('prints nothing where a value has no description to print', async () => {
+    // A value the reader added on an older release carries their words and
+    // nothing else; the row still renders, with no description under it.
     await seedDefaultValues();
-    const custom = await addCustomValue({ name: 'Surfing' });
+    const custom = await insertOwnValue('3f1a-uuid', 'Surfing');
     await rank({ health: 5, [custom]: 5 });
     await mount();
 

@@ -13,7 +13,7 @@ import SegmentedToggle from '../components/SegmentedToggle';
 import ScreenHeader from '../components/ScreenHeader';
 import SectionCard from '../components/SectionCard';
 import ValueDeckPanel from '../components/ValueDeckPanel';
-import CsvTransferPanel from '../components/CsvTransferPanel';
+import BackupTransferPanel from '../components/BackupTransferPanel';
 import PrivacyNote from '../components/PrivacyNote';
 import UpdatePanel from '../components/UpdatePanel';
 import { canInstallUpdates } from '../services/AppUpdateService';
@@ -174,7 +174,7 @@ const SettingsScreen = ({ onStartCalibration }) => {
           {/* Renders only on web; see the component. */}
           <PrivacyNote />
 
-          <CsvTransferPanel />
+          <BackupTransferPanel />
 
           <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
           <Button

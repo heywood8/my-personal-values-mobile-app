@@ -6,8 +6,8 @@ via expo-sqlite, Drizzle for the schema, no navigation library.
 Two lists are tracked, not one: how much each value matters (the deck, ranked)
 and — for the values that matter most — how far behaviour currently matches them
 (the wheel, ten rings). They are separate tables, separate screens and separate
-CSV files, and the notes below say where each of those separations is
-load-bearing.
+rows in the one backup file, and the notes below say where each of those
+separations is load-bearing.
 
 Read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands and layout and
 [docs/DATABASE.md](docs/DATABASE.md) for the data model. This file is the short
@@ -59,10 +59,10 @@ the shared screen is still held behind it, so there is somewhere to land. That
 is the whole of the exception — `canExit` asks "is there a screen behind this",
 and a held share code is one.
 
-**The first run's other exit is a CSV file.** Every other door to the import is in
-Settings, which is behind the tab shell, which a first run does not reach until it
-has produced a record — so restoring a backup used to mean answering all 47 cards
-and throwing the result away. `DeckImportPanel` puts the ranking import on the
+**The first run's other exit is the backup file.** Every other door to the import
+is in Settings, which is behind the tab shell, which a first run does not reach
+until it has produced a record — so restoring a backup used to mean answering all
+47 cards and throwing the result away. `DeckImportPanel` puts the import on the
 first card, and only while `canImport` is true — that is, while this reader has no
 records at all; afterwards it would be a second door beside a door. It is asked
 separately from `canExit` because the two stopped meaning the same thing when a
@@ -73,9 +73,11 @@ onboarding complete, so deleting every record later lands on an empty results
 screen rather than back in a deck with no way out, and it **drops the open
 session**, which was dealt before those rows existed and would otherwise be handed
 straight back to the next recalibration — blank, and calling today a new record
-when the file may well have contained today. Only the ranking is offered there:
-the wheel's sectors are derived from a completed ranking, so check-ins imported
-first would have nothing to attach to.
+when the file may well have contained today. The whole file lands here, check-ins
+included — they are applied after the ranking they hang off, so their sectors
+exist by the time they are written — but the run ends only when a *ranking* comes
+out of it: a file of check-ins alone leaves nothing to show, so the hook does not
+call `onImported` at all.
 
 **The rating buttons do not move between cards.** Descriptions run one line to
 four, so a self-sizing card walks the buttons up and down the screen and the
@@ -101,7 +103,7 @@ because it would invite a second instrument.
 
 **`assessments.assessed_on` is UNIQUE, and that is the same-day rule.** Resolve
 through `startAssessment()`; do not add a second path that writes an assessment.
-The CSV import is not an exception — it calls `startAssessment(scale, { today:
+The backup import is not an exception — it calls `startAssessment(scale, { today:
 <date from the file> })` for every record, which is what makes importing a date
 you already have an overwrite rather than a duplicate.
 
@@ -220,7 +222,16 @@ given up on purpose, for fidelity to the printed instrument.
 **There are no value groups.** The deck was once sorted into eight of them; the
 source checklist is a flat list and so is this app. Nothing in the schema, the
 catalogue file, the UI or the locale files names a group, and the parity test
-fails on a leftover `group_*` string. A custom value needs only a name.
+fails on a leftover `group_*` string.
+
+**The deck is the shipped catalogue, and nothing else.** There is no adding,
+renaming or deleting a value: `ValuesDB` writes no `personal_values` row outside
+seeding, the panel in Settings offers archiving alone, and the import skips a row
+it cannot match rather than inventing a value to hold it. The instrument is
+somebody else's list of 47, and an app that let it be edited would be measuring
+something different on every phone. `is_custom` and `custom_name` are still read,
+because installs that predate the change hold such rows with ratings hanging off
+them and a dropped name prints as a uuid — but nothing writes them.
 
 **A value dropped from the catalogue keeps its `value_<key>` name in both
 locales**, listed under `retired` in `defaultValues.json`. Its ratings survive,
@@ -266,32 +277,42 @@ the deck card's name and description, which are also measured — multiply by
 `PixelRatio.getFontScale()` as well, and put the result in an inline style rather
 than the sheet (see `DeckCardText`).
 
-**The CSV files are the only backup this app has.** Nothing leaves the device
-otherwise, so `app/services/RecordsCsv.js` has to keep reading files older
+**The backup file is the only backup this app has.** Nothing leaves the device
+otherwise, so `app/services/BackupCsv.js` has to keep reading files older
 releases wrote: change the columns by adding, never by renaming. Import trusts
 `score` and `scale` and recomputes `normalized`, because the column can be edited
 in a spreadsheet and the stored pair has to agree.
 
-There are **two** files, and they must stay two: the ranking and the check-ins
-(`app/services/AlignmentCsv.js`). Alignment scores appended to a records file
-would be read by every already-shipped release as *importance* ratings for that
-date, replacing the record they were meant to sit beside. The cost of the split is
-that "back up my data" is now two actions, so both ends are joined by hand:
-`writePreUpdateSnapshot()` in `ApkInstaller.js` writes both files before an APK
-install (each pruned under its own prefix, or three updates leave mismatched
-halves), and the settings panel offers both. The check-ins file carries a `rings`
-column purely so it is self-describing — a database row can be migrated when the
-instrument changes and a file on somebody's phone cannot.
+It is **one** file holding both lists, and what makes that safe is the header. It
+was two — the ranking and the check-ins — because alignment scores appended to a
+*records* file are read by every already-shipped release as importance ratings for
+that date, replacing the record they were meant to sit beside. This file names no
+column such a release looks for (`kind` and `date`, not `assessed_on` or
+`checked_on`), so it is refused whole rather than half-read; both old shapes still
+import here, recognised by their own date column. Reintroducing `assessed_on` as
+a column name, in any form, is the change that breaks that. The `rings` column
+rides along on alignment rows purely so the file is self-describing — a database
+row can be migrated when the instrument changes and a file on somebody's phone
+cannot.
+
+**Half a backup is not an error, and the report says what landed.** Either list
+may be missing from the file, from the database, or from what an import could
+match; each half is written independently and counted independently, and the
+dialog is built from the halves that are non-zero. A line reading "check-ins: 0"
+would report a failure the file never claimed. One thing the import must not do is
+clear a date it cannot refill: replacing a record starts by clearing it, so a date
+whose every row names a value this deck does not have is skipped before that
+happens.
 
 **A shared link is a reading, not a record.** `app/services/ResultsShare.js` packs
 the latest ranking into the URL itself — `?r=<fingerprint>.<body>` — because there
 is no server to put it on and there is not going to be one. Three things about it
 are load-bearing. It travels as *keys*, so the app that opens it names each value
-in its own reader's language and only a custom value carries text. It lands
-**read-only**: `SharedResultsScreen` writes nothing, because an import would
-resolve the sender's date through `startAssessment()` and overwrite the reader's
-own record for that day — the CSV import is the door for records that are meant
-to land. And the header row carries `SHARE_FORMAT`, because the link lives in
+in its own reader's language and only a value the opening app cannot name carries
+text. It lands **read-only**: `SharedResultsScreen` writes nothing, because an
+import would resolve the sender's date through `startAssessment()` and overwrite
+the reader's own record for that day — the backup import is the door for records
+that are meant to land. And the header row carries `SHARE_FORMAT`, because the link lives in
 somebody's chat history and the app that finally opens it may be older or newer
 than the one that wrote it; a code from a newer format is refused by name rather
 than half-read.
@@ -299,7 +320,8 @@ than half-read.
 **The wheel travels in that link too, and only when it is asked for.** It is a
 fourth column on each value's row and a fourth column on the header (the check-in's
 date), never a number folded into the importance score — the same separation the
-two CSV files keep. What forced *those* apart does not apply here: a shipped
+backup file's `kind` column keeps. What forced the two files apart does not apply
+here: a shipped
 release would misread alignment scores appended to a records file as importance
 ratings, while a trailing column it has never heard of is simply ignored, which is
 why one link can carry both lists and `SHARE_FORMAT` is still 1. Adding a column
@@ -318,9 +340,9 @@ screen stays read-only and stateless: its half of the comparison arrives as a
 called `useAssessment()` itself would stop rendering for the one visitor the screen
 exists for — somebody who has never opened the app, whose whole data is the link.
 Comparison is on the normalised score, because the two sides need not have used
-the same scale, and matching is on `key`, so two custom values never match: their
-keys are uuids minted on two different phones, and merging them by name would
-merge two strangers' words.
+the same scale, and matching is on `key`, so two values added by hand on two
+different phones never match: their keys are uuids minted separately, and merging
+them by name would merge two strangers' words.
 
 The fingerprint in front of the body is a checksum — it tells a truncated link
 from a whole one, and nothing else. It is not a signature, anyone holding the

@@ -6,7 +6,7 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useAlignment } from '../contexts/AlignmentContext';
-import { useCsvTransfer } from '../hooks/useCsvTransfer';
+import { useBackupTransfer } from '../hooks/useBackupTransfer';
 import { useResultsShare } from '../hooks/useResultsShare';
 import { getPreference, setPreference, PREF_KEYS } from '../services/PreferencesDB';
 import RankedValueBars from '../components/charts/RankedValueBars';
@@ -57,7 +57,7 @@ const ResultsScreen = ({ onStartCalibration }) => {
   const { colors, mode } = useThemeColors();
   const { latest, results, isLoading, hasResults } = useAssessment();
   const { latestCheckin } = useAlignment();
-  const { exportCsv, busy } = useCsvTransfer();
+  const { exportBackup, busy } = useBackupTransfer();
   const { shareResults, busy: sharing, link } = useResultsShare();
 
   const [sort, setSort] = useState(SORT_DESC);
@@ -219,20 +219,19 @@ const ResultsScreen = ({ onStartCalibration }) => {
 
         <SectionCard
           style={styles.actionCard}
-          /* This button exports the ranking, which is what this screen is
-             showing. A complete backup is two files now — the alignment
-             check-ins are the other — and someone whose backup habit is this
-             button would otherwise find that out at restore time. */
-          footnote={t('csv_export_alignment_note')}
+          /* One file holds everything, the wheel's check-ins included, so
+             somebody whose backup habit is this button is not quietly saving
+             half of it. */
+          footnote={t('backup_export_note')}
         >
           <Button
             mode="outlined"
             icon="file-download-outline"
-            onPress={exportCsv}
+            onPress={exportBackup}
             disabled={busy}
             testID="results-export-csv"
           >
-            {t('csv_export')}
+            {t('backup_export')}
           </Button>
         </SectionCard>
 

@@ -6,6 +6,7 @@ import AppInitializer from '../../app/screens/AppInitializer';
 import { __resetDatabaseHandleForTests, resetDatabase } from '../../app/services/db';
 import { appEvents, EVENTS } from '../../app/services/eventEmitter';
 import { getAssessments } from '../../app/services/AssessmentsDB';
+import { getAlignmentHistory } from '../../app/services/AlignmentDB';
 import { getBooleanPreference, getPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
 import { localDateKey } from '../../app/utils/dateUtils';
 import { SCALE_IDS } from '../../app/utils/scales';
@@ -30,7 +31,7 @@ import en from '../../assets/i18n/en.json';
 /**
  * The first run ends where the tab shell begins, and this file is about the run.
  * Standing in for `SimpleTabs` keeps three screens, the history charts and the
- * CSV panel out of a test that never shows any of them — and gives the "we got
+ * backup panel out of a test that never shows any of them — and gives the "we got
  * all the way through" assertions something to look for.
  */
 jest.mock('../../app/navigation/SimpleTabs', () => {
@@ -188,29 +189,29 @@ describe('the settings on the first card', () => {
  * The other way a first run can end.
  *
  * Somebody changing phone, or coming back to a browser that lost its database,
- * already has their records in a CSV file — and every other door to that file is
- * in Settings, which is behind the tab shell, which a first run does not reach
- * until it has produced a record. Without a door on the card, restoring a backup
- * means answering all 47 cards and throwing the result away first.
+ * already has a backup file — and every other door to it is in Settings, which is
+ * behind the tab shell, which a first run does not reach until it has produced a
+ * record. Without a door on the card, restoring a backup means answering all 47
+ * cards and throwing the result away first.
  */
-describe('arriving with a CSV file', () => {
+describe('arriving with a backup file', () => {
   const fileFor = (date) => [
-    'assessed_on,scale,value_key,value_name,score,normalized',
-    `${date},numeric5,love,Love,5,1`,
-    `${date},numeric5,learning,Self-development,2,0.25`,
+    'kind,date,scale,value_key,value_name,score,normalized,rings',
+    `importance,${date},numeric5,love,Love,5,1,`,
+    `importance,${date},numeric5,learning,Self-development,2,0.25,`,
   ].join('\n');
 
   /** Paste a file into the first card's import and agree to what it says it will do. */
   const importFromTheDeck = async (csv) => {
-    await press('deck-csv-import-open');
+    await press('deck-backup-import-open');
     await act(async () => {
-      fireEvent.changeText(screen.getByTestId('deck-csv-paste-input'), csv);
+      fireEvent.changeText(screen.getByTestId('deck-backup-paste-input'), csv);
     });
-    await press('deck-csv-paste-import');
+    await press('deck-backup-paste-import');
     // The confirmation is a gate, not a notice: nothing is written until it is
     // answered, and the affirmative action is the second one.
     await press('dialog-action-1');
-    await waitFor(() => expect(screen.getByText('Import finished')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Loading finished')).toBeTruthy());
     await press('dialog-action-0');
   };
 
@@ -259,6 +260,38 @@ describe('arriving with a CSV file', () => {
     await waitForTheDeck();
     expect(screen.getByText('You already calibrated today. Finishing overwrites that record.')).toBeTruthy();
     expect(screen.getByText('2 rated')).toBeTruthy();
+  });
+
+  it('still reads the two files older releases wrote', async () => {
+    // The reader who needs them is the one who has just lost everything else,
+    // and what they are holding is whatever their old phone saved.
+    await launch();
+    await waitForTheDeck();
+
+    await importFromTheDeck([
+      'assessed_on,scale,value_key,value_name,score,normalized',
+      '2026-08-12,numeric5,love,Love,5,1',
+    ].join('\n'));
+
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+    expect(await getAssessments({ completedOnly: true })).toHaveLength(1);
+  });
+
+  it('takes a file of check-ins alone without ending the run it cannot finish', async () => {
+    // Both lists travel in one file, and either half can be missing from it.
+    // Check-ins with no ranking behind them land — they are the reader's data —
+    // but there is still nothing to show, so the deck stays where it is.
+    await launch();
+    await waitForTheDeck();
+
+    await importFromTheDeck([
+      'kind,date,scale,value_key,value_name,score,normalized,rings',
+      'alignment,2026-08-12,,love,Love,7,,10',
+    ].join('\n'));
+
+    expect(await getAlignmentHistory()).toHaveLength(1);
+    expect(screen.queryByTestId('main-app')).toBeNull();
+    await waitForTheDeck();
   });
 
   it('is not offered again once there is a settings screen holding it', async () => {
