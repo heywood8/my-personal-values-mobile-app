@@ -111,6 +111,23 @@ nothing.
 results screen defaults to that. One direction across the whole app: if a new
 surface orders values, it orders them that way unless the user flips it.
 
+**The history screen opens on the current top ten, or the whole current core
+band — whichever is longer.** `defaultTrackedIds()` reads that off the latest
+ranking, where the core band is a *prefix*, so both halves of the rule are one
+slice. Neither half works alone: the band is the reader's own nomination and can
+run past twenty, so cutting it at ten drops values they had just said matter
+most; and it can be empty on a cautious 1..10 ranking that never awarded an 8,
+which would open the screen on nothing at all.
+
+Showing that many at once is what the **grid** is for — one small multiple per
+value, each one framed and named, so identity is never carried by hue and the
+categorical palette's ceiling never applies. The **overlay chart** stays capped at
+`MAX_TRACKED_SERIES`, because there a line's identity *is* its hue; the grid is
+its legend, and a card promoted into it takes that line's colour and marker
+glyph. Both are drawn against the one axis `timeAxis()` builds over every
+calibration date — a second copy of that mapping is exactly how a grid of small
+multiples stops being a comparison and becomes twenty unrelated pictures.
+
 **The wheel's membership is derived, and the wheel is only for the top band.**
 `trackedValues()` takes the latest *completed* assessment's ranked results and
 keeps what `priorityBand()` calls `core` — which on the qualitative scale is
