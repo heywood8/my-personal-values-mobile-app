@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.9.0...values-v0.10.0) (2026-08-19)
+
+
+### Features
+
+* **results:** compare a friend's shared ranking with your own ([#48](https://github.com/heywood8/my-personal-values-mobile-app/issues/48)) ([aea1af1](https://github.com/heywood8/my-personal-values-mobile-app/commit/aea1af13c4b7aba7f7253c6fb8987052902fe857))
+
+
+### Bug Fixes
+
+* **alignment:** give the wheel row description a line height ([#50](https://github.com/heywood8/my-personal-values-mobile-app/issues/50)) ([9069652](https://github.com/heywood8/my-personal-values-mobile-app/commit/9069652703f907ec174c0f417e2ee58acec2d81b))
+
 ## [0.9.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.8.0...values-v0.9.0) (2026-08-19)
 
 
