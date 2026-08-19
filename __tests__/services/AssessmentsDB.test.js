@@ -14,7 +14,7 @@ import {
   getHistory,
 } from '../../app/services/AssessmentsDB';
 import { seedDefaultValues } from '../../app/services/ValuesDB';
-import { __resetDatabaseHandleForTests, queryAll } from '../../app/services/db';
+import { __resetDatabaseHandleForTests, queryAll, executeQuery } from '../../app/services/db';
 import { SCALE_IDS, normalizeScore } from '../../app/utils/scales';
 import { localDateKey } from '../../app/utils/dateUtils';
 
@@ -277,17 +277,18 @@ describe('deleteAssessment', () => {
 
 describe('deleting a value', () => {
   it('cascades to the ratings it collected', async () => {
+    // Nothing in the app deletes a value — a catalogue entry archives instead,
+    // so that a history chart reaching back past the change still resolves a
+    // name. The constraint is still worth holding: a rating whose value is gone
+    // is not a reading of anything.
     const assessment = await completeRun(TODAY, SCALE_IDS.NUMERIC_5, {
       learning: 5,
       love: 2,
+      health: 4,
     });
-    const { deleteCustomValue, addCustomValue } = require('../../app/services/ValuesDB');
-
-    const customId = await addCustomValue({ name: 'Sailing' });
-    await saveRating(assessment.id, customId, 4, SCALE_IDS.NUMERIC_5);
     expect(await getRatingsForAssessment(assessment.id)).toHaveLength(3);
 
-    await deleteCustomValue(customId);
+    await executeQuery("DELETE FROM personal_values WHERE id = 'health'");
     expect(await getRatingsForAssessment(assessment.id)).toHaveLength(2);
   });
 });

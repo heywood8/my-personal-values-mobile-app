@@ -53,17 +53,24 @@ without touching anything the user has already rated.
 
 | column | type | notes |
 |---|---|---|
-| `id` | text | primary key; equals the catalogue key for shipped values, a UUID for custom ones |
+| `id` | text | primary key; equals the catalogue key |
 | `key` | text | unique; i18n suffix — the name renders as `t('value_' + key)` |
-| `is_custom` | integer | 1 for a value the user added |
-| `custom_name` | text | the user's own wording; null for catalogue values |
-| `display_order` | integer | deck order — the source checklist's numbering, 1..47; custom values follow |
+| `is_custom` | integer | 1 for a value the user added on a release that allowed it; nothing writes it any more |
+| `custom_name` | text | that value's own wording; null for catalogue values |
+| `display_order` | integer | deck order — the source checklist's numbering, 1..47 |
 | `archived` | integer | archived values stay in past records but are not dealt |
 
 The table used to carry a `group_key`, sorting every value into one of eight
 groups. The groups are gone — the source checklist is a flat list — and the
 column went with them in `20260812134435_steep_apocalypse`. Nothing was lost with
-it: no rating, archive choice or custom value ever depended on the group.
+it: no rating or archive choice ever depended on the group.
+
+Values of the user's own are the other thing this table no longer gains. The deck
+is the shipped catalogue: nothing adds, renames or deletes a row, and the panel in
+Settings offers archiving alone. The two columns above stay because installs that
+predate the change still hold such rows, with ratings and check-ins hanging off
+them — the name lives in `custom_name` rather than in a locale file, and every
+read path still carries it or a record prints a uuid.
 
 ### `assessments`
 
@@ -165,63 +172,65 @@ latest completed assessment's top priority band, minus anything archived.
 
 ## Getting the data out, and back in
 
-`app/services/RecordsCsv.js` writes every completed assessment as one row per
-rating and reads the same shape back. It is the only backup this app has — nothing
-leaves the device otherwise — so the columns are additive: a later release may add
-one, never rename one, or a file written by an earlier version stops importing.
+`app/services/BackupCsv.js` writes everything the app holds as one file and reads
+the same shape back. It is the only backup this app has — nothing leaves the
+device otherwise — so the columns are additive: a later release may add one, never
+rename one, or a file written by an earlier version stops importing.
 
 ```
-assessed_on,scale,value_key,value_name,score,normalized
-2026-08-12,numeric5,love,Love,5,1
+kind,date,scale,value_key,value_name,score,normalized,rings
+importance,2026-08-12,numeric5,love,Love,5,1,
+alignment,2026-08-12,,love,Love,7,,10
 ```
 
-Import writes through the same two functions the app itself uses. Every record
-resolves through `startAssessment(scale, { today: <the file's date> })`, so a date
-that already has a record is reopened rather than duplicated — the same-day rule,
-unchanged — and its existing ratings are cleared first, so importing a file twice
-leaves the same database as importing it once. `normalized` is recomputed from
-`score`, never read from the file: the column is editable in a spreadsheet, and
-the stored pair has to agree.
-
-A value is matched by `value_key`, then by `value_name`, and anything still
-unmatched is added as a custom value. That is what makes a file from another
-device import as records rather than as nothing — its custom values carry keys
-this install has never seen.
-
-### The check-ins file, and why it is a second file
-
-`app/services/AlignmentCsv.js` does the same three steps for the wheel, into a
-file of its own:
-
-```
-checked_on,value_key,value_name,score,rings
-2026-08-12,love,Love,7,10
-```
-
-The obvious alternative — extra rows in the records file — is the one thing that
-cannot be done. Every already-shipped release reads that file by column name and
-would take those rows as *importance* ratings against that date, replacing through
-`startAssessment` the very record they were meant to sit beside. A separate file
-is simply skipped by an older release, and each file still opens in a spreadsheet
-as the one legible table it is.
-
-`rings` is the denominator, and it lives here rather than in the database because
-a database row can be migrated when an instrument changes and a file saved to
-somebody's phone last year cannot — a 7 means nothing without the 10 beside it. A
-file written before the column existed is a ten-ring file by definition; a file
+`kind` says which of the two lists a row belongs to, and each row carries only the
+columns its kind has. An importance row names the `scale` it was taken on,
+because a raw 4 means different things on 1..5 and 1..10, and carries a
+`normalized` reading so the file is legible beside a ranking. An alignment row
+carries `rings` instead: the denominator, here rather than only in the database
+because a database row can be migrated when an instrument changes and a file saved
+to somebody's phone last year cannot — a 7 means nothing without the 10 beside it.
+A file written before that column existed is a ten-ring file by definition; a file
 naming any other denominator has its rows skipped and counted, because rescaling
 would restate an answer nobody gave.
 
-Import resolves every record through `startCheckin({ today: <the file's date> })`
-and clears that day first, so the same-day rule and the "importing twice is
-importing once" property hold exactly as they do for records. It does **not**
-filter against current membership: a backup restored months later names the values
-that mattered then, which is the situation the file exists for.
+Import writes through the same two functions the app itself uses. Every ranking
+resolves through `startAssessment(scale, { today: <the file's date> })` and every
+check-in through `startCheckin({ today: <the file's date> })`, so a date that
+already has one is reopened rather than duplicated — the same-day rule, unchanged
+— and its existing answers are cleared first, so importing a file twice leaves the
+same database as importing it once. `normalized` is recomputed from `score`, never
+read from the file: the column is editable in a spreadsheet, and the stored pair
+has to agree. Check-ins are **not** filtered against current membership: a backup
+restored months later names the values that mattered then, which is the situation
+the file exists for.
 
-The split has one cost, and it is paid at both ends rather than left to the
-reader: `writePreUpdateSnapshot()` writes both files before an in-app APK install
-(pruned per prefix, so three updates never leave a records snapshot without its
-alignment twin), and the settings screen offers both exports.
+A value is matched by `value_key`, then by `value_name`. Anything still unmatched
+is skipped and counted — the deck is the shipped catalogue, so a row naming a
+value this install does not have is a row it cannot express. A date whose every
+row is unmatched is left alone entirely rather than cleared, because clearing is
+how an import replaces a date and there would be nothing to put in its place.
+
+### Why it is one file, and what makes that safe
+
+It used to be two, a records file and a check-ins file, and the reason was real:
+every already-shipped release reads a records file by column name and would take
+alignment rows as *importance* ratings against that date, replacing through
+`startAssessment` the very record they were meant to sit beside. The cost was that
+"back up my data" was two actions somebody could do half of.
+
+What makes one file safe is the header. This file names no column an older release
+looks for — `kind` and `date` where the records file had `assessed_on` and the
+check-ins file had `checked_on` — so such a release refuses it whole ("that is not
+a records file") rather than half-reading it. Both older shapes still import here,
+because they are sitting on people's phones; each is recognised by its own date
+column, and every row in it is of one kind by definition.
+
+Either list may be missing, in the file and in the database, and none of that is
+an error: a backup taken before the reader ever filled in the wheel has no
+check-ins, and a reader restoring one gets told what actually landed rather than a
+line claiming zero of what was never there. `writePreUpdateSnapshot()` writes the
+same one file before an in-app APK install, rotating the newest three.
 
 ### The share link, and why it never comes back in
 
@@ -235,17 +244,17 @@ behind it show a friend's results.
 It has no import path, deliberately. Writing it would mean resolving the sender's
 date through `startAssessment()`, which is the same-day rule, which means
 overwriting the reader's own record for that day with somebody else's answers.
-The two CSV files are how records travel between installs that mean to keep them;
+The backup file is how records travel between installs that mean to keep them;
 a link is a reading, and `SharedResultsScreen` renders it without touching the
 database at all.
 
-Values travel as keys for the same reason the CSV matches on `value_key` — the
-key is the stable identity across installs and languages — with one difference:
-the shared code omits the *name* of a catalogue value entirely, so the app that
-opens the link names it in its own reader's language. A custom value has no key
-anyone else knows and travels as text, which is also why two custom values never
-match when two rankings are compared: their keys are uuids minted on two
-different phones.
+Values travel as keys for the same reason the backup file matches on `value_key`
+— the key is the stable identity across installs and languages — with one
+difference: the shared code omits the *name* of a catalogue value entirely, so the
+app that opens the link names it in its own reader's language. A value the opening
+app does not know has no key anyone else can resolve and travels as text, which is
+also why two values added by hand on two different phones never match when two
+rankings are compared: their keys are uuids minted separately.
 
 The wheel can go along, when the sender switches it on — one alignment score per
 value and the check-in's date, as columns *after* the ones every shipped release

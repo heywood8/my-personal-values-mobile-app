@@ -1,4 +1,3 @@
-import uuid from 'react-native-uuid';
 import { queryAll, queryFirst, executeQuery, withTransaction } from './db';
 import { PREF_KEYS, getJsonPreference, setJsonPreference } from './PreferencesDB';
 import catalogue from '../defaults/defaultValues.json';
@@ -21,6 +20,13 @@ import catalogue from '../defaults/defaultValues.json';
  */
 export const DECK_ORDER = catalogue.values.map((entry) => entry.key);
 
+/**
+ * `isCustom` and `customName` are read but never written any more: the deck is
+ * the shipped catalogue and nothing else. The columns stay because installs that
+ * once let a reader add their own values still hold those rows, and their
+ * ratings belong to records that have to keep rendering — a name dropped here
+ * would print as a uuid in somebody's history. Nothing creates one.
+ */
 const rowToValue = (row) => ({
   id: row.id,
   key: row.key,
@@ -35,8 +41,7 @@ const rowToValue = (row) => ({
  *
  * Idempotent and additive: an entry's id IS its catalogue key, so re-running this
  * touches nothing that exists. That matters on upgrade — shipping new values in a
- * later release must not disturb a user's ratings, their archive choices, or
- * their custom values.
+ * later release must not disturb a user's ratings or their archive choices.
  */
 export async function seedDefaultValues() {
   const existing = await queryAll('SELECT id FROM personal_values');
@@ -76,8 +81,10 @@ export async function seedDefaultValues() {
  * touch a score, and archived rows are renumbered too so restoring one puts it
  * back where the checklist has it.
  *
- * Custom values are left alone. They are numbered from the end of the deck when
- * added, which keeps them after the catalogue's 0..n-1 either way.
+ * Only shipped rows are renumbered. Nothing else can be created any more — the
+ * deck is the catalogue — but an install that once held values of the user's own
+ * still carries them, numbered from the end, which keeps them after the
+ * catalogue's 0..n-1 either way.
  */
 export async function alignCatalogueOrder() {
   const target = new Map(catalogue.values.map((entry, index) => [entry.key, index]));
@@ -116,7 +123,8 @@ export async function alignCatalogueOrder() {
  * one-time step per key: without it, restoring a retired value by hand would
  * last exactly until the next launch re-archived it.
  *
- * Custom values are never touched. They are not ours to retire.
+ * A value of the user's own, on an install old enough to have one, is never
+ * touched. It is not ours to retire.
  */
 export async function retireRemovedValues() {
   const shipped = new Set(catalogue.values.map((entry) => entry.key));
@@ -169,34 +177,6 @@ export async function getValueById(id) {
 }
 
 /**
- * Add a value of the user's own. It goes to the end of the deck, and its name is
- * stored verbatim rather than as an i18n key — it is the user's words, and there
- * is nothing to translate it into.
- *
- * A name is the whole of it. The deck used to sort every value into one of eight
- * groups, which made adding one a two-part decision; the groups are gone, and a
- * custom value is now just a card like any other.
- */
-export async function addCustomValue({ name }) {
-  const trimmed = String(name || '').trim();
-  if (!trimmed) throw new Error('A custom value needs a name');
-
-  const id = String(uuid.v4());
-  const now = new Date().toISOString();
-  const row = await queryFirst('SELECT MAX(display_order) AS max_order FROM personal_values');
-  const displayOrder = (row?.max_order ?? -1) + 1;
-
-  await executeQuery(
-    `INSERT INTO personal_values
-       (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
-     VALUES (?, ?, 1, ?, ?, 0, ?, ?)`,
-    [id, id, trimmed, displayOrder, now, now],
-  );
-
-  return id;
-}
-
-/**
  * Archive or restore a value. Archiving is deliberately not deletion: the
  * ratings a value already collected stay queryable, so a history chart covering
  * the months before it was archived is still complete.
@@ -206,23 +186,4 @@ export async function setValueArchived(id, archived) {
     'UPDATE personal_values SET archived = ?, updated_at = ? WHERE id = ?',
     [archived ? 1 : 0, new Date().toISOString(), id],
   );
-}
-
-/** Rename a custom value. No-op for catalogue entries, whose names are translated. */
-export async function renameCustomValue(id, name) {
-  const trimmed = String(name || '').trim();
-  if (!trimmed) throw new Error('A custom value needs a name');
-  await executeQuery(
-    'UPDATE personal_values SET custom_name = ?, updated_at = ? WHERE id = ? AND is_custom = 1',
-    [trimmed, new Date().toISOString(), id],
-  );
-}
-
-/**
- * Delete a custom value outright, and with it (via ON DELETE CASCADE) every
- * rating it ever collected. Offered only for custom values: a catalogue entry
- * archives instead, so a future release re-seeding it cannot resurrect it.
- */
-export async function deleteCustomValue(id) {
-  await executeQuery('DELETE FROM personal_values WHERE id = ? AND is_custom = 1', [id]);
 }
