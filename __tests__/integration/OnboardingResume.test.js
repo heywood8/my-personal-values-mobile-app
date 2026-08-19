@@ -257,8 +257,9 @@ describe('arriving with a CSV file', () => {
     await finishTheRun();
     await press('main-app');
 
-    // A recalibration can be left, which means Settings is reachable — a second
-    // door here would only be one more thing to scroll past.
+    // There are records now, which means the tab shell — and the Settings screen
+    // holding this same import — is reachable. A second door here would only be
+    // one more thing to scroll past.
     await waitForTheDeck();
     expect(screen.queryByTestId('deck-import')).toBeNull();
   });

@@ -8,7 +8,7 @@ import {
   encodeShareCode,
   decodeShareCode,
 } from '../../app/services/ResultsShare';
-import { SCALE_IDS } from '../../app/utils/scales';
+import { SCALE_IDS, normalizeScore } from '../../app/utils/scales';
 import en from '../../assets/i18n/en.json';
 
 /**
@@ -18,6 +18,11 @@ import en from '../../assets/i18n/en.json';
  * database, seeds no catalogue and writes nothing — the link is the whole of its
  * data. A version of it that needed the app's own state would fail here rather
  * than in front of somebody who has never opened the app before.
+ *
+ * The comparison keeps that true by arriving as a prop: `own` is the reader's
+ * half, already loaded by whoever mounted this. Everything below either passes
+ * one or does not, which is exactly the difference between a reader who has used
+ * the app and the visitor it also has to work for.
  */
 
 const code = encodeShareCode(buildSharePayload(
@@ -29,6 +34,32 @@ const code = encodeShareCode(buildSharePayload(
   ],
   (value) => value.customName,
 ));
+
+const withWheel = encodeShareCode(buildSharePayload(
+  { assessedOn: '2026-08-12', scale: SCALE_IDS.NUMERIC_5 },
+  [
+    { key: 'love', valueId: 'love', isCustom: false, score: 5, normalized: 1 },
+    { key: 'health', valueId: 'health', isCustom: false, score: 5, normalized: 1 },
+  ],
+  (value) => value.customName,
+  { checkedOn: '2026-08-14', scores: new Map([['love', 8], ['health', 2]]) },
+));
+
+const myRow = (key, score, scale = SCALE_IDS.NUMERIC_5) => ({
+  valueId: key,
+  key,
+  isCustom: false,
+  customName: null,
+  score,
+  normalized: normalizeScore(score, scale),
+});
+
+/** The reader's own half, as AppInitializer hands it over. */
+const own = (results, alignment = null) => ({
+  assessment: { assessedOn: '2026-08-15', scale: SCALE_IDS.NUMERIC_5 },
+  results,
+  alignment,
+});
 
 const mount = async (props = {}) => {
   await render(
@@ -110,5 +141,125 @@ describe('a link that cannot be read', () => {
 
   it('says something is not a shared ranking at all when it is not', async () => {
     await expectFailure('https://example.com/not-a-code', en.share_view_invalid_title);
+  });
+});
+
+describe('a reader who has a ranking of their own', () => {
+  const mine = [myRow('love', 2), myRow('health', 5)];
+
+  it('opens on the comparison rather than on somebody else’s list alone', async () => {
+    await mount({ own: own(mine) });
+
+    // Nothing is hidden by that: every value they sent is in the comparison too,
+    // with their score beside it.
+    expect(screen.getByTestId('shared-comparison')).toBeTruthy();
+    expect(screen.getByTestId('compare-fill-love-mine')).toBeTruthy();
+    expect(screen.getByTestId('compare-fill-love-theirs')).toBeTruthy();
+  });
+
+  it('reads their list on its own in one tap, and comes back', async () => {
+    await mount({ own: own(mine) });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('shared-view-toggle-theirs'));
+    });
+    expect(screen.getByTestId('shared-their-results')).toBeTruthy();
+    expect(screen.getByTestId('ranked-value-bars')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('shared-view-toggle-compare'));
+    });
+    expect(screen.getByTestId('shared-comparison')).toBeTruthy();
+  });
+
+  it('says how much of the two lists is shared, and how alike it is', async () => {
+    await mount({ own: own(mine) });
+
+    expect(screen.getByText(en.compare_shared_count.replace('{{count}}', '2'))).toBeTruthy();
+    // Read off the two values both of them rated and nothing else: love is 0.75
+    // apart and health 0.5, so the mean gap is 0.625.
+    expect(screen.getByText(en.compare_closeness.replace('{{percent}}', '38'))).toBeTruthy();
+    // A custom value on their side has a key no other install knows, so it can
+    // only ever be theirs alone.
+    expect(screen.getByText(en.compare_only_theirs.replace('{{count}}', '1'))).toBeTruthy();
+  });
+
+  it('puts the widest disagreement on top when asked', async () => {
+    await mount({ own: own(mine) });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('compare-order-toggle-gap'));
+    });
+
+    const rows = screen.getAllByTestId(/^compare-row-/)
+      .map((row) => row.props.testID.replace('compare-row-', ''));
+    // They put love at the top and the reader nearly at the bottom; health they
+    // agree on entirely.
+    expect(rows[0]).toBe('love');
+  });
+
+  it('offers no wheel comparison when neither side sent one', async () => {
+    await mount({ own: own(mine) });
+
+    expect(screen.queryByTestId('compare-metric-toggle')).toBeNull();
+  });
+
+  it('compares the wheels when a link carries one', async () => {
+    await render(
+      <SharedResultsScreen
+        code={withWheel}
+        onClose={jest.fn()}
+        own={own(mine, { checkedOn: '2026-08-15', scores: new Map([['love', 10]]) })}
+      />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('compare-metric-toggle-alignment'));
+    });
+
+    // Love was answered on both wheels; health only on theirs, and it is still
+    // here — one side of a comparison is what a reader with no check-in of their
+    // own has to read the sender's by.
+    expect(screen.getByText('10/10')).toBeTruthy();
+    expect(screen.getByText('8/10')).toBeTruthy();
+    expect(screen.getByText('2/10')).toBeTruthy();
+  });
+});
+
+describe('a visitor with nothing of their own yet', () => {
+  it('shows the sender’s wheel, since it arrived and there is nothing to set it against', async () => {
+    await render(
+      <SharedResultsScreen code={withWheel} onClose={jest.fn()} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    expect(screen.getByTestId('shared-their-alignment')).toBeTruthy();
+    expect(screen.getByText(en.share_view_alignment_title)).toBeTruthy();
+    expect(screen.getByText('8/10')).toBeTruthy();
+  });
+
+  it('offers no comparison at all', async () => {
+    await mount();
+
+    expect(screen.queryByTestId('shared-view-toggle')).toBeNull();
+    expect(screen.queryByTestId('shared-comparison')).toBeNull();
+  });
+
+  it('invites them to make one, and the link is kept while they do', async () => {
+    const onCalibrate = jest.fn();
+    await mount({ onCalibrate });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('shared-results-calibrate'));
+    });
+
+    expect(onCalibrate).toHaveBeenCalled();
+  });
+
+  it('does not invite them where there is no route into the deck', async () => {
+    await mount();
+
+    expect(screen.queryByTestId('shared-results-invite')).toBeNull();
   });
 });

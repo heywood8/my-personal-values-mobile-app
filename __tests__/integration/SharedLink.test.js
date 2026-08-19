@@ -5,6 +5,12 @@ import { AllProviders } from '../../test-utils/renderWithProviders';
 import AppInitializer from '../../app/screens/AppInitializer';
 import { __resetDatabaseHandleForTests } from '../../app/services/db';
 import { seedDefaultValues } from '../../app/services/ValuesDB';
+import {
+  startAssessment,
+  saveRating,
+  completeAssessment,
+} from '../../app/services/AssessmentsDB';
+import { localDateKey } from '../../app/utils/dateUtils';
 import { buildSharePayload, encodeShareCode, SHARE_PARAM } from '../../app/services/ResultsShare';
 import { SCALE_IDS } from '../../app/utils/scales';
 import en from '../../assets/i18n/en.json';
@@ -18,6 +24,11 @@ import en from '../../assets/i18n/en.json';
  * before everything — and closing it hands the visitor their own first run,
  * with the code taken back out of the address bar so a reload does not return
  * them to somebody else's results.
+ *
+ * A reader who does have records gets the comparison instead, and a visitor who
+ * has none can go and make some without losing the link: the deck opens over this
+ * screen and comes back to it, which is the only route from a friend's link to
+ * two rankings side by side.
  */
 
 const code = encodeShareCode(buildSharePayload(
@@ -25,6 +36,15 @@ const code = encodeShareCode(buildSharePayload(
   [{ key: 'love', isCustom: false, score: 5, normalized: 1 }],
   () => '',
 ));
+
+const recordToday = async (scores) => {
+  await seedDefaultValues();
+  const assessment = await startAssessment(SCALE_IDS.NUMERIC_5, { today: localDateKey() });
+  for (const [valueId, score] of Object.entries(scores)) {
+    await saveRating(assessment.id, valueId, score, SCALE_IDS.NUMERIC_5);
+  }
+  await completeAssessment(assessment.id);
+};
 
 const nativeOS = Platform.OS;
 const originalWindow = Object.getOwnPropertyDescriptor(global, 'window');
@@ -86,6 +106,60 @@ describe('arriving on a shared link', () => {
     // the address bar, so reloading the tab keeps it that way.
     await waitFor(() => expect(screen.getByTestId('assessment-progress')).toBeTruthy());
     expect(replaceState).toHaveBeenCalledWith(null, '', '/values/');
+  });
+
+  it('sets the reader’s own ranking beside it when they have one', async () => {
+    await recordToday({ love: 2, health: 5 });
+    arriveOn(`?${SHARE_PARAM}=${code}`);
+    await render(<AppInitializer />, { wrapper: AllProviders });
+
+    // The reader's half arrives from the providers a moment after the link is
+    // drawn, so the comparison appears when it appears rather than gating the
+    // screen on a database this visitor may not have.
+    await waitFor(() => expect(screen.getByTestId('shared-comparison')).toBeTruthy());
+    expect(screen.getByTestId('compare-fill-love-mine')).toBeTruthy();
+    expect(screen.getByTestId('compare-fill-love-theirs')).toBeTruthy();
+  });
+
+  it('lets a visitor rate the deck without losing the link', async () => {
+    await seedDefaultValues();
+    arriveOn(`?${SHARE_PARAM}=${code}`);
+    await render(<AppInitializer />, { wrapper: AllProviders });
+    await waitFor(() => expect(screen.getByTestId('shared-results-screen')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('shared-results-calibrate'));
+    });
+    await waitFor(() => expect(screen.getByTestId('assessment-progress')).toBeTruthy());
+
+    // The link is still in the address bar, and the deck has a way out for once:
+    // there is somewhere to land, which is the whole reason a first run normally
+    // has none.
+    expect(replaceState).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('assessment-exit'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText(en.assessment_exit_confirm));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('shared-results-screen')).toBeTruthy());
+  });
+
+  it('still offers the CSV import to a visitor who came in through a link', async () => {
+    await seedDefaultValues();
+    arriveOn(`?${SHARE_PARAM}=${code}`);
+    await render(<AppInitializer />, { wrapper: AllProviders });
+    await waitFor(() => expect(screen.getByTestId('shared-results-screen')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('shared-results-calibrate'));
+    });
+
+    // The deck now has a way out, which used to be the same question as "has
+    // this reader got records" — it is not, and somebody arriving with a backup
+    // file still has no other door to it.
+    await waitFor(() => expect(screen.getByTestId('deck-import')).toBeTruthy());
   });
 
   it('opens normally when there is no link', async () => {

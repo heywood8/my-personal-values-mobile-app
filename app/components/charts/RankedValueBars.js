@@ -5,7 +5,7 @@ import { Text } from 'react-native-paper';
 import { useThemeColors } from '../../contexts/ThemeColorsContext';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { priorityColor } from '../../styles/chartPalette';
-import { priorityBand, getScale, scaleStepLabel } from '../../utils/scales';
+import { priorityBand, getScale, scaleStepLabel, scoreFraction } from '../../utils/scales';
 import { valueName, valueDescription } from '../../utils/valueNames';
 import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../../styles/designTokens';
 
@@ -39,9 +39,10 @@ const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
   const description = valueDescription(item, t);
   const band = priorityBand(item.normalized);
   const fill = priorityColor(band.id, mode);
-  // A value at the very bottom of the scale still needs a visible mark — a
-  // zero-width bar reads as missing data rather than as "this barely matters".
-  const fraction = 0.04 + item.normalized * 0.96;
+  // Squeezed away from zero, because a value on the bottom step still needs a
+  // visible mark. The rule itself lives in utils/scales.js, beside the wheel's
+  // deliberately different one.
+  const fraction = scoreFraction(item.normalized);
 
   const reveal = useCallback(() => setRevealed(true), []);
   const hide = useCallback(() => setRevealed(false), []);

@@ -243,7 +243,17 @@ Values travel as keys for the same reason the CSV matches on `value_key` — the
 key is the stable identity across installs and languages — with one difference:
 the shared code omits the *name* of a catalogue value entirely, so the app that
 opens the link names it in its own reader's language. A custom value has no key
-anyone else knows and travels as text.
+anyone else knows and travels as text, which is also why two custom values never
+match when two rankings are compared: their keys are uuids minted on two
+different phones.
+
+The wheel can go along, when the sender switches it on — one alignment score per
+value and the check-in's date, as columns *after* the ones every shipped release
+already reads. That is the one place the two lists share a carrier, and it is
+allowed for the reason the CSV files are not: an older reader ignores a column it
+has never heard of, whereas alignment scores appended to a records file would be
+read as importance ratings for that date. None of it comes back in either — a
+comparison is drawn on screen and nothing about it is written.
 
 ## Storage locations
 
