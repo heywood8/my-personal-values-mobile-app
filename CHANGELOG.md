@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.8.0...values-v0.9.0) (2026-08-19)
+
+
+### Features
+
+* **alignment:** show each value's description on the wheel's rows ([#44](https://github.com/heywood8/my-personal-values-mobile-app/issues/44)) ([a7b8e92](https://github.com/heywood8/my-personal-values-mobile-app/commit/a7b8e92eac4a1806319351cd08315797c62cd854))
+* **history:** track many values as a grid of small multiples ([#47](https://github.com/heywood8/my-personal-values-mobile-app/issues/47)) ([3068aaa](https://github.com/heywood8/my-personal-values-mobile-app/commit/3068aaa3f2f17a711ce43b33fd2b93f2bf4f8a76))
+* name the value behind a wheel sector on hover or tap ([#45](https://github.com/heywood8/my-personal-values-mobile-app/issues/45)) ([c0ba5d8](https://github.com/heywood8/my-personal-values-mobile-app/commit/c0ba5d8c09f3a456a4588b4107539b5a6080a658))
+
 ## [0.8.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.7.0...values-v0.8.0) (2026-08-19)
 
 
