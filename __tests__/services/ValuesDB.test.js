@@ -4,10 +4,7 @@ import {
   getAllValues,
   getActiveValues,
   getValueById,
-  addCustomValue,
   setValueArchived,
-  renameCustomValue,
-  deleteCustomValue,
   alignCatalogueOrder,
   DECK_ORDER,
 } from '../../app/services/ValuesDB';
@@ -17,6 +14,22 @@ import catalogue from '../../app/defaults/defaultValues.json';
 beforeEach(() => {
   __resetDatabaseHandleForTests();
 });
+
+/**
+ * A value of the reader's own, as an install old enough to have one still holds
+ * it. Written straight into the table because nothing in the app creates one any
+ * more — the deck is the shipped catalogue — and these rows still have to be
+ * left alone rather than retired or renumbered out from under their ratings.
+ */
+const insertOwnValue = async (id, name) => {
+  const now = new Date().toISOString();
+  await executeQuery(
+    `INSERT INTO personal_values
+       (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
+     VALUES (?, ?, 1, ?, 999, 0, ?, ?)`,
+    [id, id, name, now, now],
+  );
+};
 
 describe('DECK_ORDER', () => {
   // The order the source checklist prints, 1..47. Written out rather than
@@ -122,11 +135,11 @@ describe('retiring values the catalogue no longer ships', () => {
       .toEqual(catalogue.values.map((v) => v.key).sort());
   });
 
-  it('never touches a custom value', async () => {
-    const id = await addCustomValue({ name: 'Sailing' });
+  it("never touches a value of the reader's own", async () => {
+    await insertOwnValue('3f1a-uuid', 'Sailing');
 
     expect(await retireRemovedValues()).toBe(0);
-    expect((await getValueById(id)).archived).toBe(false);
+    expect((await getValueById('3f1a-uuid')).archived).toBe(false);
   });
 
   it('is idempotent — a second run retires nothing', async () => {
@@ -195,12 +208,12 @@ describe('alignCatalogueOrder', () => {
     expect((await getActiveValues()).map((v) => v.key)).toEqual(DECK_ORDER);
   });
 
-  it('leaves custom values after the catalogue', async () => {
-    const id = await addCustomValue({ name: 'Sailing' });
+  it("leaves a value of the reader's own after the catalogue", async () => {
+    await insertOwnValue('3f1a-uuid', 'Sailing');
     await alignCatalogueOrder();
 
     const active = await getActiveValues();
-    expect(active[active.length - 1].id).toBe(id);
+    expect(active[active.length - 1].id).toBe('3f1a-uuid');
     expect(active.map((v) => v.key).slice(0, -1)).toEqual(DECK_ORDER);
   });
 });
@@ -224,53 +237,5 @@ describe('archiving', () => {
     await setValueArchived('love', true);
     await setValueArchived('love', false);
     expect((await getActiveValues()).find((v) => v.id === 'love')).toBeDefined();
-  });
-});
-
-describe('custom values', () => {
-  beforeEach(async () => {
-    await seedDefaultValues();
-  });
-
-  it('adds one at the end of the deck', async () => {
-    const id = await addCustomValue({ name: '  Sailing  ' });
-    const value = await getValueById(id);
-
-    expect(value).toMatchObject({
-      isCustom: true,
-      customName: 'Sailing', // trimmed
-      archived: false,
-    });
-
-    const active = await getActiveValues();
-    expect(active[active.length - 1].id).toBe(id);
-  });
-
-  it('rejects a blank name', async () => {
-    // A name is the whole of a custom value now that groups are gone, so it is
-    // also the only thing there is to reject.
-    await expect(addCustomValue({ name: '   ' })).rejects.toThrow();
-    await expect(addCustomValue({ name: null })).rejects.toThrow();
-  });
-
-  it('renames only custom values', async () => {
-    const id = await addCustomValue({ name: 'Sailing' });
-    await renameCustomValue(id, 'Boats');
-    expect((await getValueById(id)).customName).toBe('Boats');
-
-    // A catalogue entry's name is a translation key, so there is nothing to rename.
-    await renameCustomValue('learning', 'Something else');
-    expect((await getValueById('learning')).customName).toBeNull();
-  });
-
-  it('deletes only custom values', async () => {
-    const id = await addCustomValue({ name: 'Sailing' });
-    await deleteCustomValue(id);
-    expect(await getValueById(id)).toBeNull();
-
-    // A catalogue entry must archive instead — deleting it would let a future
-    // release re-seed and resurrect it.
-    await deleteCustomValue('learning');
-    expect(await getValueById('learning')).not.toBeNull();
   });
 });

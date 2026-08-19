@@ -11,7 +11,7 @@ import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import SegmentedToggle from '../components/SegmentedToggle';
 import ValueDeckPanel from '../components/ValueDeckPanel';
-import CsvTransferPanel from '../components/CsvTransferPanel';
+import BackupTransferPanel from '../components/BackupTransferPanel';
 import PrivacyNote from '../components/PrivacyNote';
 import UpdatePanel from '../components/UpdatePanel';
 import { canInstallUpdates } from '../services/AppUpdateService';
@@ -155,7 +155,7 @@ const SettingsScreen = ({ onStartCalibration }) => {
         {/* Renders only on web; see the component. */}
         <PrivacyNote />
 
-        <CsvTransferPanel />
+        <BackupTransferPanel />
 
         <Divider style={styles.divider} />
 

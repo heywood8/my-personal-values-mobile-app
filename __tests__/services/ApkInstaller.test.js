@@ -289,11 +289,12 @@ describe('the documents directory', () => {
 });
 
 describe('rotating the pre-update snapshots', () => {
-  // An install writes TWO backups now, the ranking and the check-ins, because a
-  // complete backup is two files (see app/services/AlignmentCsv.js). The
-  // rotation therefore has to be per family: one pass over both prefixes would
-  // keep three files across two of them, deleting a records snapshot while
-  // keeping its alignment twin, and neither half is a complete record alone.
+  // An install writes ONE backup now — both lists in one file (see
+  // app/services/BackupCsv.js) — but a release that wrote two left snapshots of
+  // its own in this directory. The rotation is therefore per family: one pass
+  // over both prefixes would keep three files across two of them, deleting a
+  // records snapshot while keeping its alignment twin, and neither of those
+  // halves is a complete record alone.
   const docNames = () => [...mockFiles.keys()]
     .filter((uri) => uri.startsWith(DOCS))
     .map((uri) => uri.slice(DOCS.length))

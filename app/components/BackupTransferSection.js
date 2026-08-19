@@ -7,7 +7,7 @@ import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { SPACING, FONT_SIZE } from '../styles/designTokens';
 
 /**
- * One CSV file's transfer controls: a save, and an import that opens onto the
+ * The backup file's transfer controls: a save, and an import that opens onto the
  * doors this platform has.
  *
  * Import has two of them because the platforms do. The web has a real file
@@ -16,16 +16,14 @@ import { SPACING, FONT_SIZE } from '../styles/designTokens';
  * offered on both — it is also how someone imports a file a mail client will only
  * show them the contents of.
  *
- * Mounted three times, so it lives here rather than inside any one of them:
- * twice in the settings panel, once per file (the ranking and the alignment
- * check-ins — app/services/AlignmentCsv.js says why they are not one), and once
- * on the first card of the deck. Each mount owns its own paste box, so text meant
- * for one file cannot be handed to another.
+ * Mounted twice, so it lives here rather than inside either of them: once in the
+ * settings panel, and once on the first card of the deck. Each mount owns its own
+ * paste box.
  *
  * `onExport` is optional because the deck mount has nothing to save: it is shown
  * on a first run, where the whole point is that there are no records yet.
  */
-const CsvTransferSection = ({
+const BackupTransferSection = ({
   hint, exportLabel, importLabel, onExport, onImport, busy, canPickFile, testIDPrefix,
 }) => {
   const { t } = useLocalization();
@@ -77,17 +75,17 @@ const CsvTransferSection = ({
               style={styles.action}
               testID={`${testIDPrefix}-import-file`}
             >
-              {t('csv_choose_file')}
+              {t('backup_choose_file')}
             </Button>
           )}
 
-          <Text style={[styles.hint, { color: colors.mutedText }]}>{t('csv_paste_hint')}</Text>
+          <Text style={[styles.hint, { color: colors.mutedText }]}>{t('backup_paste_hint')}</Text>
           <TextInput
             mode="outlined"
             dense
             multiline
             numberOfLines={4}
-            label={t('csv_paste_label')}
+            label={t('backup_paste_label')}
             value={pasted}
             onChangeText={setPasted}
             style={styles.input}
@@ -101,7 +99,7 @@ const CsvTransferSection = ({
             style={styles.action}
             testID={`${testIDPrefix}-paste-import`}
           >
-            {t('csv_import_action')}
+            {t('backup_import_action')}
           </Button>
         </View>
       )}
@@ -126,7 +124,7 @@ const styles = StyleSheet.create({
   },
 });
 
-CsvTransferSection.propTypes = {
+BackupTransferSection.propTypes = {
   // Optional: omitted where the surrounding screen has already said what the
   // file is, and the button label is the whole explanation.
   hint: PropTypes.string,
@@ -142,4 +140,4 @@ CsvTransferSection.propTypes = {
   testIDPrefix: PropTypes.string.isRequired,
 };
 
-export default CsvTransferSection;
+export default BackupTransferSection;

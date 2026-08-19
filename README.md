@@ -49,13 +49,13 @@ list is tracked over time too.
   and comparable with every earlier check-in
 - **History** — biggest movers between the last two calibrations, and a trend
   chart for up to five values at once
-- **CSV in and out** — save your records as spreadsheet-readable files and read
-  them back on another device; the ranking and the check-ins are two files, so a
-  file written today still imports into an older version of the app
+- **Backup in and out** — save everything you have as one spreadsheet-readable
+  file and read it back on another device; the ranking and the wheel check-ins
+  travel together, and files written by older versions still import
 - **Share a ranking** — a link with the whole result packed inside it, so a friend
   opens it in a browser with no app, no account and nothing uploaded
-- **Your own values** — add values the catalogue does not have, archive the ones
-  you do not care about
+- **Your own deck** — archive the values you do not care about, so they stop
+  being dealt
 - **Light and dark themes**, following the system by default
 - **In-app updates on Android** — the app checks its own GitHub releases, and
   downloads, verifies and installs the APK itself, since there is no store
@@ -67,10 +67,10 @@ Android, iOS and web from one codebase. All data is stored locally on the device
 — in SQLite on Android and iOS, and in the browser's origin-private file system
 on the web. Nothing is sent anywhere.
 
-Which also means nothing is backed up anywhere, so records can be saved as CSV
-files and read back in — on the web as a download and a file dialog, on a phone
-through the share sheet and a paste box. A complete backup is two files: the
-ranking, and the wheel check-ins.
+Which also means nothing is backed up anywhere, so everything can be saved as one
+CSV file and read back in — on the web as a download and a file dialog, on a phone
+through the share sheet and a paste box. One file, both lists: the ranking and the
+wheel check-ins.
 
 The one thing that ever leaves is a link you make yourself and hand to somebody:
 "Share with a friend" puts the ranking *inside* the link rather than on a server,

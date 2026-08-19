@@ -8,7 +8,7 @@ import {
   getCheckinByDate,
   getAlignmentHistory,
 } from '../../app/services/AlignmentDB';
-import { seedDefaultValues, addCustomValue, deleteCustomValue } from '../../app/services/ValuesDB';
+import { seedDefaultValues } from '../../app/services/ValuesDB';
 import { __resetDatabaseHandleForTests, queryAll, executeQuery } from '../../app/services/db';
 import { localDateKey } from '../../app/utils/dateUtils';
 
@@ -158,12 +158,14 @@ describe('what a deletion takes with it', () => {
     expect((await getAlignmentHistory()).map((r) => r.checkedOn)).toEqual([YESTERDAY]);
   });
 
-  it('cascades from a deleted custom value to every check-in that scored it', async () => {
-    const id = await addCustomValue({ name: 'Sea swimming' });
-    await checkIn(YESTERDAY, { [id]: 3 });
-    await checkIn(TODAY, { [id]: 9, love: 5 });
+  it('cascades from a deleted value to every check-in that scored it', async () => {
+    // Nothing in the app deletes a value — a catalogue entry archives instead —
+    // so the row goes out from under the scores directly. What is under test is
+    // the constraint: a score with no value left to be about is not a reading.
+    await checkIn(YESTERDAY, { health: 3 });
+    await checkIn(TODAY, { health: 9, love: 5 });
 
-    await deleteCustomValue(id);
+    await executeQuery("DELETE FROM personal_values WHERE id = 'health'");
 
     const history = await getAlignmentHistory();
     expect(history.map((r) => r.valueId)).toEqual(['love']);
@@ -184,9 +186,18 @@ describe('the history read', () => {
     ]);
   });
 
-  it("carries a custom value's own wording", async () => {
-    const id = await addCustomValue({ name: 'Sea swimming' });
-    await checkIn(TODAY, { [id]: 7 });
+  it('carries the wording of a value the reader added on an older release', async () => {
+    // Nothing creates one any more, and the rows are still out there — their
+    // name lives in the table rather than in a translation file, and the join
+    // has to bring it along or a check-in prints a uuid.
+    const now = new Date().toISOString();
+    await executeQuery(
+      `INSERT INTO personal_values
+         (id, key, is_custom, custom_name, display_order, archived, created_at, updated_at)
+       VALUES ('3f1a-uuid', '3f1a-uuid', 1, 'Sea swimming', 999, 0, ?, ?)`,
+      [now, now],
+    );
+    await checkIn(TODAY, { '3f1a-uuid': 7 });
 
     expect(await getAlignmentHistory()).toMatchObject([
       { customName: 'Sea swimming', isCustom: true, score: 7 },

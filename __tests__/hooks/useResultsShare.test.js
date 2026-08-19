@@ -3,7 +3,8 @@ import { Text } from 'react-native';
 import { render, screen, waitFor, act } from '@testing-library/react-native';
 import { useResultsShare } from '../../app/hooks/useResultsShare';
 import { AllProviders } from '../../test-utils/renderWithProviders';
-import { seedDefaultValues, addCustomValue } from '../../app/services/ValuesDB';
+import { seedDefaultValues } from '../../app/services/ValuesDB';
+import { insertOwnValue } from '../../test-utils/legacyValues';
 import {
   startAssessment,
   saveRating,
@@ -92,9 +93,9 @@ describe('sharing a ranking', () => {
       .toEqual([['love', 5], ['learning', 3], ['health', 1]]);
   });
 
-  it('carries a custom value by name, since no other install knows its key', async () => {
+  it('carries an unknown value by name, since no other install knows its key', async () => {
     await seedDefaultValues();
-    const sailing = await addCustomValue({ name: 'Sailing' });
+    const sailing = await insertOwnValue('3f1a-uuid', 'Sailing');
     await recordToday({ love: 5, [sailing]: 4 });
     await mount();
 

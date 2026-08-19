@@ -5,10 +5,7 @@ import {
   retireRemovedValues,
   alignCatalogueOrder,
   getAllValues,
-  addCustomValue as dbAddCustomValue,
   setValueArchived as dbSetValueArchived,
-  renameCustomValue as dbRenameCustomValue,
-  deleteCustomValue as dbDeleteCustomValue,
 } from '../services/ValuesDB';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 
@@ -67,28 +64,6 @@ export const ValuesProvider = ({ children }) => {
     await reload();
   }, [reload]);
 
-  const addCustomValue = useCallback(async (input) => {
-    const id = await dbAddCustomValue(input);
-    await reload();
-    return id;
-  }, [reload]);
-
-  const renameCustomValue = useCallback(async (id, name) => {
-    await dbRenameCustomValue(id, name);
-    await reload();
-  }, [reload]);
-
-  const deleteCustomValue = useCallback(async (id) => {
-    await dbDeleteCustomValue(id);
-    await reload();
-    // Ratings went with it (ON DELETE CASCADE), so anything showing results has
-    // to re-read rather than keep plotting a value that no longer exists. The
-    // cascade reaches the alignment check-ins as well, and that provider is not
-    // listening for an assessment change.
-    appEvents.emit(EVENTS.ASSESSMENTS_CHANGED);
-    appEvents.emit(EVENTS.ALIGNMENT_CHANGED);
-  }, [reload]);
-
   const value = useMemo(() => ({
     values,
     activeValues,
@@ -96,13 +71,7 @@ export const ValuesProvider = ({ children }) => {
     error,
     reload,
     setValueArchived,
-    addCustomValue,
-    renameCustomValue,
-    deleteCustomValue,
-  }), [
-    values, activeValues, isLoading, error, reload,
-    setValueArchived, addCustomValue, renameCustomValue, deleteCustomValue,
-  ]);
+  }), [values, activeValues, isLoading, error, reload, setValueArchived]);
 
   return (
     <ValuesContext.Provider value={value}>

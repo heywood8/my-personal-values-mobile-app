@@ -19,6 +19,11 @@ const APK_KEEP_COUNT = 3;
 // Pre-update CSV snapshots to keep, for the same reason and at a thousandth of
 // the size.
 const SNAPSHOT_KEEP_COUNT = 3;
+// What a pre-update snapshot is called. Unchanged from when this wrote a
+// records-only file, on purpose: the rotation below finds a prefix, so keeping
+// the name is what lets the last snapshots an older release wrote age out
+// normally instead of sitting in the documents directory forever.
+const SNAPSHOT_PREFIX = 'values-pre-update-';
 
 const FALLBACK_APK_NAME = 'values-update.apk';
 
@@ -252,11 +257,12 @@ export const installApk = async (localUri) => {
 /**
  * Keep only the newest SNAPSHOT_KEEP_COUNT files of one prefix.
  *
- * Per prefix, not across all of them, and that is the whole reason this is a
- * function. The two snapshots below are one backup in two files — the ranking
- * and the check-ins — so a single rotation over both would prune three updates'
- * worth down to one and a half, deleting a records file while keeping its
- * alignment twin. Neither half is a complete record on its own.
+ * By prefix rather than over the whole directory, because a release that wrote
+ * its backup as two files (the ranking and the check-ins, before they became
+ * one) left snapshots of its own here, and a rotation that counted both families
+ * together would prune three updates' worth down to one and a half — deleting a
+ * records file while keeping its alignment twin, neither of which is a complete
+ * record alone.
  */
 export const pruneSnapshots = async (prefix) => {
   const names = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
@@ -270,15 +276,15 @@ export const pruneSnapshots = async (prefix) => {
 };
 
 /**
- * Write the CSV exports to the documents directory before installing.
+ * Write the backup file to the documents directory before installing.
  *
- * The CSV file is the only backup this app has, and an update is the one moment
- * it is knowingly about to be replaced. There are two of them now — the ranking
- * and the alignment check-ins, kept apart so that neither can be misread as the
- * other (see app/services/AlignmentCsv.js) — and both are written here, or the
- * second list would be dropped on the floor by every in-app update.
+ * The backup file is the only backup this app has, and an update is the one
+ * moment it is knowingly about to be replaced. It is one file — the ranking and
+ * the wheel's check-ins together (see app/services/BackupCsv.js) — so there is
+ * one snapshot to write and one family to rotate; it was two of each once, and
+ * a failure in either half left the other standing as half a backup.
  *
- * Both builders are called without a name resolver, so the snapshots carry value
+ * The builder is called without a name resolver, so the snapshot carries value
  * keys rather than translated names — which is what import matches on anyway.
  *
  * Never allowed to stop an install: a snapshot that could not be written is
@@ -287,26 +293,16 @@ export const pruneSnapshots = async (prefix) => {
 const writePreUpdateSnapshot = async () => {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-  const write = async (prefix, build) => {
-    const csv = await build();
-    await FileSystem.writeAsStringAsync(`${FileSystem.documentDirectory}${prefix}${stamp}.csv`, csv);
-    await pruneSnapshots(prefix);
-  };
-
   try {
-    const { buildRecordsCsv } = await import('./RecordsCsv');
-    await write('values-pre-update-', buildRecordsCsv);
+    const { buildBackupCsv } = await import('./BackupCsv');
+    const csv = await buildBackupCsv();
+    await FileSystem.writeAsStringAsync(
+      `${FileSystem.documentDirectory}${SNAPSHOT_PREFIX}${stamp}.csv`,
+      csv,
+    );
+    await pruneSnapshots(SNAPSHOT_PREFIX);
   } catch (error) {
     console.warn('[AppUpdate] Pre-update snapshot failed; installing anyway:', error?.message);
-  }
-
-  // Its own try: a check-ins export that fails must not take the ranking
-  // snapshot with it, and vice versa. Half a backup beats none.
-  try {
-    const { buildAlignmentCsv } = await import('./AlignmentCsv');
-    await write('values-alignment-pre-update-', buildAlignmentCsv);
-  } catch (error) {
-    console.warn('[AppUpdate] Pre-update check-in snapshot failed; installing anyway:', error?.message);
   }
 };
 

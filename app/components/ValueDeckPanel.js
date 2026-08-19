@@ -1,71 +1,33 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, TextInput, IconButton, Divider } from 'react-native-paper';
+import { Text, Button, IconButton, Divider } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useValues } from '../contexts/ValuesContext';
-import { useDialog } from '../contexts/DialogContext';
 import { valueName } from '../utils/valueNames';
-import { SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH } from '../styles/designTokens';
+import { SPACING, FONT_SIZE, CONTENT_MAX_WIDTH } from '../styles/designTokens';
 
 /**
- * Manage which values get dealt, and add your own.
+ * Manage which values get dealt.
  *
  * One flat list, in deck order. The panel used to be sectioned by value group;
  * groups are gone, and the deck is the source checklist's flat list again, so the
  * order here is the order the cards arrive in — which is the only ordering a
  * reader can act on when deciding what to archive.
  *
- * Archiving rather than deleting is the default for catalogue entries: a value
- * that was rated in three past calibrations still belongs to those records, and
- * removing it would put a hole in a history chart. Deletion is offered only for
- * custom values, where the alternative — a permanently archived entry the user
- * created by mistake — is worse.
+ * Archiving, and nothing else. The deck is the shipped catalogue: a reader can
+ * decide a value is not theirs and stop being dealt it, but there is no adding,
+ * renaming or deleting one — the instrument is somebody else's list of 47 and an
+ * app that let it be edited would be measuring something different on every
+ * phone. Archiving is not deletion either: a value rated in three past
+ * calibrations still belongs to those records, and removing it would put a hole
+ * in a history chart.
  */
 const ValueDeckPanel = ({ onClose }) => {
   const { t } = useLocalization();
   const { colors } = useThemeColors();
-  const { showDialog } = useDialog();
-  const {
-    values, setValueArchived, addCustomValue, deleteCustomValue,
-  } = useValues();
-
-  const [newName, setNewName] = useState('');
-  const [adding, setAdding] = useState(false);
-
-  const handleAdd = useCallback(async () => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-    setAdding(true);
-    try {
-      await addCustomValue({ name: trimmed });
-      setNewName('');
-    } catch (e) {
-      showDialog(t('error'), String(e?.message || e), [{ text: t('ok') }]);
-    } finally {
-      setAdding(false);
-    }
-  }, [newName, addCustomValue, showDialog, t]);
-
-  const handleDelete = useCallback((value) => {
-    showDialog(
-      t('deck_delete_confirm_title'),
-      t('deck_delete_confirm_message'),
-      [
-        { text: t('cancel') },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: () => {
-            deleteCustomValue(value.id).catch((e) => {
-              console.error('[ValueDeck] Failed to delete a value:', e);
-            });
-          },
-        },
-      ],
-    );
-  }, [showDialog, t, deleteCustomValue]);
+  const { values, setValueArchived } = useValues();
 
   return (
     <ScrollView
@@ -79,30 +41,6 @@ const ValueDeckPanel = ({ onClose }) => {
           <Text style={[styles.title, { color: colors.text }]}>{t('values_deck_title')}</Text>
         </View>
         <Text style={[styles.hint, { color: colors.mutedText }]}>{t('values_deck_hint')}</Text>
-
-        <View style={[styles.addBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.addTitle, { color: colors.text }]}>{t('add_custom_value')}</Text>
-          <TextInput
-            mode="outlined"
-            dense
-            label={t('custom_value_name')}
-            placeholder={t('custom_value_name_placeholder')}
-            value={newName}
-            onChangeText={setNewName}
-            style={styles.input}
-            testID="deck-new-name"
-          />
-          <Button
-            mode="contained"
-            onPress={handleAdd}
-            disabled={!newName.trim() || adding}
-            loading={adding}
-            style={styles.addButton}
-            testID="deck-add"
-          >
-            {t('custom_value_add')}
-          </Button>
-        </View>
 
         <View style={styles.section}>
           <Divider />
@@ -132,17 +70,6 @@ const ValueDeckPanel = ({ onClose }) => {
               >
                 {value.archived ? t('deck_restore') : t('deck_archive')}
               </Button>
-
-              {value.isCustom && (
-                <IconButton
-                  icon="trash-can-outline"
-                  size={18}
-                  iconColor={colors.mutedText}
-                  accessibilityLabel={t('deck_delete_value')}
-                  onPress={() => handleDelete(value)}
-                  testID={`deck-delete-${value.key}`}
-                />
-              )}
             </View>
           ))}
         </View>
@@ -152,20 +79,6 @@ const ValueDeckPanel = ({ onClose }) => {
 };
 
 const styles = StyleSheet.create({
-  addBox: {
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: SPACING.lg,
-    padding: SPACING.lg,
-  },
-  addButton: {
-    marginTop: SPACING.md,
-  },
-  addTitle: {
-    fontSize: FONT_SIZE.base,
-    fontWeight: '600',
-    marginBottom: SPACING.sm,
-  },
   badge: {
     fontSize: FONT_SIZE.xs,
   },
@@ -186,9 +99,6 @@ const styles = StyleSheet.create({
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
     width: '100%',
-  },
-  input: {
-    marginTop: SPACING.xs,
   },
   row: {
     alignItems: 'center',

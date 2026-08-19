@@ -95,7 +95,7 @@ That single constraint is the whole "same day overwrites, another day is a new
 record" rule — no caller has to remember it.
 
 `alignment_checkins.checked_on` repeats it exactly, resolved through
-`startCheckin()`. Both CSV imports go through those two functions rather than
+`startCheckin()`. The backup import goes through both functions rather than
 around them, which is what makes importing a date you already have an overwrite
 instead of a duplicate.
 
@@ -112,7 +112,6 @@ correspond to my values" and the rim "I live fully in accordance with them".
 | `app/utils/alignment.js` | the ten rings, and what counts as very important |
 | `app/utils/wheelGeometry.js` | the arcs, as pure numbers — see below |
 | `app/services/AlignmentDB.js` | check-ins and their scores; the same-day rule again |
-| `app/services/AlignmentCsv.js` | the second backup file, and why it is a second one |
 | `app/contexts/AlignmentContext.js` | today's scores, and any past date's |
 | `app/components/charts/AlignmentWheel.js` | the drawing |
 | `app/screens/AlignmentScreen.js` | the tab |
@@ -192,15 +191,14 @@ cards, sectioned the deck panel and drove a second reading of the results screen
 They are gone: the source checklist is a flat list of 47 values, and the app is
 now too. `group_key`, `VALUE_GROUPS`, `groupName()`, `groupColor()`, the group
 breakdown chart and every `group_*` string went with them, and
-`translationKeyParity.test.js` fails on a leftover. A custom value takes a name
-and nothing else.
+`translationKeyParity.test.js` fails on a leftover.
 
 ## Adding a value to the catalogue
 
 Add it to `app/defaults/defaultValues.json`, then add `value_<key>` and
 `value_<key>_desc` to **both** files in `assets/i18n/`. Seeding is additive and
 idempotent, so an existing install picks the new value up on next launch without
-disturbing any rating, archive choice or custom value.
+disturbing any rating or archive choice.
 
 Three tests hard-code the catalogue size — `ValuesDB.test.js`,
 `CalibrationFlow.test.js` and `translationKeyParity.test.js` — so the count in
@@ -287,34 +285,41 @@ Before the second calibration there is no line to draw, so a card carries a leve
 bar rather than a sparkline: a 44px box cannot separate 100% from 75% at a
 glance, and a bar across the card can.
 
-## Records as CSV files
+## The backup file
 
-`app/services/RecordsCsv.js` is the export and the import;
+`app/services/BackupCsv.js` is the export and the import;
 `app/utils/fileTransfer.js` is the platform half. On the web a save is a real
 download and a load is a real file dialog, written against the DOM directly. A
 phone has neither without a native picker, so a save goes to the share sheet and a
 load is a paste — the UI asks `canPickFile()` rather than branching on `Platform`,
 so a screen never has to know which is which.
 
-There are two files: the ranking and the alignment check-ins. They are separate
-because appending alignment rows to a records file would make every already-shipped
-release read them as importance ratings and overwrite the record for that date.
-Both contracts, and why each import writes through the app's own resolver, are in
-[DATABASE.md](./DATABASE.md).
+One file holds both lists — the ranking and the wheel's check-ins — with a `kind`
+column saying which each row belongs to. It was two files once, and the reason is
+still live: alignment rows appended to a *records* file would be read by every
+already-shipped release as importance ratings and overwrite the record for that
+date. What makes one file safe is that its header names no column an older
+release looks for (`kind`, `date` — not `assessed_on`), so such a release refuses
+it whole. The two old shapes still import here; the format contract, and why each
+import writes through the app's own resolver, is in [DATABASE.md](./DATABASE.md).
 
-The controls are one component, `app/components/CsvTransferSection.js`, mounted
-three times: twice in the settings panel, once per file, and once on the first
-card of the deck. That third mount is the only import a first run can reach — the
-settings screen is behind results that do not exist yet — so it offers the ranking
-alone, and records arriving through it end the run: see the first-run notes in
-[../CLAUDE.md](../CLAUDE.md) for what `AppInitializer` has to do about the
-calibration the reader was in the middle of.
+Either half may be missing in either direction, and none of that is an error: a
+file with no check-ins imports its ranking, a file with only check-ins imports
+those, and a row naming a value this deck does not have is counted rather than
+guessed at. The report is built from what actually landed — a half the file did
+not carry is not mentioned at all, because a line reading "check-ins: 0" reads as
+a failure.
 
-Because a complete backup is now two files, both ends are joined deliberately:
-`writePreUpdateSnapshot()` writes both before an in-app APK install and prunes
-each prefix separately, and the settings screen offers both exports. A change that
-adds a third record type has to do the same, or it ships a backup with a hole in
-it.
+The controls are one component, `app/components/BackupTransferSection.js`, mounted
+twice: once in the settings panel and once on the first card of the deck. That
+second mount is the only import a first run can reach — the settings screen is
+behind results that do not exist yet — and it ends the run only when a *ranking*
+lands: see the first-run notes in [../CLAUDE.md](../CLAUDE.md) for what
+`AppInitializer` has to do about the calibration the reader was in the middle of.
+
+`writePreUpdateSnapshot()` writes the same file to the documents directory before
+an in-app APK install, rotating the newest three. A change that adds a third
+record type adds a `kind` to this file rather than a file beside it.
 
 ## Sharing a result as a link, and comparing two
 
@@ -357,16 +362,20 @@ Five properties are worth knowing before changing any of it:
   signature and proves nothing about who made the link.
 - **Values travel as keys.** `love`, not "Love" — so a ranking shared in Russian
   reads in English on the other side, resolved by the app that opens it. Only a
-  custom value travels as text, because no other install can name it.
+  value the opening app does not know — one the reader added on an older release,
+  or a catalogue entry from a newer one — travels as text, because nothing else
+  can name it.
 - **Nothing is written on arrival.** The shared screen renders and closes; it
   never touches the database. An import would resolve the sender's date through
   `startAssessment()` and overwrite the reader's own record for that day, and a
-  friend's ranking is not a backup of yours. That is what the CSV import is for.
+  friend's ranking is not a backup of yours. That is what the backup import is
+  for.
 - **A comparison arrives as a prop, not from a context.** A reader who has a
   ranking of their own opens the link on the two lists side by side, and
   `SharedResultsScreen` still reads nothing: `AppInitializer` passes its `own`
-  half in. Values are matched on `key` (so two custom values, whose keys are uuids
-  from two different phones, never match) and compared on the normalised score
+  half in. Values are matched on `key` (so two values added by hand on two
+  different phones, whose keys are uuids, never match) and compared on the
+  normalised score
   (so a friend on 1–10 and a reader on three words are comparable), while each
   side prints the raw score it was actually given. A visitor with no ranking is
   offered the deck instead, and the code is held while they rate — finishing, or
@@ -558,8 +567,8 @@ launch. A *newer* version carries a different number and prompts as normal.
 **Nothing is asked in front of the deck** — including this. `useAppUpdateCheck`
 takes `enabled`, and `AppInitializer` passes false while a calibration is open.
 
-**The install writes a CSV snapshot first**, to
+**The install writes a backup snapshot first**, to
 `values-pre-update-<timestamp>.csv` in the documents directory, keeping three. It
-is the same export the settings screen writes, built without a name resolver so
-it carries value keys — which is what import matches on anyway. It can never
+is the same export the settings screen writes — one file, both lists — built
+without a name resolver so it carries value keys — which is what import matches on anyway. It can never
 block an install: a snapshot that fails is logged and the update proceeds.
