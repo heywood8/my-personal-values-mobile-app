@@ -12,7 +12,7 @@ import AlignmentWheel from '../components/charts/AlignmentWheel';
 import ScaleInput from '../components/ScaleInput';
 import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
-import { valueName } from '../utils/valueNames';
+import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey, localDateKey } from '../utils/dateUtils';
 import { ALIGNMENT_INPUT_SCALE, ALIGNMENT_MAX, trackedValues } from '../utils/alignment';
 import {
@@ -337,6 +337,8 @@ const AlignmentScreen = ({ onStartCalibration }) => {
             <View style={styles.rows}>
               {sectors.map((sector, index) => {
                 const rated = sector.score !== undefined;
+                const value = view.rows[index];
+                const description = valueDescription(value, t);
                 // Shown only once this row has been answered: feedback on what was
                 // just given, rather than a number sitting above the buttons while
                 // the reader is still deciding.
@@ -359,7 +361,7 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                       </View>
 
                       <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-                        {valueName(view.rows[index], t)}
+                        {valueName(value, t)}
                       </Text>
 
                       <Text style={[styles.score, { color: colors.mutedText }]}>
@@ -377,6 +379,25 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                         />
                       )}
                     </View>
+
+                    {/* The wording the value was rated on, printed rather than
+                    revealed behind a tap the way the ranking does it: that list
+                    is being read, and 47 descriptions at once is a wall of text,
+                    while this row is being answered — and "how far does my
+                    behaviour match this" is a question about the sentence rather
+                    than about the one word above it. The deck card prints the
+                    same text while the same value is being rated. Only the top
+                    band is here, and the text is printed whether or not the row
+                    is answered, so it never moves the buttons under the thumb.
+                    A custom value has none, and prints nothing. */}
+                    {!!description && (
+                      <Text
+                        style={[styles.description, { color: colors.mutedText }]}
+                        testID={`alignment-description-${sector.key}`}
+                      >
+                        {description}
+                      </Text>
+                    )}
 
                     {/* The dashed outline is a shape, and a shape cannot be read
                     aloud — this is the same comparison in words. */}
@@ -510,6 +531,10 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
+  },
+  description: {
+    fontSize: FONT_SIZE.sm,
+    marginTop: SPACING.xs,
   },
   edgeLabel: {
     fontSize: FONT_SIZE.sm,

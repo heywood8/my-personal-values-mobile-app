@@ -121,9 +121,12 @@ describe('the value catalogue is fully translated', () => {
   });
 
   it('describes only values still in the deck', () => {
-    // A description is read on the assessment card and nowhere else, and a
-    // retired value is never dealt one. Keeping its description would be dead
-    // text in two locales that no test would ever exercise.
+    // A description belongs to a value that can still be dealt: the card prints
+    // it while the value is being rated, and the ranked list and the wheel's
+    // rows print it beside a value being read. A retired value is never dealt
+    // again, and every one of those surfaces prints nothing where there is no
+    // description — so keeping one would be dead text in two locales that no
+    // test would ever exercise.
     const live = new Set(catalogue.values.map((v) => v.key));
     const stale = enKeys
       .filter((key) => key.startsWith('value_') && key.endsWith('_desc'))

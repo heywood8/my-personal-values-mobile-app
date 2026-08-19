@@ -185,7 +185,10 @@ fails on a leftover `group_*` string. A custom value needs only a name.
 **A value dropped from the catalogue keeps its `value_<key>` name in both
 locales**, listed under `retired` in `defaultValues.json`. Its ratings survive,
 so old records still render it — delete the string and that history prints
-`value_family`. Descriptions are deck-card only and go with the value.
+`value_family`. Its description goes with it: a description is printed wherever
+a value is being rated or read — the deck card, the ranked list, the wheel's
+rows — and all three print nothing when there is none, so a retired value keeps
+its name and loses its description.
 
 **The categorical slot order in `app/styles/chartPalette.js` is a safety
 mechanism, not a style choice.** It was validated for colour-vision-deficiency
