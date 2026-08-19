@@ -234,6 +234,9 @@
   "privacy_local_only_title": "Your data stays on this computer",
   "privacy_local_only": "Everything you record is stored by this browser, on this computer. There is no account and no server behind this page — nothing you enter is ever sent anywhere.",
 
+  "purpose_note_title": "A record, not an analysis",
+  "purpose_note": "Nothing here interprets your answers or hands back an insight, a type or a diagnosis. It records what you say matters — so all it can ever show you is what you said, and what changed since.",
+
   "value_courage": "Courage",
   "value_courage_desc": "To be courageous or brave; to persist in the face of fear, threat or difficulty.",
   "value_creativity": "Creativity",
