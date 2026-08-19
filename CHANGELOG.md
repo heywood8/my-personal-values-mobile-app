@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.0.0...values-v1.1.0) (2026-08-19)
+
+
+### Features
+
+* **ui:** give the app a depth, type and grouping system ([#56](https://github.com/heywood8/my-personal-values-mobile-app/issues/56)) ([2913a02](https://github.com/heywood8/my-personal-values-mobile-app/commit/2913a02201d86687264eaaa27392b06abab3cf0e))
+
 ## [1.0.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.11.0...values-v1.0.0) (2026-08-19)
 
 
