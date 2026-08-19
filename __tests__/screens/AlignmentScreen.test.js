@@ -510,3 +510,94 @@ describe('looking back', () => {
     expect(screen.queryByTestId(`checkin-${TODAY}`)).toBeNull();
   });
 });
+
+/**
+ * Pointing at a sector.
+ *
+ * A sector carries a number and nothing else, so the wheel needs somewhere to
+ * say what that number stands for. `onLayout` never fires under RNTL, so the
+ * wheel is at its 360px fallback size: its centre is at 180, and twelve o'clock
+ * is the first sector.
+ */
+describe('what a sector stands for', () => {
+  const CENTRE = 180;
+  const HEALTH_DESC = 'To maintain or improve my fitness; to look after my physical '
+    + 'and mental health and wellbeing.';
+
+  const pointAtTop = async () => act(async () => {
+    fireEvent.press(screen.getByTestId('alignment-wheel-hit'), {
+      nativeEvent: { locationX: CENTRE, locationY: 10 },
+    });
+  });
+
+  it('says the wheel can be pointed at before anybody has', async () => {
+    // A panel that appears out of nowhere is a panel nobody knew to look for.
+    await rank({ health: 5, love: 4 });
+    await mount();
+
+    expect(screen.getByTestId('alignment-detail-hint')).toBeTruthy();
+    expect(screen.queryByTestId('alignment-detail-name')).toBeNull();
+  });
+
+  it('names the value and prints the description the card was rated on', async () => {
+    await rank({ health: 5, love: 4 });
+    await mount();
+
+    await pointAtTop();
+
+    expect(screen.getByTestId('alignment-detail-name')).toHaveTextContent('Fitness');
+    expect(screen.getByTestId('alignment-detail-description')).toHaveTextContent(HEALTH_DESC);
+  });
+
+  it('marks the sector, and the row that answers it', async () => {
+    await rank({ health: 5, love: 4 });
+    await mount();
+
+    await pointAtTop();
+
+    expect(screen.getByTestId('alignment-sector-highlight')).toBeTruthy();
+    expect(screen.getByTestId('alignment-row-health')).toBeTruthy();
+  });
+
+  it('lets go of a sector when it is tapped again', async () => {
+    await rank({ health: 5, love: 4 });
+    await mount();
+
+    await pointAtTop();
+    await pointAtTop();
+
+    expect(screen.getByTestId('alignment-detail-hint')).toBeTruthy();
+    expect(screen.queryByTestId('alignment-sector-highlight')).toBeNull();
+  });
+
+  it('works on a sector nobody has answered, which is most of most wheels', async () => {
+    // Nothing is drawn on the canvas for an unanswered sector, so there would be
+    // nothing to point at if the hit test were the ink rather than the geometry.
+    await rank({ health: 5, love: 4 });
+    await mount();
+
+    expect(await getCheckins()).toHaveLength(0);
+
+    await pointAtTop();
+
+    expect(screen.getByTestId('alignment-detail-name')).toHaveTextContent('Fitness');
+  });
+
+  it('lets go when another record redraws the wheel from other rows', async () => {
+    // A past check-in is drawn from its own rows, and a value that is not among
+    // them must not go on marking whichever sector now sits in its place.
+    await rank({ health: 5, love: 4 });
+    await checkIn(EARLIER, { love: 6 });
+    await mount();
+
+    await pointAtTop();
+    expect(screen.getByTestId('alignment-detail-name')).toHaveTextContent('Fitness');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${EARLIER}`));
+    });
+
+    expect(screen.getByTestId('alignment-detail-hint')).toBeTruthy();
+    expect(screen.queryByTestId('alignment-sector-highlight')).toBeNull();
+  });
+});

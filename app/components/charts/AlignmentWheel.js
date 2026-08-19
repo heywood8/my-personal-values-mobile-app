@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { View, StyleSheet, PixelRatio } from 'react-native';
+import { View, StyleSheet, PixelRatio, Pressable } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { useThemeColors } from '../../contexts/ThemeColorsContext';
 import { priorityColor } from '../../styles/chartPalette';
 import { ALIGNMENT_RINGS, alignmentBand, alignmentFraction } from '../../utils/alignment';
 import {
-  boundaryAngle, outlinePath, pointAt, ringRadii, round, wedgePath, wheelSectorShape,
+  boundaryAngle, outlinePath, pointAt, ringRadii, round, sectorAt, wedgePath, wheelSectorShape,
 } from '../../utils/wheelGeometry';
 import { FONT_SIZE } from '../../styles/designTokens';
 
@@ -25,6 +25,16 @@ import { FONT_SIZE } from '../../styles/designTokens';
  * do — and eight unrelated hues would answer "which one" instead. Every sector
  * is also numbered, and the numbered list beneath the wheel names it and prints
  * its score, so nothing rests on colour alone.
+ *
+ * A sector can be POINTED AT: hovering one with a mouse, or tapping it on a
+ * phone, marks it and hands its value back to the screen, which is what prints
+ * the name and the description — those are sentences too, and they belong beside
+ * the captions rather than inside the canvas. The mark is drawn over the whole
+ * sector out to the rim, not over its fill, because most of a wheel is
+ * unanswered on most days and an unanswered sector has no ink to light up. That
+ * is also why the sectors are not pressable shapes: there is nothing there to
+ * press. `sectorAt` answers "which sector is this point in" from the geometry,
+ * so a blank sector points at itself as readily as a full one.
  *
  * THE MATHS IS NOT IN HERE. app/utils/wheelGeometry.js owns it, and the reason is
  * in that file: under jest an SVG accepts a negative radius and a `d` full of
@@ -61,7 +71,34 @@ const MAX_SIZE = 360;
  */
 const clampSize = (width) => (width > 0 ? Math.min(width, MAX_SIZE) : MAX_SIZE);
 
-const AlignmentWheel = ({ sectors, previousScores, accessibilityLabel }) => {
+/** How much of the disc's radius a highlighted sector is washed over. */
+const HIGHLIGHT_OPACITY = 0.14;
+
+/**
+ * Where a pointer landed, in the canvas's own coordinates.
+ *
+ * Two event families reach the overlay and they name the same number
+ * differently: a press carries `locationX` on every platform, while a pointer
+ * event — which is how a mouse hover arrives on the web — carries `offsetX`.
+ * Both are measured from the top left of the element the event was delivered
+ * to, and the overlay is laid over the canvas edge to edge, so either one is
+ * already in the coordinates the wheel is drawn in.
+ */
+const localPoint = ({ nativeEvent }) => [
+  nativeEvent.offsetX ?? nativeEvent.locationX,
+  nativeEvent.offsetY ?? nativeEvent.locationY,
+];
+
+/**
+ * Hover is a MOUSE only, deliberately. A touch on a web page emits pointer
+ * events as well — including a `pointerleave` the instant the finger lifts —
+ * which would wipe the selection the tap had only just made.
+ */
+const isMouse = ({ nativeEvent }) => nativeEvent.pointerType === 'mouse';
+
+const AlignmentWheel = ({
+  sectors, previousScores, accessibilityLabel, activeValueId, onActivate,
+}) => {
   const { colors, mode } = useThemeColors();
   const [width, setWidth] = useState(0);
 
@@ -84,6 +121,48 @@ const AlignmentWheel = ({ sectors, previousScores, accessibilityLabel }) => {
     ? outlinePath(centre, centre, radius, count, (index) => previousScores.get(sectors[index].valueId))
     : ''), [previousScores, sectors, count, centre, radius]);
 
+  // Out to the numbers rather than to the rim: a sector's number is printed
+  // outside the disc and is part of the sector, not a separate target.
+  const hitRadius = radius + labelRoom;
+
+  const pointedAt = useCallback((event) => {
+    const [x, y] = localPoint(event);
+    // A platform that reports neither coordinate would otherwise resolve to the
+    // centre, which is a real sector — better to point at nothing.
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const index = sectorAt(x, y, centre, centre, hitRadius, sectors.length);
+    return index < 0 ? null : sectors[index].valueId;
+  }, [centre, hitRadius, sectors]);
+
+  // Whether a mouse is over the wheel right now — the one thing a press needs to
+  // know about the hover it may or may not be happening under. A ref rather than
+  // state: nothing on screen is drawn from it, and re-rendering the canvas on
+  // every mouse entry and exit would be a lot of drawing for no picture.
+  const hovering = useRef(false);
+
+  const handlePress = useCallback((event) => {
+    const valueId = pointedAt(event);
+    const marked = !!valueId && valueId === activeValueId;
+    // Pressing the sector that is already marked puts it back — on a phone
+    // there is no pointer to move away, so the gesture that marked it is the
+    // only one there is to unmark it with. Under a mouse it is the opposite: the
+    // pointer marked that sector on its way to the click, and clearing it there
+    // would blank the panel until the hand twitched and put it straight back.
+    onActivate(marked && !hovering.current ? null : valueId);
+  }, [pointedAt, onActivate, activeValueId]);
+
+  const handleHover = useCallback((event) => {
+    if (!isMouse(event)) return;
+    hovering.current = true;
+    onActivate(pointedAt(event));
+  }, [pointedAt, onActivate]);
+
+  const handleHoverOut = useCallback((event) => {
+    if (!isMouse(event)) return;
+    hovering.current = false;
+    onActivate(null);
+  }, [onActivate]);
+
   // Nothing to draw, or nowhere to draw it: a container narrower than the label
   // room leaves a negative radius, which jest renders happily and a browser
   // rejects outright.
@@ -96,6 +175,8 @@ const AlignmentWheel = ({ sectors, previousScores, accessibilityLabel }) => {
   const singlePrevious = isSingle && previousScores
     ? alignmentFraction(previousScores.get(sectors[0].valueId))
     : 0;
+
+  const activeIndex = sectors.findIndex((sector) => sector.valueId === activeValueId);
 
   return (
     <View
@@ -110,144 +191,201 @@ const AlignmentWheel = ({ sectors, previousScores, accessibilityLabel }) => {
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}
     >
-      <Svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        style={styles.svg}
-        testID="alignment-wheel-svg"
-      >
-        {/* The disc, in the SURFACE colour rather than the track colour, and the
-            difference is not cosmetic. `track` means "the rest of the range" —
-            the unfilled half of a bar — and on this chart the centre is a
-            position with a meaning of its own: "my behaviour does not correspond
-            to this value". A sector nobody has answered yet would then be drawn
-            in exactly the ink that says they answered it as badly as possible,
-            which on every day before the reader checks in is most of the wheel.
-            Paper, instead: an unanswered sector is blank, and only a score puts
-            ink on it. */}
-        <Circle cx={centre} cy={centre} r={radius} fill={colors.surface} />
+      <View style={[styles.plot, { height: size, width: size }]}>
+        <Svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          style={styles.svg}
+          testID="alignment-wheel-svg"
+        >
+          {/* The disc, in the SURFACE colour rather than the track colour, and the
+              difference is not cosmetic. `track` means "the rest of the range" —
+              the unfilled half of a bar — and on this chart the centre is a
+              position with a meaning of its own: "my behaviour does not correspond
+              to this value". A sector nobody has answered yet would then be drawn
+              in exactly the ink that says they answered it as badly as possible,
+              which on every day before the reader checks in is most of the wheel.
+              Paper, instead: an unanswered sector is blank, and only a score puts
+              ink on it. */}
+          <Circle cx={centre} cy={centre} r={radius} fill={colors.surface} />
 
-        {sectors.map((sector, index) => {
-          const fraction = alignmentFraction(sector.score);
-          if (fraction <= 0) return null;
-          const fill = priorityColor(alignmentBand(sector.score).id, mode);
-          const r = radius * fraction;
+          {sectors.map((sector, index) => {
+            const fraction = alignmentFraction(sector.score);
+            if (fraction <= 0) return null;
+            const fill = priorityColor(alignmentBand(sector.score).id, mode);
+            const r = radius * fraction;
 
-          return isSingle ? (
+            return isSingle ? (
+              <Circle
+                key={sector.valueId}
+                cx={centre}
+                cy={centre}
+                r={round(r)}
+                fill={fill}
+                testID={`alignment-sector-${sector.key}`}
+              />
+            ) : (
+              <Path
+                key={sector.valueId}
+                d={wedgePath(
+                  centre, centre, r,
+                  boundaryAngle(index, count), boundaryAngle(index + 1, count),
+                )}
+                fill={fill}
+                testID={`alignment-sector-${sector.key}`}
+              />
+            );
+          })}
+
+          {/* The ring grid sits ON TOP of the fills, as it does on the paper
+              version: it is what lets a reader count the rings a sector reaches
+              rather than judge a length by eye. A muted stroke at low opacity is
+              legible over the pale disc and over a saturated fill, in both colour
+              schemes — a border-coloured line is not. */}
+          <G>
+            {rings.map((r, i) => (
+              <Circle
+                key={`ring-${i}`}
+                cx={centre}
+                cy={centre}
+                r={round(r)}
+                fill="none"
+                stroke={colors.mutedText}
+                strokeOpacity={i === rings.length - 1 ? 0.55 : 0.35}
+                strokeWidth={1}
+                testID={`alignment-ring-${i + 1}`}
+              />
+            ))}
+          </G>
+
+          {/* Sector dividers, drawn above the fills so two neighbours in the same
+              colour band never merge into one shape. A single sector has no
+              neighbour to be divided from, and one radius drawn across a full
+              circle would just be a stray line. */}
+          {!isSingle && sectors.map((sector, index) => {
+            const [x, y] = pointAt(centre, centre, boundaryAngle(index, count), radius);
+            return (
+              <Line
+                key={`divider-${sector.valueId}`}
+                x1={centre}
+                y1={centre}
+                x2={round(x)}
+                y2={round(y)}
+                stroke={colors.mutedText}
+                strokeOpacity={0.55}
+                strokeWidth={1}
+              />
+            );
+          })}
+
+          {!!outline && (
+            <Path
+              d={outline}
+              fill="none"
+              stroke={colors.text}
+              strokeOpacity={0.7}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              strokeLinejoin="round"
+              testID="alignment-previous-outline"
+            />
+          )}
+
+          {singlePrevious > 0 && (
             <Circle
-              key={sector.valueId}
               cx={centre}
               cy={centre}
-              r={round(r)}
-              fill={fill}
-              testID={`alignment-sector-${sector.key}`}
+              r={round(radius * singlePrevious)}
+              fill="none"
+              stroke={colors.text}
+              strokeOpacity={0.7}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              testID="alignment-previous-outline"
+            />
+          )}
+
+          {/* The mark on the sector being pointed at: the whole wedge out to the
+              rim, washed and outlined in the accent colour. Over the fill rather
+              than instead of it, so the score stays readable underneath, and out
+              to the rim rather than to the fill's edge, so a sector nobody has
+              answered yet is just as markable as a full one — which on most days
+              is most of the wheel. */}
+          {activeIndex >= 0 && (isSingle ? (
+            <Circle
+              cx={centre}
+              cy={centre}
+              r={round(radius)}
+              fill={colors.primary}
+              fillOpacity={HIGHLIGHT_OPACITY}
+              stroke={colors.primary}
+              strokeWidth={2}
+              testID="alignment-sector-highlight"
             />
           ) : (
             <Path
-              key={sector.valueId}
               d={wedgePath(
-                centre, centre, r,
-                boundaryAngle(index, count), boundaryAngle(index + 1, count),
+                centre, centre, radius,
+                boundaryAngle(activeIndex, count), boundaryAngle(activeIndex + 1, count),
               )}
-              fill={fill}
-              testID={`alignment-sector-${sector.key}`}
-            />
-          );
-        })}
-
-        {/* The ring grid sits ON TOP of the fills, as it does on the paper
-            version: it is what lets a reader count the rings a sector reaches
-            rather than judge a length by eye. A muted stroke at low opacity is
-            legible over the pale disc and over a saturated fill, in both colour
-            schemes — a border-coloured line is not. */}
-        <G>
-          {rings.map((r, i) => (
-            <Circle
-              key={`ring-${i}`}
-              cx={centre}
-              cy={centre}
-              r={round(r)}
-              fill="none"
-              stroke={colors.mutedText}
-              strokeOpacity={i === rings.length - 1 ? 0.55 : 0.35}
-              strokeWidth={1}
-              testID={`alignment-ring-${i + 1}`}
+              fill={colors.primary}
+              fillOpacity={HIGHLIGHT_OPACITY}
+              stroke={colors.primary}
+              strokeLinejoin="round"
+              strokeWidth={2}
+              testID="alignment-sector-highlight"
             />
           ))}
-        </G>
 
-        {/* Sector dividers, drawn above the fills so two neighbours in the same
-            colour band never merge into one shape. A single sector has no
-            neighbour to be divided from, and one radius drawn across a full
-            circle would just be a stray line. */}
-        {!isSingle && sectors.map((sector, index) => {
-          const [x, y] = pointAt(centre, centre, boundaryAngle(index, count), radius);
-          return (
-            <Line
-              key={`divider-${sector.valueId}`}
-              x1={centre}
-              y1={centre}
-              x2={round(x)}
-              y2={round(y)}
-              stroke={colors.mutedText}
-              strokeOpacity={0.55}
-              strokeWidth={1}
-            />
-          );
-        })}
+          {/* Sector numbers, outside the disc at each sector's mid-angle. Outside
+              rather than inside because a sector's inner end is a sliver: at eight
+              sectors a number fits in it, at twenty-five it does not, and the
+              reader should not lose the labels for having many values they care
+              about. The vertical centring is done by hand rather than with a
+              baseline attribute, whose support differs between react-native-svg and
+              the browser it compiles to. */}
+          {sectors.map((sector, index) => {
+            const mid = (boundaryAngle(index, count) + boundaryAngle(index + 1, count)) / 2;
+            const [x, y] = pointAt(centre, centre, mid, radius + labelRoom / 2 + 1);
+            // The number is the legend key, so it is marked with its sector — in
+            // weight as well as colour, which is how the rest of the app says
+            // "this one" without leaning on hue alone.
+            const marked = index === activeIndex;
+            return (
+              <SvgText
+                key={`number-${sector.valueId}`}
+                x={round(x)}
+                y={round(y + numberSize * 0.35)}
+                fill={marked ? colors.primary : colors.mutedText}
+                fontSize={numberSize}
+                fontWeight={marked ? '700' : '400'}
+                textAnchor="middle"
+              >
+                {String(sector.sector)}
+              </SvgText>
+            );
+          })}
+        </Svg>
 
-        {!!outline && (
-          <Path
-            d={outline}
-            fill="none"
-            stroke={colors.text}
-            strokeOpacity={0.7}
-            strokeWidth={1.5}
-            strokeDasharray="4 3"
-            strokeLinejoin="round"
-            testID="alignment-previous-outline"
+        {/* The hit layer, a sibling laid OVER the canvas rather than a wrapper
+            around it: an event that lands on it is measured from its own top
+            left, which is the drawing's origin, whereas one that lands on a
+            shape inside the SVG would be measured from that shape. It carries no
+            semantics of its own — the wheel is one labelled image, and the
+            numbered list below it is what a reader who cannot see it reads. */}
+        {!!onActivate && (
+          <Pressable
+            accessible={false}
+            focusable={false}
+            onPointerLeave={handleHoverOut}
+            onPointerMove={handleHover}
+            onPress={handlePress}
+            style={StyleSheet.absoluteFill}
+            testID="alignment-wheel-hit"
           />
         )}
-
-        {singlePrevious > 0 && (
-          <Circle
-            cx={centre}
-            cy={centre}
-            r={round(radius * singlePrevious)}
-            fill="none"
-            stroke={colors.text}
-            strokeOpacity={0.7}
-            strokeWidth={1.5}
-            strokeDasharray="4 3"
-            testID="alignment-previous-outline"
-          />
-        )}
-
-        {/* Sector numbers, outside the disc at each sector's mid-angle. Outside
-            rather than inside because a sector's inner end is a sliver: at eight
-            sectors a number fits in it, at twenty-five it does not, and the
-            reader should not lose the labels for having many values they care
-            about. The vertical centring is done by hand rather than with a
-            baseline attribute, whose support differs between react-native-svg and
-            the browser it compiles to. */}
-        {sectors.map((sector, index) => {
-          const mid = (boundaryAngle(index, count) + boundaryAngle(index + 1, count)) / 2;
-          const [x, y] = pointAt(centre, centre, mid, radius + labelRoom / 2 + 1);
-          return (
-            <SvgText
-              key={`number-${sector.valueId}`}
-              x={round(x)}
-              y={round(y + numberSize * 0.35)}
-              fill={colors.mutedText}
-              fontSize={numberSize}
-              textAnchor="middle"
-            >
-              {String(sector.sector)}
-            </SvgText>
-          );
-        })}
-      </Svg>
+      </View>
     </View>
   );
 };
@@ -256,6 +394,13 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     width: '100%',
+  },
+  plot: {
+    // Sized to the canvas so the hit layer over it is measured in the same
+    // coordinates the wheel is drawn in, and clamped for the same reason the
+    // canvas is: before the first layout pass the fallback size can be wider
+    // than the column it is standing in.
+    maxWidth: '100%',
   },
   svg: {
     maxWidth: '100%',
@@ -278,6 +423,13 @@ AlignmentWheel.propTypes = {
    */
   previousScores: PropTypes.instanceOf(Map),
   accessibilityLabel: PropTypes.string,
+  /** The value whose sector is marked, or null. Owned by the screen, which prints its name. */
+  activeValueId: PropTypes.string,
+  /**
+   * Called with the value id under the pointer, or null for none. Omitting it
+   * leaves the wheel a plain drawing with no hit layer over it at all.
+   */
+  onActivate: PropTypes.func,
 };
 
 export default AlignmentWheel;

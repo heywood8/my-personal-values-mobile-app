@@ -3,6 +3,7 @@ import {
   outlinePath,
   pointAt,
   ringRadii,
+  sectorAt,
   wedgePath,
   wheelSectorShape,
 } from '../../app/utils/wheelGeometry';
@@ -116,5 +117,61 @@ describe('the ring grid', () => {
     expect(radii).toHaveLength(ALIGNMENT_RINGS);
     expect(radii[0]).toBeCloseTo(RADIUS / ALIGNMENT_RINGS);
     expect(radii[radii.length - 1]).toBeCloseTo(RADIUS);
+  });
+});
+
+describe('pointing at a sector', () => {
+  // Twelve o'clock, three o'clock, six, nine — the four points a reader would
+  // call the top, the right, the bottom and the left of the wheel.
+  const UP = [CENTRE, CENTRE - RADIUS / 2];
+  const RIGHT = [CENTRE + RADIUS / 2, CENTRE];
+  const DOWN = [CENTRE, CENTRE + RADIUS / 2];
+  const LEFT = [CENTRE - RADIUS / 2, CENTRE];
+
+  it('numbers the sectors the way they are drawn — from the top, clockwise', () => {
+    const at = ([x, y]) => sectorAt(x, y, CENTRE, CENTRE, RADIUS, 4);
+
+    expect(at(UP)).toBe(0);
+    expect(at(RIGHT)).toBe(1);
+    expect(at(DOWN)).toBe(2);
+    expect(at(LEFT)).toBe(3);
+  });
+
+  it('points at nothing outside the wheel', () => {
+    // The corner of the square canvas is outside the disc drawn inside it, and
+    // a reader whose pointer is out there is not pointing at anything.
+    expect(sectorAt(0, 0, CENTRE, CENTRE, RADIUS, 8)).toBe(-1);
+    expect(sectorAt(CENTRE + RADIUS + 1, CENTRE, CENTRE, CENTRE, RADIUS, 8)).toBe(-1);
+  });
+
+  it('answers for a sector nobody has scored, because it is asked of the geometry', () => {
+    // The whole reason this is a hit test and not a set of pressable shapes: an
+    // unanswered sector has no ink on it to press.
+    expect(sectorAt(...UP, CENTRE, CENTRE, RADIUS, 47)).toBe(0);
+  });
+
+  it('gives the whole turn to a single sector', () => {
+    [UP, RIGHT, DOWN, LEFT].forEach(([x, y]) => {
+      expect(sectorAt(x, y, CENTRE, CENTRE, RADIUS, 1)).toBe(0);
+    });
+  });
+
+  it('names a real sector at the seam and at the dead centre', () => {
+    // Both are the cases that round or divide badly: the boundary of the last
+    // sector lands on a full turn, and the exact centre has no angle at all.
+    for (let count = 1; count <= 47; count++) {
+      const seam = sectorAt(CENTRE, CENTRE - RADIUS, CENTRE, CENTRE, RADIUS, count);
+      expect(seam).toBeGreaterThanOrEqual(0);
+      expect(seam).toBeLessThan(count);
+
+      const centre = sectorAt(CENTRE, CENTRE, CENTRE, CENTRE, RADIUS, count);
+      expect(centre).toBeGreaterThanOrEqual(0);
+      expect(centre).toBeLessThan(count);
+    }
+  });
+
+  it('points at nothing when there is nothing on the wheel, or nowhere to draw it', () => {
+    expect(sectorAt(...UP, CENTRE, CENTRE, RADIUS, 0)).toBe(-1);
+    expect(sectorAt(CENTRE, CENTRE, CENTRE, CENTRE, 0, 8)).toBe(-1);
   });
 });

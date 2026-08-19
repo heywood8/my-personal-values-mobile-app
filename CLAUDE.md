@@ -160,6 +160,21 @@ a dashed *shape* while an answer is being decided, and its number appears beside
 row only after that row is answered — the deck's refusal to prefill is the same
 rule, and alignment is the more anchor-prone of the two measurements.
 
+**A wheel sector is pointed at by geometry, not by pressing its shape.** A
+sector carries a number and nothing else, so hovering one on the web or tapping
+it on a phone names the value and prints its description under the wheel —
+`sectorAt()` in `app/utils/wheelGeometry.js` answers which sector a point is in,
+and `AlignmentWheel` lays one hit layer over the whole canvas rather than making
+each wedge pressable. It has to work that way: on most days most sectors are
+unanswered, and an unanswered sector puts no ink on the canvas for a press to
+land on. The mark is drawn out to the rim for the same reason.
+
+Hover is filtered to `pointerType === 'mouse'`, and that guard is load-bearing:
+a finger on a web page emits pointer events too, including a `pointerleave` the
+instant it lifts, which wipes the selection the tap has just made. Drop the
+guard and tapping a sector stops working on exactly the platform the taps were
+for.
+
 **Provider order lives in `app/AppProviders.js` only.** Both `App.js` and the test
 wrappers import it. Listing providers separately is how the app once shipped a
 Paper `Portal` above its `PaperProvider` while every test passed.
