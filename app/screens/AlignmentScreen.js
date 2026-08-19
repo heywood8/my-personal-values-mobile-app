@@ -10,6 +10,7 @@ import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import AlignmentWheel from '../components/charts/AlignmentWheel';
 import ScaleInput from '../components/ScaleInput';
+import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
 import { valueName } from '../utils/valueNames';
 import { formatDateKey, localDateKey } from '../utils/dateUtils';
@@ -240,6 +241,10 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                 : t('alignment_value_count', { count: view.rows.length })}
             </Text>
             <Text style={[styles.intro, { color: colors.mutedText }]}>{t('alignment_intro')}</Text>
+            {/* Only where there is a wheel to answer. A past check-in is read
+                back rather than filled in, and on a day with no sectors at all
+                the note would be answering a question nobody is being asked. */}
+            {view.rows.length > 0 && <PurposeNote />}
           </>
         ) : (
           <View

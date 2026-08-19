@@ -10,6 +10,7 @@ import { useDialog } from '../contexts/DialogContext';
 import ScaleInput from '../components/ScaleInput';
 import CalibrationSettings from '../components/CalibrationSettings';
 import DeckCardText from '../components/DeckCardText';
+import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
 import { formatDateKey } from '../utils/dateUtils';
 import {
@@ -179,6 +180,13 @@ const AssessmentScreen = ({ canExit, onExit, onFinished }) => {
               })}
             </Text>
           )}
+
+          {/* On every card, not only the first: a deck of 47 cards is answered
+              over more than one sitting, and the sentence has to be there
+              whenever somebody is looking at it rather than only at the moment
+              they started. It is the same block on every card, so it costs the
+              rating buttons a fixed offset and never moves them. */}
+          <PurposeNote />
 
           {/* Above the card rather than below it, so it is on screen without
               scrolling on the narrowest phone this ships to — the whole point of

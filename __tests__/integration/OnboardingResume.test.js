@@ -104,6 +104,20 @@ describe('the first launch', () => {
     expect(screen.queryByTestId('calibration-settings')).toBeNull();
   });
 
+  it('says what the deck is for, and goes on saying it past the first card', async () => {
+    // Unlike the settings panel, which has been answered in practice once the
+    // reader is on card two. The expectation this heads off — that 47 answers
+    // buy a reading of some kind — is formed while answering, so the note has to
+    // survive the card it started on.
+    await launch();
+    await waitForTheDeck();
+    expect(screen.getByTestId('purpose-note')).toBeTruthy();
+
+    await press('assessment-next');
+
+    expect(screen.getByTestId('purpose-note')).toBeTruthy();
+  });
+
   it('shows a close button again on a later recalibration', async () => {
     await launch();
     await waitForTheDeck();

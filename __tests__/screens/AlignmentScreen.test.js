@@ -192,6 +192,24 @@ describe('answering', () => {
     });
   });
 
+  it('says what the wheel is for, beside the wheel that can be answered', async () => {
+    // The whole screen looks like a diagnostic instrument, and a ten-ring score
+    // is the part of this app somebody is most likely to read a verdict into.
+    // A past check-in is read rather than answered, so the note belongs to
+    // today's wheel and stays off the record being looked back at.
+    await rank({ health: 5 });
+    await checkIn(EARLIER, { health: 6 });
+    await mount();
+
+    expect(screen.getByTestId('purpose-note')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${EARLIER}`));
+    });
+
+    expect(screen.queryByTestId('purpose-note')).toBeNull();
+  });
+
   it('does not record a check-in for merely opening the screen', async () => {
     await rank({ health: 5 });
     await mount();
