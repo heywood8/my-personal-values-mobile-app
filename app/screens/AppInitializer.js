@@ -5,7 +5,7 @@ import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
 import { useUpdateDownload } from '../contexts/UpdateDownloadContext';
-import { getBooleanPreference, PREF_KEYS } from '../services/PreferencesDB';
+import { getBooleanPreference, setBooleanPreference, PREF_KEYS } from '../services/PreferencesDB';
 import useAppUpdateCheck from '../hooks/useAppUpdateCheck';
 import AssessmentScreen from './AssessmentScreen';
 import SharedResultsScreen from './SharedResultsScreen';
@@ -43,7 +43,7 @@ const AppInitializer = () => {
   const { isLoading, t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
-  const { isLoading: assessmentLoading, hasResults } = useAssessment();
+  const { isLoading: assessmentLoading, hasResults, cancelCalibration } = useAssessment();
   const { startDownload } = useUpdateDownload();
 
   // Read once, at mount: the address bar is the input, and re-reading it later
@@ -87,6 +87,29 @@ const AppInitializer = () => {
   const handleCalibrationExit = useCallback(() => {
     setCalibrating(false);
   }, []);
+
+  /**
+   * A CSV import from the first card. That run is over: the records it was for
+   * have just arrived by another route, and there is a results screen to land on.
+   *
+   * The open session goes with it. It was dealt before those rows existed — its
+   * deck predates any value the import had to create, and its "new record for
+   * today" notice predates a file that may well have contained today. Left in
+   * place it would be handed straight back to the next recalibration, which
+   * starts from an existing session rather than dealing a fresh one.
+   *
+   * The flag is written for the same reason finishing the deck writes it: this
+   * reader has been through the door, so deleting every record later should land
+   * them on an empty results screen rather than back in a deck with no way out.
+   */
+  const handleImportedRecords = useCallback(() => {
+    cancelCalibration();
+    setCalibrating(false);
+    setOnboardingComplete(true);
+    setBooleanPreference(PREF_KEYS.ONBOARDING_COMPLETE, true).catch((e) => {
+      console.warn('[App] Could not persist the onboarding flag:', e);
+    });
+  }, [cancelCalibration]);
 
   // Closing a shared ranking takes the code out of the URL as well as off the
   // screen, so that reloading the tab afterwards lands the reader in their own
@@ -148,6 +171,7 @@ const AppInitializer = () => {
         canExit={canLeaveTheDeck}
         onExit={handleCalibrationExit}
         onFinished={handleCalibrationFinished}
+        onImported={handleImportedRecords}
       />
     );
 

@@ -9,6 +9,7 @@ import { useAssessment } from '../contexts/AssessmentContext';
 import { useDialog } from '../contexts/DialogContext';
 import ScaleInput from '../components/ScaleInput';
 import CalibrationSettings from '../components/CalibrationSettings';
+import DeckImportPanel from '../components/DeckImportPanel';
 import DeckCardText from '../components/DeckCardText';
 import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
@@ -33,9 +34,11 @@ import {
  *
  * The first card also carries the language and scale switches — this screen is
  * where a first run begins, there being no setup in front of it any more, and
- * those two settings have to be reachable before the deck is 47 cards deep.
+ * those two settings have to be reachable before the deck is 47 cards deep. On a
+ * first run it carries the CSV import as well, for the same reason: the settings
+ * screen that holds it is behind results this reader does not have yet.
  */
-const AssessmentScreen = ({ canExit, onExit, onFinished }) => {
+const AssessmentScreen = ({ canExit, onExit, onFinished, onImported }) => {
   const { t, language } = useLocalization();
   const { colors } = useThemeColors();
   const { showDialog } = useDialog();
@@ -198,6 +201,12 @@ const AssessmentScreen = ({ canExit, onExit, onFinished }) => {
             />
           )}
 
+          {/* Only where there is nothing to go back to — the one run whose
+              reader cannot reach the settings screen's copy of this. On a
+              recalibration it would be a second door beside a door, on the
+              screen least in need of another thing to scroll past. */}
+          {isFirstCard && !canExit && <DeckImportPanel onImported={onImported} />}
+
           <View
             style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             testID={`assessment-card-${current?.key}`}
@@ -346,6 +355,9 @@ AssessmentScreen.propTypes = {
   canExit: PropTypes.bool,
   onExit: PropTypes.func,
   onFinished: PropTypes.func,
+  // Records arrived from a CSV file instead of from the deck. Only the shell
+  // knows what that means for what is on screen next.
+  onImported: PropTypes.func,
 };
 
 export default AssessmentScreen;

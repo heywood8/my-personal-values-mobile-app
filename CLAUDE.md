@@ -54,6 +54,21 @@ hides its close button. Restoring one without somewhere to land strands the app 
 a spinner: `cancelCalibration()` clears the session, and the screen's start guard
 will not deal a second one.
 
+**The first run's other exit is a CSV file.** Every other door to the import is in
+Settings, which is behind the tab shell, which a first run does not reach until it
+has produced a record — so restoring a backup used to mean answering all 47 cards
+and throwing the result away. `DeckImportPanel` puts the ranking import on the
+first card, and only while `canExit` is false; afterwards it would be a second
+door beside a door. Records landing that way end the run, and
+`handleImportedRecords()` in `AppInitializer` does two things about it: it marks
+onboarding complete, so deleting every record later lands on an empty results
+screen rather than back in a deck with no way out, and it **drops the open
+session**, which was dealt before those rows existed and would otherwise be handed
+straight back to the next recalibration — blank, and calling today a new record
+when the file may well have contained today. Only the ranking is offered there:
+the wheel's sectors are derived from a completed ranking, so check-ins imported
+first would have nothing to attach to.
+
 **The rating buttons do not move between cards.** Descriptions run one line to
 four, so a self-sizing card walks the buttons up and down the screen and the
 answer under the thumb changes from card to card. `DeckCardText` lays the whole

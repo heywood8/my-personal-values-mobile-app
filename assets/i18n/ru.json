@@ -45,6 +45,8 @@
   "assessment_saved_new": "Сохранено как новая запись за {{date}}.",
   "assessment_see_results": "К результатам",
   "assessment_no_values": "В колоде нет ценностей. Верните их в настройках.",
+  "assessment_import_hint": "Есть CSV с записями с другого устройства? Загрузите его здесь — колода не единственный вход.",
+  "assessment_import_open": "Загрузить записи из CSV",
 
   "tab_results": "Ценности",
   "tab_alignment": "Колесо",

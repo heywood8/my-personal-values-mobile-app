@@ -282,6 +282,14 @@ release read them as importance ratings and overwrite the record for that date.
 Both contracts, and why each import writes through the app's own resolver, are in
 [DATABASE.md](./DATABASE.md).
 
+The controls are one component, `app/components/CsvTransferSection.js`, mounted
+three times: twice in the settings panel, once per file, and once on the first
+card of the deck. That third mount is the only import a first run can reach — the
+settings screen is behind results that do not exist yet — so it offers the ranking
+alone, and records arriving through it end the run: see the first-run notes in
+[../CLAUDE.md](../CLAUDE.md) for what `AppInitializer` has to do about the
+calibration the reader was in the middle of.
+
 Because a complete backup is now two files, both ends are joined deliberately:
 `writePreUpdateSnapshot()` writes both before an in-app APK install and prunes
 each prefix separately, and the settings screen offers both exports. A change that
