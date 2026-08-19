@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
 import AlignmentScreen from '../../app/screens/AlignmentScreen';
 import { AllProviders } from '../../test-utils/renderWithProviders';
-import { seedDefaultValues, setValueArchived } from '../../app/services/ValuesDB';
+import { addCustomValue, seedDefaultValues, setValueArchived } from '../../app/services/ValuesDB';
 import { appEvents, EVENTS } from '../../app/services/eventEmitter';
 import {
   startAssessment,
@@ -311,6 +311,46 @@ describe('across midnight', () => {
     // would report a fully answered day as empty.
     expect(screen.getByTestId('checkin-2026-08-18')).toHaveTextContent(/filled in: 1/);
     expect(screen.getByTestId('checkin-2026-08-19')).toHaveTextContent(/filled in: 1/);
+  });
+});
+
+describe('what a row says the value is', () => {
+  it('carries the wording the value was rated on', async () => {
+    // The row asks how far behaviour matches the value, which is a question
+    // about the sentence rather than about the one-word name — the same wording
+    // the deck card was answered against.
+    await rank({ health: 5 });
+    await mount();
+
+    expect(screen.getByTestId('alignment-description-health'))
+      .toHaveTextContent(
+        'To maintain or improve my fitness; to look after my physical and mental health and wellbeing.',
+      );
+  });
+
+  it('carries it inside a record too', async () => {
+    // A past check-in is drawn from its own rows, so the value being described
+    // need not be on today's wheel at all.
+    await rank({ health: 5, love: 5 });
+    await checkIn(EARLIER, { order: 6 });
+    await mount();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId(`open-checkin-${EARLIER}`));
+    });
+
+    expect(screen.getByTestId('alignment-description-order'))
+      .toHaveTextContent('To be orderly and organised.');
+  });
+
+  it('prints nothing where a custom value has nothing to print', async () => {
+    await seedDefaultValues();
+    const custom = await addCustomValue({ name: 'Surfing' });
+    await rank({ health: 5, [custom]: 5 });
+    await mount();
+
+    expect(rowKeys()).toContain(custom);
+    expect(screen.queryByTestId(`alignment-description-${custom}`)).toBeNull();
   });
 });
 
