@@ -26,7 +26,8 @@ list is tracked over time too.
    Answers are saved as you give them, so you can stop halfway and pick up where
    you left off.
 4. **Read the result** — a ranking, most important first. Point at a row (or tap
-   it) to read what the value means.
+   it) to read what the value means. Share it with a friend if you like: the link
+   carries the ranking itself, so there is nothing to sign up to at either end.
 5. **Fill in the wheel** — one sector per value you called very important, ten
    rings deep. It is a check-in, one per day, and the previous one stays visible
    behind it as a dotted outline.
@@ -51,6 +52,8 @@ list is tracked over time too.
 - **CSV in and out** — save your records as spreadsheet-readable files and read
   them back on another device; the ranking and the check-ins are two files, so a
   file written today still imports into an older version of the app
+- **Share a ranking** — a link with the whole result packed inside it, so a friend
+  opens it in a browser with no app, no account and nothing uploaded
 - **Your own values** — add values the catalogue does not have, archive the ones
   you do not care about
 - **Light and dark themes**, following the system by default
@@ -68,6 +71,11 @@ Which also means nothing is backed up anywhere, so records can be saved as CSV
 files and read back in — on the web as a download and a file dialog, on a phone
 through the share sheet and a paste box. A complete backup is two files: the
 ranking, and the wheel check-ins.
+
+The one thing that ever leaves is a link you make yourself and hand to somebody:
+"Share with a friend" puts the ranking *inside* the link rather than on a server,
+so it opens as a read-only page in any browser. Anyone holding that link can read
+the ranking, and opening one changes nothing in the reader's own records.
 
 ## The value catalogue
 

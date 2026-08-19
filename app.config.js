@@ -19,6 +19,13 @@ const ANDROID_ARCHITECTURES = IS_PREVIEW
 // locally and in `expo start --web`, where the app is served from the root.
 const WEB_BASE_URL = process.env.EXPO_WEB_BASE_URL || undefined;
 
+// Where a "share with a friend" link points when the app that makes it is not
+// itself running on the web — a phone has no URL of its own to hand out, and a
+// link only that phone's owner can open is not a shared link. Defaults to the
+// published site (see app/services/ResultsShare.js); a fork points its own
+// builds at its own deployment by setting this.
+const SHARE_URL = process.env.EXPO_SHARE_URL || '';
+
 // The EAS project this app builds under. `eas build` reads it from
 // `extra.eas.projectId` and refuses to start without it — `eas.json` asks for a
 // remote `versionCode`, and there is no project to read one from.
@@ -76,7 +83,10 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     ...(WEB_BASE_URL && { experiments: { baseUrl: WEB_BASE_URL } }),
-    ...(EAS_PROJECT_ID && { extra: { eas: { projectId: EAS_PROJECT_ID } } }),
+    extra: {
+      ...(SHARE_URL && { shareUrl: SHARE_URL }),
+      ...(EAS_PROJECT_ID && { eas: { projectId: EAS_PROJECT_ID } }),
+    },
     plugins: [
       'expo-sqlite',
       [

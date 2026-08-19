@@ -1,4 +1,5 @@
 import React from 'react';
+import { Share } from 'react-native';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react-native';
 import ResultsScreen from '../../app/screens/ResultsScreen';
 import { AllProviders } from '../../test-utils/renderWithProviders';
@@ -10,6 +11,7 @@ import {
 } from '../../app/services/AssessmentsDB';
 import { __resetDatabaseHandleForTests } from '../../app/services/db';
 import { getPreference, setPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
+import { readShareCode, decodeShareCode } from '../../app/services/ResultsShare';
 import { localDateKey } from '../../app/utils/dateUtils';
 import { SCALE_IDS } from '../../app/utils/scales';
 
@@ -77,6 +79,28 @@ describe('ResultsScreen', () => {
     await mount();
 
     expect(screen.getByTestId('results-export-csv')).toBeTruthy();
+  });
+
+  it('offers the record as a link, and shows the one it made', async () => {
+    // Two ways out of this screen and they are not the same: the file is a
+    // backup that comes back in through import, the link is for somebody else.
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    await recordToday({ love: 5, health: 3 });
+    await mount();
+
+    // The link appears only once it has been asked for.
+    expect(screen.queryByTestId('results-share-link')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('results-share'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('results-share-link')).toBeTruthy());
+    const shownLink = screen.getByTestId('results-share-link').props.value;
+    expect(decodeShareCode(readShareCode(shownLink)).payload.entries.map((entry) => entry.key))
+      .toEqual(['love', 'health']);
+
+    share.mockRestore();
   });
 
   it('says so when there is nothing to show', async () => {

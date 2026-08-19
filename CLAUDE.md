@@ -175,6 +175,27 @@ halves), and the settings panel offers both. The check-ins file carries a `rings
 column purely so it is self-describing — a database row can be migrated when the
 instrument changes and a file on somebody's phone cannot.
 
+**A shared link is a reading, not a record.** `app/services/ResultsShare.js` packs
+the latest ranking into the URL itself — `?r=<fingerprint>.<body>` — because there
+is no server to put it on and there is not going to be one. Three things about it
+are load-bearing. It travels as *keys*, so the app that opens it names each value
+in its own reader's language and only a custom value carries text. It lands
+**read-only**: `SharedResultsScreen` writes nothing, because an import would
+resolve the sender's date through `startAssessment()` and overwrite the reader's
+own record for that day — the CSV import is the door for records that are meant
+to land. And the header row carries `SHARE_FORMAT`, because the link lives in
+somebody's chat history and the app that finally opens it may be older or newer
+than the one that wrote it; a code from a newer format is refused by name rather
+than half-read.
+
+The fingerprint in front of the body is a checksum — it tells a truncated link
+from a whole one, and nothing else. It is not a signature, anyone holding the
+link can read what is in it, and the screen offering it says so. Sending works
+everywhere (`app/utils/linkSharing.js`, asked by predicate like `canPickFile()`);
+*receiving* is the web's alone, since a phone would need a deep link only somebody
+who already has the app can follow — which is why every link points at the
+published web export.
+
 **`app/services/ApkInstaller.js` is never imported statically.** It is the only
 module touching expo-file-system and expo-intent-launcher, and the latter has no
 web implementation — a static import puts it in the web bundle's module graph and
