@@ -12,7 +12,7 @@ import AlignmentWheel from '../components/charts/AlignmentWheel';
 import ScaleInput from '../components/ScaleInput';
 import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
-import { valueName } from '../utils/valueNames';
+import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey, localDateKey } from '../utils/dateUtils';
 import { ALIGNMENT_INPUT_SCALE, ALIGNMENT_MAX, trackedValues } from '../utils/alignment';
 import {
@@ -38,6 +38,13 @@ import {
  * anchor-prone of the two measurements — so the previous check-in appears as a
  * dashed shape behind the wheel, which is context, and its number appears beside
  * a row only once that row has been answered, which is feedback.
+ *
+ * A sector is numbered and nothing else, so pointing at one — a hover on the
+ * web, a tap on a phone — marks it and names it here, under the wheel: the value
+ * it stands for and the same description the card was rated on. The text lives
+ * on this screen rather than inside the canvas for the same reason the two
+ * captions do, and it sits below the lower caption rather than between the two,
+ * because those two are bound to the wheel by their position.
  */
 const AlignmentScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
@@ -56,6 +63,9 @@ const AlignmentScreen = ({ onStartCalibration }) => {
   // the records list below, and tapping it must land on the live wheel rather
   // than on a read-only copy of it.
   const [viewing, setViewing] = useState(null);
+
+  /** The value whose sector is being pointed at, or null. */
+  const [pointed, setPointed] = useState(null);
 
   /**
    * What today's wheel has sectors for: the current ask, plus anything today
@@ -160,6 +170,20 @@ const AlignmentScreen = ({ onStartCalibration }) => {
     () => sectors.filter((sector) => sector.score !== undefined).length,
     [sectors],
   );
+
+  /**
+   * The sector being pointed at, and the row behind it.
+   *
+   * Derived from the wheel on screen rather than cleared by hand, because the
+   * wheel is redrawn from a different set of rows every time another record is
+   * opened — and a value that is not on this one must not go on marking a sector
+   * that now belongs to somebody else. Off the wheel is the same as nothing
+   * pointed at.
+   */
+  const active = useMemo(() => {
+    const index = sectors.findIndex((sector) => sector.valueId === pointed);
+    return index < 0 ? null : { sector: sectors[index], row: view.rows[index] };
+  }, [sectors, view, pointed]);
 
   /**
    * Whether the earlier check-in shares any value with the wheel on screen.
@@ -302,11 +326,60 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                 rated: ratedCount,
                 total: view.rows.length,
               })}
+              activeValueId={active?.sector.valueId ?? null}
+              onActivate={setPointed}
             />
 
             <Text style={[styles.edgeLabel, { color: colors.text }]} testID="alignment-inner-label">
               {t('alignment_inner_label')}
             </Text>
+
+            {/* What the sector being pointed at stands for. The slot is always
+                here, holding the sentence that says the wheel can be pointed at
+                when nothing is — a panel that appears out of nowhere is a panel
+                nobody knew to look for, and a slot that comes and goes moves
+                everything below it on every hover. */}
+            <View
+              style={[styles.detail, { backgroundColor: colors.selected }]}
+              testID="alignment-detail"
+            >
+              {active ? (
+                <>
+                  <View style={styles.detailHeader}>
+                    {/* The same badge the row below carries, because the number
+                        is the only thing the wheel itself says. */}
+                    <View style={[styles.badge, { backgroundColor: colors.card }]}>
+                      <Text style={[styles.badgeLabel, { color: colors.text }]}>
+                        {String(active.sector.sector)}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[styles.detailName, { color: colors.text }]}
+                      testID="alignment-detail-name"
+                    >
+                      {valueName(active.row, t)}
+                    </Text>
+                  </View>
+                  {/* A custom value has no description to show — there is nothing
+                      to translate one into — so its row simply names itself. */}
+                  {!!valueDescription(active.row, t) && (
+                    <Text
+                      style={[styles.detailBody, { color: colors.mutedText }]}
+                      testID="alignment-detail-description"
+                    >
+                      {valueDescription(active.row, t)}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Text
+                  style={[styles.detailHint, { color: colors.mutedText }]}
+                  testID="alignment-detail-hint"
+                >
+                  {t('alignment_sector_hint')}
+                </Text>
+              )}
+            </View>
 
             {view.isToday && (
               <Text style={[styles.status, { color: colors.mutedText }]} testID="alignment-status">
@@ -337,15 +410,26 @@ const AlignmentScreen = ({ onStartCalibration }) => {
             <View style={styles.rows}>
               {sectors.map((sector, index) => {
                 const rated = sector.score !== undefined;
+                const value = view.rows[index];
+                const description = valueDescription(value, t);
                 // Shown only once this row has been answered: feedback on what was
                 // just given, rather than a number sitting above the buttons while
                 // the reader is still deciding.
                 const was = rated ? view.previous?.scores.get(sector.valueId) : undefined;
 
+                // Marked along with its sector, so pointing at a wedge says which
+                // row to answer. Read-only reinforcement: the row is not what
+                // marks it, and pointing is a property of the wheel.
+                const marked = active?.sector.valueId === sector.valueId;
+
                 return (
                   <View
                     key={sector.valueId}
-                    style={[styles.row, { borderColor: colors.border }]}
+                    style={[
+                      styles.row,
+                      { borderColor: marked ? colors.primary : colors.border },
+                      marked && { backgroundColor: colors.selected },
+                    ]}
                     testID={`alignment-row-${sector.key}`}
                   >
                     <View style={styles.rowHeader}>
@@ -359,7 +443,7 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                       </View>
 
                       <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-                        {valueName(view.rows[index], t)}
+                        {valueName(value, t)}
                       </Text>
 
                       <Text style={[styles.score, { color: colors.mutedText }]}>
@@ -377,6 +461,30 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                         />
                       )}
                     </View>
+
+                    {/* The wording the value was rated on, printed rather than
+                    revealed behind a tap the way the ranking does it: that list
+                    is being read, and 47 descriptions at once is a wall of text,
+                    while this row is being answered — and "how far does my
+                    behaviour match this" is a question about the sentence rather
+                    than about the one word above it. The deck card prints the
+                    same text while the same value is being rated. Only the top
+                    band is here, and the text is printed whether or not the row
+                    is answered, so it never moves the buttons under the thumb.
+                    The panel under the wheel prints it too, but that answers the
+                    wheel's own question — what the sector being pointed at
+                    stands for — one value at a time and only while it is being
+                    pointed at; this is the same sentence where the answer is
+                    actually given. A custom value has none, and prints
+                    nothing. */}
+                    {!!description && (
+                      <Text
+                        style={[styles.description, { color: colors.mutedText }]}
+                        testID={`alignment-description-${sector.key}`}
+                      >
+                        {description}
+                      </Text>
+                    )}
 
                     {/* The dashed outline is a shape, and a shape cannot be read
                     aloud — this is the same comparison in words. */}
@@ -510,6 +618,36 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
+  },
+  description: {
+    fontSize: FONT_SIZE.sm,
+    marginTop: SPACING.xs,
+  },
+  detail: {
+    borderRadius: BORDER_RADIUS.md,
+    // Room for a name and a line of description, so the hint and the shortest
+    // answer are the same height and a hover does not shuffle the page.
+    minHeight: 72,
+    padding: SPACING.md,
+  },
+  detailBody: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
+    marginTop: SPACING.xs,
+  },
+  detailHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  detailHint: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
+  },
+  detailName: {
+    flex: 1,
+    fontSize: FONT_SIZE.base,
+    fontWeight: '600',
   },
   edgeLabel: {
     fontSize: FONT_SIZE.sm,

@@ -119,6 +119,23 @@ nothing.
 results screen defaults to that. One direction across the whole app: if a new
 surface orders values, it orders them that way unless the user flips it.
 
+**The history screen opens on the current top ten, or the whole current core
+band — whichever is longer.** `defaultTrackedIds()` reads that off the latest
+ranking, where the core band is a *prefix*, so both halves of the rule are one
+slice. Neither half works alone: the band is the reader's own nomination and can
+run past twenty, so cutting it at ten drops values they had just said matter
+most; and it can be empty on a cautious 1..10 ranking that never awarded an 8,
+which would open the screen on nothing at all.
+
+Showing that many at once is what the **grid** is for — one small multiple per
+value, each one framed and named, so identity is never carried by hue and the
+categorical palette's ceiling never applies. The **overlay chart** stays capped at
+`MAX_TRACKED_SERIES`, because there a line's identity *is* its hue; the grid is
+its legend, and a card promoted into it takes that line's colour and marker
+glyph. Both are drawn against the one axis `timeAxis()` builds over every
+calibration date — a second copy of that mapping is exactly how a grid of small
+multiples stops being a comparison and becomes twenty unrelated pictures.
+
 **The wheel's membership is derived, and the wheel is only for the top band.**
 `trackedValues()` takes the latest *completed* assessment's ranked results and
 keeps what `priorityBand()` calls `core` — which on the qualitative scale is
@@ -168,6 +185,21 @@ a dashed *shape* while an answer is being decided, and its number appears beside
 row only after that row is answered — the deck's refusal to prefill is the same
 rule, and alignment is the more anchor-prone of the two measurements.
 
+**A wheel sector is pointed at by geometry, not by pressing its shape.** A
+sector carries a number and nothing else, so hovering one on the web or tapping
+it on a phone names the value and prints its description under the wheel —
+`sectorAt()` in `app/utils/wheelGeometry.js` answers which sector a point is in,
+and `AlignmentWheel` lays one hit layer over the whole canvas rather than making
+each wedge pressable. It has to work that way: on most days most sectors are
+unanswered, and an unanswered sector puts no ink on the canvas for a press to
+land on. The mark is drawn out to the rim for the same reason.
+
+Hover is filtered to `pointerType === 'mouse'`, and that guard is load-bearing:
+a finger on a web page emits pointer events too, including a `pointerleave` the
+instant it lifts, which wipes the selection the tap has just made. Drop the
+guard and tapping a sector stops working on exactly the platform the taps were
+for.
+
 **Provider order lives in `app/AppProviders.js` only.** Both `App.js` and the test
 wrappers import it. Listing providers separately is how the app once shipped a
 Paper `Portal` above its `PaperProvider` while every test passed.
@@ -193,7 +225,10 @@ fails on a leftover `group_*` string. A custom value needs only a name.
 **A value dropped from the catalogue keeps its `value_<key>` name in both
 locales**, listed under `retired` in `defaultValues.json`. Its ratings survive,
 so old records still render it — delete the string and that history prints
-`value_family`. Descriptions are deck-card only and go with the value.
+`value_family`. Its description goes with it: a description is printed wherever
+a value is being rated or read — the deck card, the ranked list, the wheel's
+rows — and all three print nothing when there is none, so a retired value keeps
+its name and loses its description.
 
 **The categorical slot order in `app/styles/chartPalette.js` is a safety
 mechanism, not a style choice.** It was validated for colour-vision-deficiency

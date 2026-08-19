@@ -99,3 +99,36 @@ export const ringRadii = (radius, rings) => Array.from(
   { length: rings },
   (_, i) => (radius * (i + 1)) / rings,
 );
+
+/**
+ * Which sector a point falls in — the hit test behind hovering and tapping the
+ * wheel — or -1 for a point outside it.
+ *
+ * The wheel is one drawing rather than a set of pressable shapes, and this is
+ * why: an unanswered sector puts no ink on the canvas at all, so there is
+ * nothing there to hover. Asking the geometry instead means every sector can be
+ * pointed at whether or not it has been answered, and it keeps the arithmetic
+ * out of the component (see the note at the top of this file).
+ *
+ * `radius` is the hit radius, which is deliberately not the disc's: the sector
+ * numbers are printed outside the rim and belong to the sector they label.
+ */
+export const sectorAt = (x, y, cx, cy, radius, count) => {
+  if (count < 1 || radius <= 0) return -1;
+
+  const dx = x - cx;
+  const dy = y - cy;
+  if (dx * dx + dy * dy > radius * radius) return -1;
+
+  // A single sector is the whole turn, and atan2(0, 0) at the exact centre is a
+  // legal 0 rather than a meaningful angle — both answer "the first one".
+  if (count === 1 || (dx === 0 && dy === 0)) return 0;
+
+  // Measured from twelve o'clock and running clockwise, so it matches the order
+  // the sectors are drawn and numbered in.
+  const turn = Math.atan2(dy, dx) - boundaryAngle(0, count);
+  const fraction = ((turn % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI);
+  // Clamped, because a fraction of exactly 1 arrives from rounding at the seam
+  // and would name a sector that does not exist.
+  return Math.min(count - 1, Math.floor(fraction * count));
+};

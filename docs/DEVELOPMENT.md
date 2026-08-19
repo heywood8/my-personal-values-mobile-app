@@ -33,7 +33,7 @@ bun run web          # web only
 ```
 app/
   AppProviders.js     the provider stack, shared by App.js and the tests
-  components/         reusable UI; components/charts/ holds the four charts
+  components/         reusable UI; components/charts/ holds the charts
   contexts/           localisation, theme, dialogs, catalogue, assessments, alignment
   db/schema.js        Drizzle schema — the source migrations are generated from
   defaults/           the shipped value catalogue
@@ -264,8 +264,28 @@ Both were checked with a palette validator against this app's exact surfaces, no
 chosen by eye. The categorical slot **order** is the colour-vision-deficiency
 safety mechanism, so reordering the slots silently degrades it; three light-mode
 slots sit below 3:1 contrast and are only legal because every surface that uses
-them prints a visible label next to the mark — on the trend chart, the legend that
-does so is also the selector.
+them prints a visible label next to the mark — on the overlay trend chart, the
+grid of cards that does so is also the selector.
+
+### The history screen is two layers, and the split is the palette
+
+`app/components/charts/TrendGrid.js` is the default reading: one small multiple
+per tracked value, on the axis `app/utils/trendScale.js` builds over *every*
+calibration date and on an absolute 0..1 y range. Because each card is framed and
+named, identity is never carried by hue, so the grid can show ten or twenty
+values — which is what `defaultTrackedIds()` in `app/utils/history.js` opens it
+on: the current top ten, or the whole current core band, whichever is longer.
+
+`app/components/charts/TrendChart.js` is the second layer, for the one question a
+grid cannot answer — did these two cross, and when. It is capped at
+`MAX_TRACKED_SERIES`, because there a line's identity *is* its hue. Tapping a
+card promotes it, and the card then takes that line's categorical colour and
+marker glyph; an unfocused card takes the ordinal priority step instead, the same
+ramp the ranked results use. That is why the overlay needs no legend of its own.
+
+Before the second calibration there is no line to draw, so a card carries a level
+bar rather than a sparkline: a 44px box cannot separate 100% from 75% at a
+glance, and a bar across the card can.
 
 ## Records as CSV files
 

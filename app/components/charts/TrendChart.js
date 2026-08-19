@@ -6,7 +6,8 @@ import Svg, { Line, Path, Circle, Rect, Polygon, G } from 'react-native-svg';
 import { useThemeColors } from '../../contexts/ThemeColorsContext';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { seriesColor } from '../../styles/chartPalette';
-import { parseDateKey, formatDateKeyShort, formatDateKey } from '../../utils/dateUtils';
+import { formatDateKeyShort, formatDateKey } from '../../utils/dateUtils';
+import { timeAxis } from '../../utils/trendScale';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../styles/designTokens';
 
 const CHART_HEIGHT = 200;
@@ -86,19 +87,12 @@ const TrendChart = ({ series, dates }) => {
   const plotWidth = Math.max(0, width - PADDING.left - PADDING.right);
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
+  // The same axis every sparkline on the grid below is drawn against — one
+  // mapping, so the overlay and the small multiples agree about where a date is.
   const { xFor, yFor } = useMemo(() => {
-    const times = dates.map((d) => parseDateKey(d).getTime());
-    const min = Math.min(...times);
-    const max = Math.max(...times);
-    // A single date, or several on the same day, would divide by zero; pin them
-    // to the middle of the plot instead.
-    const span = max - min || 1;
-
+    const axis = timeAxis(dates);
     return {
-      xFor: (dateKey) => {
-        if (max === min) return PADDING.left + plotWidth / 2;
-        return PADDING.left + ((parseDateKey(dateKey).getTime() - min) / span) * plotWidth;
-      },
+      xFor: (dateKey) => PADDING.left + axis(dateKey) * plotWidth,
       yFor: (normalized) => PADDING.top + (1 - normalized) * plotHeight,
     };
   }, [dates, plotWidth, plotHeight]);
@@ -241,7 +235,7 @@ const TrendChart = ({ series, dates }) => {
 
       {!activeReadout && (
         <Text style={[styles.hint, { color: colors.mutedText }]}>
-          {t('history_chart_hint')}
+          {t('history_compare_hint')}
         </Text>
       )}
     </View>
