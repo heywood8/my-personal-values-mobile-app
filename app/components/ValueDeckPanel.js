@@ -7,7 +7,10 @@ import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import { valueName } from '../utils/valueNames';
-import { SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, LINE_HEIGHT, LETTER_SPACING,
+  elevation,
+} from '../styles/designTokens';
 
 /**
  * Manage which values get dealt, and add your own.
@@ -25,7 +28,7 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH } from '../styles/
  */
 const ValueDeckPanel = ({ onClose }) => {
   const { t } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const { showDialog } = useDialog();
   const {
     values, setValueArchived, addCustomValue, deleteCustomValue,
@@ -80,7 +83,13 @@ const ValueDeckPanel = ({ onClose }) => {
         </View>
         <Text style={[styles.hint, { color: colors.mutedText }]}>{t('values_deck_hint')}</Text>
 
-        <View style={[styles.addBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.addBox,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            elevation(1, mode),
+          ]}
+        >
           <Text style={[styles.addTitle, { color: colors.text }]}>{t('add_custom_value')}</Text>
           <TextInput
             mode="outlined"
@@ -153,7 +162,7 @@ const ValueDeckPanel = ({ onClose }) => {
 
 const styles = StyleSheet.create({
   addBox: {
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: SPACING.lg,
     padding: SPACING.lg,
@@ -173,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
   },
   header: {
     alignItems: 'center',
@@ -181,7 +191,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
@@ -206,8 +216,9 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
   },
   title: {
-    fontSize: FONT_SIZE.xl,
+    fontSize: FONT_SIZE.xxl,
     fontWeight: '700',
+    letterSpacing: LETTER_SPACING.tight,
   },
 });
 

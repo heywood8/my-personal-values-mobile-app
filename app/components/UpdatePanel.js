@@ -16,7 +16,7 @@ import {
 } from '../services/AppUpdateService';
 import { setPreference, PREF_KEYS } from '../services/PreferencesDB';
 import { formatReleaseDate, parseReleaseNotes } from '../utils/releaseNotes';
-import { FONT_SIZE, SPACING } from '../styles/designTokens';
+import { FONT_SIZE, SPACING, LINE_HEIGHT } from '../styles/designTokens';
 
 /**
  * The updates section of the settings screen.
@@ -234,12 +234,12 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.sm,
   },
   notes: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 20,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.sm,
   },
   result: {

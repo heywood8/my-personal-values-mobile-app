@@ -5,7 +5,11 @@ import { Text } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { valueName, valueDescription } from '../utils/valueNames';
-import { FONT_SIZE, SPACING } from '../styles/designTokens';
+import { FONT_SIZE, SPACING, LINE_HEIGHT, LETTER_SPACING } from '../styles/designTokens';
+
+// The name's line box, as a factor of its own size — it is applied scaled, so
+// this is a multiplier rather than a value.
+const NAME_LINE_HEIGHT = LINE_HEIGHT.tight;
 
 // The description's line box at the system font size. React Native scales a
 // fontSize with the reader's font-size setting but leaves a lineHeight in a
@@ -47,6 +51,7 @@ const DeckCardText = ({ deck, value }) => {
 
   const fontScale = PixelRatio.getFontScale();
   const lineHeight = Math.round(DESC_LINE_HEIGHT * fontScale);
+  const nameLineHeight = Math.round(FONT_SIZE.display * NAME_LINE_HEIGHT * fontScale);
 
   // What the measurement is only valid for. Anything here changing rewraps the
   // text, so the reserved height has to be found again.
@@ -80,7 +85,9 @@ const DeckCardText = ({ deck, value }) => {
       style={[styles.block, measured && { minHeight: reserved.height }]}
       testID="deck-card-text"
     >
-      <Text style={[styles.name, { color: colors.text }]}>{valueName(value, t)}</Text>
+      <Text style={[styles.name, { color: colors.text, lineHeight: nameLineHeight }]}>
+        {valueName(value, t)}
+      </Text>
       {!!description && (
         <Text style={[styles.desc, { color: colors.mutedText, lineHeight }]}>{description}</Text>
       )}
@@ -101,7 +108,9 @@ const DeckCardText = ({ deck, value }) => {
               key={item.id ?? item.key ?? index}
               onLayout={(event) => handleCardMeasured(index, event.nativeEvent.layout.height)}
             >
-              <Text style={styles.name}>{valueName(item, t)}</Text>
+              <Text style={[styles.name, { lineHeight: nameLineHeight }]}>
+                {valueName(item, t)}
+              </Text>
               {!!valueDescription(item, t) && (
                 // The same line height as the visible card, or the measurement
                 // is of a block nobody will ever see.
@@ -133,8 +142,16 @@ const styles = StyleSheet.create({
     top: 0,
   },
   name: {
-    fontSize: FONT_SIZE.xxl,
+    fontSize: FONT_SIZE.display,
     fontWeight: '700',
+    // The card's whole job is to put one word in front of the reader, so this is
+    // the one place the type scale is allowed to open right up. Tracking comes
+    // in to match: at 28px the default is loose enough to read as spaced-out.
+    //
+    // No `lineHeight` here — it is passed in scaled, for the same reason the
+    // description's is. A name long enough to wrap is rare and a name printed on
+    // top of itself at 200% is not rare enough.
+    letterSpacing: LETTER_SPACING.tight,
   },
 });
 

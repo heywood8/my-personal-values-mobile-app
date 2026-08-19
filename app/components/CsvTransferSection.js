@@ -4,7 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
-import { SPACING, FONT_SIZE } from '../styles/designTokens';
+import { SPACING, FONT_SIZE, LINE_HEIGHT } from '../styles/designTokens';
 
 /**
  * One CSV file's transfer controls: a save, and an import that opens onto the
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.sm,
   },
   importBox: {

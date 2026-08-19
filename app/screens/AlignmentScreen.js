@@ -12,11 +12,13 @@ import AlignmentWheel from '../components/charts/AlignmentWheel';
 import ScaleInput from '../components/ScaleInput';
 import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
+import ScreenHeader from '../components/ScreenHeader';
 import { valueName, valueDescription } from '../utils/valueNames';
 import { formatDateKey, localDateKey } from '../utils/dateUtils';
 import { ALIGNMENT_INPUT_SCALE, ALIGNMENT_MAX, trackedValues } from '../utils/alignment';
 import {
-  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, HEIGHTS,
+  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, HEIGHTS, LINE_HEIGHT,
+  LETTER_SPACING, elevation,
 } from '../styles/designTokens';
 
 /**
@@ -48,7 +50,7 @@ import {
  */
 const AlignmentScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const { showDialog } = useDialog();
   const { latest, results, isLoading: assessmentLoading } = useAssessment();
   const { values } = useValues();
@@ -258,18 +260,18 @@ const AlignmentScreen = ({ onStartCalibration }) => {
     >
       <View style={styles.inner}>
         {view.isToday ? (
-          <>
-            <Text style={[styles.meta, { color: colors.mutedText }]}>
-              {latest
-                ? `${t('alignment_value_count', { count: view.rows.length })} · ${t('alignment_from_calibration', { date: formatDateKey(latest.assessedOn, language) })}`
-                : t('alignment_value_count', { count: view.rows.length })}
-            </Text>
+          <ScreenHeader
+            title={t('tab_alignment')}
+            meta={latest
+              ? `${t('alignment_value_count', { count: view.rows.length })} · ${t('alignment_from_calibration', { date: formatDateKey(latest.assessedOn, language) })}`
+              : t('alignment_value_count', { count: view.rows.length })}
+          >
             <Text style={[styles.intro, { color: colors.mutedText }]}>{t('alignment_intro')}</Text>
             {/* Only where there is a wheel to answer. A past check-in is read
                 back rather than filled in, and on a day with no sectors at all
                 the note would be answering a question nobody is being asked. */}
             {view.rows.length > 0 && <PurposeNote />}
-          </>
+          </ScreenHeader>
         ) : (
           <View
             style={[styles.viewingBanner, { backgroundColor: colors.selected }]}
@@ -427,7 +429,16 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                     key={sector.valueId}
                     style={[
                       styles.row,
-                      { borderColor: marked ? colors.primary : colors.border },
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: marked ? colors.primary : colors.border,
+                      },
+                      // Every row is a card now rather than an outline on the
+                      // page, and the marked one is the same card lifted and
+                      // tinted. Pointing at a wedge already changed the border
+                      // colour; on a list of twenty-five outlines that was a
+                      // 1px claim.
+                      elevation(marked ? 2 : 1, mode),
                       marked && { backgroundColor: colors.selected },
                     ]}
                     testID={`alignment-row-${sector.key}`}
@@ -498,12 +509,14 @@ const AlignmentScreen = ({ onStartCalibration }) => {
                     )}
 
                     {view.isToday && (
-                      <ScaleInput
-                        scaleId={ALIGNMENT_INPUT_SCALE}
-                        value={sector.score}
-                        onChange={(score) => setAlignment(sector.valueId, score)}
-                        testIDPrefix={`alignment-${sector.key}`}
-                      />
+                      <View style={styles.rowScale}>
+                        <ScaleInput
+                          scaleId={ALIGNMENT_INPUT_SCALE}
+                          value={sector.score}
+                          onChange={(score) => setAlignment(sector.valueId, score)}
+                          testIDPrefix={`alignment-${sector.key}`}
+                        />
+                      </View>
                     )}
                   </View>
                 );
@@ -618,15 +631,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,
   },
   description: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.xs,
   },
   detail: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     // Room for a name and a line of description, so the hint and the shortest
     // answer are the same height and a hover does not shuffle the page.
     minHeight: 72,
@@ -634,7 +647,7 @@ const styles = StyleSheet.create({
   },
   detailBody: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.xs,
   },
   detailHeader: {
@@ -644,7 +657,7 @@ const styles = StyleSheet.create({
   },
   detailHint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
   detailName: {
     flex: 1,
@@ -653,8 +666,8 @@ const styles = StyleSheet.create({
   },
   edgeLabel: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginVertical: SPACING.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
+    marginVertical: SPACING.md,
     textAlign: 'center',
   },
   fill: {
@@ -666,11 +679,8 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.xs,
-  },
-  meta: {
-    fontSize: FONT_SIZE.sm,
   },
   name: {
     flex: 1,
@@ -678,9 +688,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   notice: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     marginTop: SPACING.md,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   recordCoverage: {
     fontSize: FONT_SIZE.sm,
@@ -704,10 +714,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   row: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: SPACING.md,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   rowHeader: {
     alignItems: 'center',
@@ -721,6 +731,10 @@ const styles = StyleSheet.create({
   },
   rowHint: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
+    marginTop: SPACING.md,
+  },
+  rowScale: {
     marginTop: SPACING.md,
   },
   rows: {
@@ -733,20 +747,23 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxl,
   },
   sectionTitle: {
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: '700',
+    letterSpacing: LETTER_SPACING.tight,
+    lineHeight: FONT_SIZE.xl * LINE_HEIGHT.heading,
   },
   status: {
     fontSize: FONT_SIZE.sm,
     marginTop: SPACING.xs,
   },
   viewingBanner: {
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.lg,
   },
   viewingTitle: {
     fontSize: FONT_SIZE.base,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: LETTER_SPACING.snug,
   },
   was: {
     fontSize: FONT_SIZE.sm,

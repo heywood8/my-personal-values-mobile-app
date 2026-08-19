@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, List, Button, Divider } from 'react-native-paper';
+import { Text, List, Button } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useLocalization, availableLanguages } from '../contexts/LocalizationContext';
 import { useThemeConfig } from '../contexts/ThemeConfigContext';
@@ -10,6 +10,8 @@ import { useAssessment } from '../contexts/AssessmentContext';
 import { useValues } from '../contexts/ValuesContext';
 import { useDialog } from '../contexts/DialogContext';
 import SegmentedToggle from '../components/SegmentedToggle';
+import ScreenHeader from '../components/ScreenHeader';
+import SectionCard from '../components/SectionCard';
 import ValueDeckPanel from '../components/ValueDeckPanel';
 import CsvTransferPanel from '../components/CsvTransferPanel';
 import PrivacyNote from '../components/PrivacyNote';
@@ -20,8 +22,19 @@ import { languageLabel } from '../utils/languages';
 import { resetDatabase, isUsingMemoryFallback } from '../services/db';
 import { appEvents, EVENTS } from '../services/eventEmitter';
 import { formatDateKey } from '../utils/dateUtils';
-import { SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, LINE_HEIGHT,
+} from '../styles/designTokens';
 
+/**
+ * Everything that is a setting, grouped.
+ *
+ * The screen is a stack of `SectionCard`s rather than one column of controls cut
+ * up by dividers — see that component for why. What it changes here beyond the
+ * looks is which small print belongs to what: the scale notice now sits inside
+ * the card whose control it qualifies instead of floating between two groups,
+ * where it was equally readable as a note about the one below.
+ */
 const SettingsScreen = ({ onStartCalibration }) => {
   const { t, language, setLanguage } = useLocalization();
   const { theme, setTheme } = useThemeConfig();
@@ -76,6 +89,8 @@ const SettingsScreen = ({ onStartCalibration }) => {
       testID="settings-screen"
     >
       <View style={styles.inner}>
+        <ScreenHeader title={t('tab_settings')} />
+
         {isUsingMemoryFallback() && (
           <View style={[styles.warning, { backgroundColor: colors.selected }]}>
             <Text style={[styles.warningText, { color: colors.text }]}>
@@ -84,102 +99,101 @@ const SettingsScreen = ({ onStartCalibration }) => {
           </View>
         )}
 
-        <List.Subheader>{t('settings_language')}</List.Subheader>
-        <SegmentedToggle
-          testID="settings-language"
-          value={language}
-          onChange={setLanguage}
-          options={availableLanguages.map((code) => ({
-            value: code,
-            label: languageLabel(code),
-          }))}
-        />
+        <SectionCard title={t('settings_language')} style={styles.card}>
+          <SegmentedToggle
+            testID="settings-language"
+            value={language}
+            onChange={setLanguage}
+            options={availableLanguages.map((code) => ({
+              value: code,
+              label: languageLabel(code),
+            }))}
+          />
+        </SectionCard>
 
-        <List.Subheader style={styles.subheader}>{t('settings_theme')}</List.Subheader>
-        <SegmentedToggle
-          testID="settings-theme"
-          value={theme}
-          onChange={setTheme}
-          options={[
-            { value: 'light', label: t('theme_light') },
-            { value: 'dark', label: t('theme_dark') },
-            { value: 'system', label: t('theme_system') },
-          ]}
-        />
+        <SectionCard title={t('settings_theme')} style={styles.card}>
+          <SegmentedToggle
+            testID="settings-theme"
+            value={theme}
+            onChange={setTheme}
+            options={[
+              { value: 'light', label: t('theme_light') },
+              { value: 'dark', label: t('theme_dark') },
+              { value: 'system', label: t('theme_system') },
+            ]}
+          />
+        </SectionCard>
 
-        <List.Subheader style={styles.subheader}>{t('settings_scale')}</List.Subheader>
-        <SegmentedToggle
-          testID="settings-scale"
-          value={scale}
-          onChange={setScale}
-          options={SCALE_ORDER.map((id) => ({
-            value: id,
-            label: t(SCALES[id].labelKey),
-          }))}
-        />
-        <Text style={[styles.hint, { color: colors.mutedText }]}>
-          {t('settings_scale_notice')}
-        </Text>
-
-        <Divider style={styles.divider} />
-
-        <List.Subheader>{t('settings_calibration')}</List.Subheader>
-        <Text style={[styles.hint, { color: colors.mutedText }]}>{recalibrateHint}</Text>
-        <Button
-          mode="contained"
-          onPress={onStartCalibration}
-          style={styles.action}
-          testID="settings-recalibrate"
+        <SectionCard
+          title={t('settings_scale')}
+          footnote={t('settings_scale_notice')}
+          style={styles.card}
         >
-          {t('results_recalibrate')}
-        </Button>
+          <SegmentedToggle
+            testID="settings-scale"
+            value={scale}
+            onChange={setScale}
+            options={SCALE_ORDER.map((id) => ({
+              value: id,
+              label: t(SCALES[id].labelKey),
+            }))}
+          />
+        </SectionCard>
 
-        <Divider style={styles.divider} />
+        <SectionCard title={t('settings_calibration')} style={styles.card}>
+          <Text style={[styles.hint, styles.hintFirst, { color: colors.mutedText }]}>
+            {recalibrateHint}
+          </Text>
+          <Button
+            mode="contained"
+            onPress={onStartCalibration}
+            style={styles.action}
+            testID="settings-recalibrate"
+          >
+            {t('results_recalibrate')}
+          </Button>
 
-        <List.Item
-          title={t('settings_values')}
-          description={t('settings_values_hint', {
-            active: activeValues.length,
-            total: values.length,
-          })}
-          left={(props) => <List.Icon {...props} icon="cards-outline" />}
-          right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => setPanel('values')}
-          testID="settings-values"
-        />
+          {/* The deck belongs beside recalibration rather than in a group of its
+              own: what is in the deck is the whole of what the next calibration
+              will ask about. */}
+          <List.Item
+            title={t('settings_values')}
+            description={t('settings_values_hint', {
+              active: activeValues.length,
+              total: values.length,
+            })}
+            left={(props) => <List.Icon {...props} icon="cards-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setPanel('values')}
+            style={[styles.listItem, { backgroundColor: colors.background }]}
+            testID="settings-values"
+          />
+        </SectionCard>
 
-        <Divider style={styles.divider} />
+        <SectionCard title={t('settings_data')} style={styles.card}>
+          {/* Renders only on web; see the component. */}
+          <PrivacyNote />
 
-        <List.Subheader>{t('settings_data')}</List.Subheader>
+          <CsvTransferPanel />
 
-        {/* Renders only on web; see the component. */}
-        <PrivacyNote />
-
-        <CsvTransferPanel />
-
-        <Divider style={styles.divider} />
-
-        <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
-        <Button
-          mode="outlined"
-          textColor={colors.destructive}
-          onPress={handleReset}
-          style={styles.action}
-          testID="settings-reset"
-        >
-          {t('reset_data')}
-        </Button>
+          <Text style={[styles.hint, { color: colors.mutedText }]}>{t('reset_data_hint')}</Text>
+          <Button
+            mode="outlined"
+            textColor={colors.destructive}
+            onPress={handleReset}
+            style={styles.action}
+            testID="settings-reset"
+          >
+            {t('reset_data')}
+          </Button>
+        </SectionCard>
 
         {/* Absent where an APK cannot be installed — see the component. */}
         {canInstallUpdates() && (
-          <>
-            <Divider style={styles.divider} />
-            <List.Subheader>{t('settings_updates')}</List.Subheader>
+          <SectionCard title={t('settings_updates')} style={styles.card}>
             <UpdatePanel />
-          </>
+          </SectionCard>
         )}
-
-        <Divider style={styles.divider} />
 
         <Text style={[styles.version, { color: colors.mutedText }]}>
           {t('settings_version', { version: appVersion })}
@@ -193,37 +207,45 @@ const styles = StyleSheet.create({
   action: {
     marginTop: SPACING.md,
   },
+  card: {
+    marginBottom: SPACING.lg,
+  },
   contentContainer: {
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
-  },
-  divider: {
-    marginVertical: SPACING.lg,
+    paddingTop: SPACING.lg,
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginTop: SPACING.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
+    marginTop: SPACING.md,
+  },
+  hintFirst: {
+    marginTop: 0,
   },
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
     width: '100%',
   },
-  subheader: {
-    marginTop: SPACING.md,
+  listItem: {
+    borderRadius: BORDER_RADIUS.lg,
+    marginTop: SPACING.lg,
+    paddingRight: SPACING.xs,
   },
   version: {
     fontSize: FONT_SIZE.sm,
+    marginTop: SPACING.sm,
     textAlign: 'center',
   },
   warning: {
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.lg,
     padding: SPACING.md,
   },
   warningText: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
 });
 

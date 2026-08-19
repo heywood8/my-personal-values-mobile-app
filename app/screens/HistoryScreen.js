@@ -10,6 +10,7 @@ import { useDialog } from '../contexts/DialogContext';
 import TrendChart from '../components/charts/TrendChart';
 import TrendGrid from '../components/charts/TrendGrid';
 import EmptyState from '../components/EmptyState';
+import ScreenHeader from '../components/ScreenHeader';
 import { MAX_TRACKED_SERIES } from '../styles/chartPalette';
 import { valueName } from '../utils/valueNames';
 import { formatDateKey } from '../utils/dateUtils';
@@ -18,7 +19,7 @@ import {
   buildTrendSeries, computeMovers, defaultTrackedIds, pointOn,
 } from '../utils/history';
 import {
-  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH,
+  SPACING, FONT_SIZE, BORDER_RADIUS, CONTENT_MAX_WIDTH, LINE_HEIGHT, LETTER_SPACING,
 } from '../styles/designTokens';
 
 /** How many lines the overlay chart opens with, when there is movement to show. */
@@ -233,17 +234,19 @@ const HistoryScreen = ({ onStartCalibration }) => {
       testID="history-screen"
     >
       <View style={styles.inner}>
-        <Text style={[styles.meta, { color: colors.mutedText }]}>
-          {t('history_records_count', { count: assessments.length })}
-        </Text>
-        {hasTrend && (
-          <Text style={[styles.meta, { color: colors.mutedText }]}>
-            {t('history_span', {
-              from: formatDateKey(dates[0], language),
-              to: formatDateKey(dates[dates.length - 1], language),
-            })}
-          </Text>
-        )}
+        <ScreenHeader
+          title={t('tab_history')}
+          meta={t('history_records_count', { count: assessments.length })}
+        >
+          {hasTrend && (
+            <Text style={[styles.meta, { color: colors.mutedText }]}>
+              {t('history_span', {
+                from: formatDateKey(dates[0], language),
+                to: formatDateKey(dates[dates.length - 1], language),
+              })}
+            </Text>
+          )}
+        </ScreenHeader>
 
         {!hasTrend ? (
           <View style={[styles.notice, { backgroundColor: colors.selected }]}>
@@ -441,7 +444,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,
   },
   fill: {
     flex: 1,
@@ -492,6 +495,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
   moverDelta: {
     fontSize: FONT_SIZE.sm,
@@ -507,18 +511,19 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   notice: {
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    marginTop: SPACING.md,
     padding: SPACING.lg,
   },
   noticeBody: {
     fontSize: FONT_SIZE.md,
-    lineHeight: 20,
+    lineHeight: FONT_SIZE.md * LINE_HEIGHT.relaxed,
     marginTop: SPACING.xs,
   },
   noticeTitle: {
     fontSize: FONT_SIZE.base,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: LETTER_SPACING.snug,
   },
   overlay: {
     marginBottom: SPACING.lg,
@@ -545,12 +550,15 @@ const styles = StyleSheet.create({
   },
   sectionMeta: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginBottom: SPACING.sm,
     marginTop: 2,
   },
   sectionTitle: {
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: '700',
+    letterSpacing: LETTER_SPACING.tight,
+    lineHeight: FONT_SIZE.xl * LINE_HEIGHT.heading,
   },
 });
 

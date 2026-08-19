@@ -13,7 +13,8 @@ import { decodeShareCode, sharedResultItems } from '../services/ResultsShare';
 import { formatDateKey } from '../utils/dateUtils';
 import { COMPARE_METRICS, COMPARE_ORDERS, compareValues, comparisonSummary } from '../utils/comparison';
 import {
-  SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS, CONTENT_MAX_WIDTH,
+  SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS, CONTENT_MAX_WIDTH, LINE_HEIGHT,
+  LETTER_SPACING, elevation,
 } from '../styles/designTokens';
 
 /**
@@ -67,7 +68,7 @@ const THEIRS_SLOT = 1;
 
 const SharedResultsScreen = ({ code, onClose, own, onCalibrate }) => {
   const { t, language } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
 
   const { payload, error } = useMemo(() => decodeShareCode(code), [code]);
   // Names are resolved in *this* reader's language, which is why the link
@@ -230,12 +231,20 @@ const SharedResultsScreen = ({ code, onClose, own, onCalibrate }) => {
                 </Text>
               )}
 
-              <ComparisonBars
-                rows={rows}
-                sides={sides}
-                metric={metric}
-                testID="comparison-bars"
-              />
+              <View
+                style={[
+                  styles.chartCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  elevation(1, mode),
+                ]}
+              >
+                <ComparisonBars
+                  rows={rows}
+                  sides={sides}
+                  metric={metric}
+                  testID="comparison-bars"
+                />
+              </View>
             </View>
           ) : (
             <View testID="shared-their-results">
@@ -243,7 +252,18 @@ const SharedResultsScreen = ({ code, onClose, own, onCalibrate }) => {
                 <Text style={[styles.noteText, { color: colors.text }]}>{t('share_view_note')}</Text>
               </View>
 
-              <RankedValueBars items={items} scaleId={payload.scale} />
+              {/* On `surface`, for the reason given on the results screen: the
+                  priority ramp's contrast was validated against this colour and
+                  no other. */}
+              <View
+                style={[
+                  styles.chartCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  elevation(1, mode),
+                ]}
+              >
+                <RankedValueBars items={items} scaleId={payload.scale} />
+              </View>
 
               {/* The wheel arrives only when the sender switched it on, and it is
                   a second list rather than a second column on the first: the
@@ -264,12 +284,20 @@ const SharedResultsScreen = ({ code, onClose, own, onCalibrate }) => {
                   <Text style={[styles.summaryLine, { color: colors.mutedText }]}>
                     {t('alignment_row_hint')}
                   </Text>
-                  <ComparisonBars
-                    rows={theirWheel}
-                    sides={theirSideOnly}
-                    metric={COMPARE_METRICS.ALIGNMENT}
-                    testID="their-alignment-bars"
-                  />
+                  <View
+                    style={[
+                      styles.chartCard,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      elevation(1, mode),
+                    ]}
+                  >
+                    <ComparisonBars
+                      rows={theirWheel}
+                      sides={theirSideOnly}
+                      metric={COMPARE_METRICS.ALIGNMENT}
+                      testID="their-alignment-bars"
+                    />
+                  </View>
                 </View>
               )}
             </View>
@@ -312,6 +340,12 @@ const SharedResultsScreen = ({ code, onClose, own, onCalibrate }) => {
 };
 
 const styles = StyleSheet.create({
+  chartCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: SPACING.sm,
+    padding: SPACING.md,
+  },
   close: {
     marginTop: SPACING.xxl,
   },
@@ -319,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,
   },
   controls: {
     gap: SPACING.sm,
@@ -331,11 +365,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   invite: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     borderWidth: StyleSheet.hairlineWidth,
     gap: SPACING.xs,
     marginTop: SPACING.xxl,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   inviteAction: {
     alignSelf: 'flex-start',
@@ -343,17 +377,18 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.xs,
   },
   note: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     marginBottom: SPACING.lg,
     marginTop: SPACING.md,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   noteText: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
   safeArea: {
     flex: 1,
@@ -362,8 +397,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxl,
   },
   sectionTitle: {
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: FONT_WEIGHT.bold,
+    letterSpacing: LETTER_SPACING.tight,
+    lineHeight: FONT_SIZE.xl * LINE_HEIGHT.heading,
   },
   summary: {
     gap: SPACING.xs,
@@ -371,12 +408,14 @@ const styles = StyleSheet.create({
   },
   summaryLine: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginBottom: SPACING.xs,
   },
   title: {
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontSize: FONT_SIZE.hero,
+    fontWeight: FONT_WEIGHT.bold,
+    letterSpacing: LETTER_SPACING.tight,
+    lineHeight: FONT_SIZE.hero * LINE_HEIGHT.tight,
   },
 });
 
