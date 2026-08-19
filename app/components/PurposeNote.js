@@ -3,7 +3,9 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
-import { SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS, LINE_HEIGHT, LETTER_SPACING,
+} from '../styles/designTokens';
 
 /**
  * What the answers are for — said on the screens where they are given.
@@ -46,13 +48,13 @@ const PurposeNote = () => {
 const styles = StyleSheet.create({
   body: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginTop: SPACING.xs,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
+    marginTop: SPACING.sm,
   },
   container: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.xl,
     marginTop: SPACING.md,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   header: {
     alignItems: 'center',
@@ -62,6 +64,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.semibold,
+    letterSpacing: LETTER_SPACING.snug,
   },
 });
 

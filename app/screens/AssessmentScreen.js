@@ -15,7 +15,8 @@ import PurposeNote from '../components/PurposeNote';
 import EmptyState from '../components/EmptyState';
 import { formatDateKey } from '../utils/dateUtils';
 import {
-  BORDER_RADIUS, FONT_SIZE, SPACING, CONTENT_MAX_WIDTH,
+  BORDER_RADIUS, FONT_SIZE, SPACING, CONTENT_MAX_WIDTH, LINE_HEIGHT, LETTER_SPACING,
+  elevation,
 } from '../styles/designTokens';
 
 /**
@@ -41,7 +42,7 @@ import {
  */
 const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }) => {
   const { t, language } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const { showDialog } = useDialog();
   const {
     session, startCalibration, rate, goToCard, finishCalibration, cancelCalibration, setScale,
@@ -174,12 +175,17 @@ const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.inner}>
+          {/* Neutral rather than tinted, and that is the one thing separating
+              it from the purpose note directly underneath: two tinted blocks
+              back to back read as one block with a rule through it, and this is
+              the lesser of the two — it states a date, the note states what the
+              whole exercise is for. */}
           {session.isRecalibration ? (
-            <Text style={[styles.notice, { color: colors.mutedText, backgroundColor: colors.selected }]}>
+            <Text style={[styles.notice, { color: colors.mutedText, backgroundColor: colors.secondary }]}>
               {t('assessment_recalibration_notice')}
             </Text>
           ) : (
-            <Text style={[styles.notice, { color: colors.mutedText, backgroundColor: colors.selected }]}>
+            <Text style={[styles.notice, { color: colors.mutedText, backgroundColor: colors.secondary }]}>
               {t('assessment_new_record_notice', {
                 date: formatDateKey(session.assessment.assessedOn, language),
               })}
@@ -209,8 +215,17 @@ const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }
               screen least in need of another thing to scroll past. */}
           {isFirstCard && canImport && <DeckImportPanel onImported={onImported} />}
 
+          {/* The one thing on the screen being asked about, and the only
+              element on it raised to level 3. Everything above it — the notice,
+              the purpose note, the settings — is context, and on the first card
+              there is a lot of it; without a difference in plane the card being
+              rated was the fourth panel down rather than the subject. */}
           <View
-            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              elevation(3, mode),
+            ]}
             testID={`assessment-card-${current?.key}`}
           >
             {/* Fixed height across the deck: descriptions run one line to four,
@@ -269,10 +284,10 @@ const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: BORDER_RADIUS.xxl,
     borderWidth: StyleSheet.hairlineWidth,
-    marginTop: SPACING.lg,
-    padding: SPACING.xl,
+    marginTop: SPACING.xl,
+    padding: SPACING.xxl,
   },
   centered: {
     alignItems: 'center',
@@ -280,7 +295,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     alignItems: 'center',
-    paddingBottom: SPACING.xxl,
+    paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
   },
   finishBlock: {
@@ -293,6 +308,7 @@ const styles = StyleSheet.create({
   },
   finishHint: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     textAlign: 'center',
   },
   header: {
@@ -307,13 +323,15 @@ const styles = StyleSheet.create({
   },
   headerMeta: {
     fontSize: FONT_SIZE.sm,
+    letterSpacing: LETTER_SPACING.wide,
   },
   headerSpacer: {
     width: 48,
   },
   headerTitle: {
-    fontSize: FONT_SIZE.base,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: '700',
+    letterSpacing: LETTER_SPACING.snug,
   },
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
@@ -326,19 +344,27 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
   },
   notice: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.lg,
     overflow: 'hidden',
     padding: SPACING.md,
   },
   progressFill: {
+    borderBottomRightRadius: BORDER_RADIUS.pill,
+    borderTopRightRadius: BORDER_RADIUS.pill,
     height: '100%',
   },
   progressTrack: {
-    height: 3,
+    borderRadius: BORDER_RADIUS.pill,
+    // Thicker than the 3px hairline it was, and inset from the screen edges so
+    // it reads as a measure of the deck rather than as a seam between the
+    // header and the cards.
+    height: 6,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.xs,
     overflow: 'hidden',
-    width: '100%',
   },
   ratedCount: {
     fontSize: FONT_SIZE.sm,

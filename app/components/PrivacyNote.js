@@ -3,7 +3,9 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
-import { SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, FONT_WEIGHT, BORDER_RADIUS, LINE_HEIGHT, LETTER_SPACING,
+} from '../styles/designTokens';
 
 /**
  * Where the data lives — on web, and only there.
@@ -45,13 +47,13 @@ const PrivacyNote = () => {
 const styles = StyleSheet.create({
   body: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    marginTop: SPACING.xs,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
+    marginTop: SPACING.sm,
   },
   container: {
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
-    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.xl,
+    marginBottom: SPACING.md,
+    padding: SPACING.lg,
   },
   header: {
     alignItems: 'center',
@@ -61,6 +63,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.semibold,
+    letterSpacing: LETTER_SPACING.snug,
   },
 });
 

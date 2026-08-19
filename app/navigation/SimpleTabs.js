@@ -11,7 +11,9 @@ import AlignmentScreen from '../screens/AlignmentScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { appEvents, EVENTS } from '../services/eventEmitter';
-import { SPACING, FONT_SIZE, HEIGHTS } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, HEIGHTS, BORDER_RADIUS, LETTER_SPACING, elevation,
+} from '../styles/designTokens';
 
 /**
  * Alignment sits directly after Values, because it is derived from it: the wheel
@@ -35,7 +37,7 @@ const TABS = [
  */
 const SimpleTabs = ({ onStartCalibration }) => {
   const { t } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const [active, setActive] = useState('results');
 
   // The empty states and the settings button all raise the same event rather
@@ -58,7 +60,13 @@ const SimpleTabs = ({ onStartCalibration }) => {
       </View>
 
       <SafeAreaView edges={['bottom']} style={{ backgroundColor: colors.surface }}>
-        <View style={[styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <View
+          style={[
+            styles.tabBar,
+            { backgroundColor: colors.surface, borderTopColor: colors.border },
+            elevation(3, mode),
+          ]}
+        >
           {TABS.map((tab) => {
             const selected = active === tab.key;
             const tint = selected ? colors.primary : colors.mutedText;
@@ -71,10 +79,28 @@ const SimpleTabs = ({ onStartCalibration }) => {
                 aria-selected={selected}
                 accessibilityLabel={t(tab.labelKey)}
                 testID={`tab-${tab.key}`}
-                style={styles.tab}
+                style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
               >
-                <MaterialCommunityIcons name={tab.icon} size={24} color={tint} />
-                <Text style={[styles.tabLabel, { color: tint }]} numberOfLines={1}>
+                {/* The pill is what says "here", and it says it with shape as
+                    well as with colour — the tint alone was the whole indicator,
+                    which is a claim in hue and nothing else on the one control
+                    that is on screen at all times. */}
+                <View
+                  style={[
+                    styles.tabIcon,
+                    selected && { backgroundColor: colors.selected },
+                  ]}
+                >
+                  <MaterialCommunityIcons name={tab.icon} size={22} color={tint} />
+                </View>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    { color: tint },
+                    selected && styles.tabLabelSelected,
+                  ]}
+                  numberOfLines={1}
+                >
                   {t(tab.labelKey)}
                 </Text>
               </Pressable>
@@ -96,7 +122,7 @@ const styles = StyleSheet.create({
   tab: {
     alignItems: 'center',
     flex: 1,
-    gap: 2,
+    gap: 3,
     justifyContent: 'center',
     paddingVertical: SPACING.sm,
   },
@@ -105,8 +131,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     minHeight: HEIGHTS.tabBar,
   },
+  tabIcon: {
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.pill,
+    height: 30,
+    justifyContent: 'center',
+    // Wider than it is tall, which is what makes it read as an indicator sitting
+    // under the icon rather than as a button drawn around it.
+    width: 56,
+  },
   tabLabel: {
     fontSize: FONT_SIZE.xs,
+    letterSpacing: LETTER_SPACING.wide,
+  },
+  tabLabelSelected: {
+    fontWeight: '600',
+  },
+  tabPressed: {
+    opacity: 0.6,
   },
 });
 

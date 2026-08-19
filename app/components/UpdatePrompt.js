@@ -5,7 +5,7 @@ import { Button, Dialog, Portal, Text } from 'react-native-paper';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { formatReleaseDate, parseReleaseNotes } from '../utils/releaseNotes';
-import { FONT_SIZE, FONT_WEIGHT, SPACING } from '../styles/designTokens';
+import { FONT_SIZE, FONT_WEIGHT, SPACING, LINE_HEIGHT } from '../styles/designTokens';
 
 /**
  * "There is a newer version" — the one thing this app interrupts for.
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   releaseBody: {
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginBottom: SPACING.sm,
   },
   releaseVersion: {

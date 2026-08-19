@@ -7,7 +7,9 @@ import { useThemeColors } from '../contexts/ThemeColorsContext';
 import SegmentedToggle from './SegmentedToggle';
 import { SCALE_ORDER, SCALES, getScale } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
-import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../styles/designTokens';
+import {
+  BORDER_RADIUS, FONT_SIZE, SPACING, LINE_HEIGHT, LETTER_SPACING, elevation,
+} from '../styles/designTokens';
 
 /**
  * Language and rating scale, shown on the first card of the deck.
@@ -25,11 +27,15 @@ import { BORDER_RADIUS, FONT_SIZE, SPACING } from '../styles/designTokens';
  */
 const CalibrationSettings = ({ scale, onScaleChange }) => {
   const { t, language, setLanguage } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
 
   return (
     <View
-      style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        elevation(1, mode),
+      ]}
       testID="calibration-settings"
     >
       <Text style={[styles.label, { color: colors.mutedText }]}>{t('settings_language')}</Text>
@@ -66,23 +72,28 @@ const CalibrationSettings = ({ scale, onScaleChange }) => {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: SPACING.lg,
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.sm,
   },
   label: {
     fontSize: FONT_SIZE.sm,
-    fontWeight: '600',
-    marginBottom: SPACING.xs,
+    fontWeight: '700',
+    // The same treatment `SectionCard` gives a group's name, because that is
+    // what these are — this panel is the settings screen's two cards, shrunk
+    // onto the first card of the deck.
+    letterSpacing: LETTER_SPACING.wide,
+    marginBottom: SPACING.sm,
+    textTransform: 'uppercase',
   },
   labelSpaced: {
-    marginTop: SPACING.md,
+    marginTop: SPACING.lg,
   },
 });
 

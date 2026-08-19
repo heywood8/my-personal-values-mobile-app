@@ -9,7 +9,9 @@ import { priorityColor, seriesColor } from '../../styles/chartPalette';
 import { priorityBand } from '../../utils/scales';
 import TrendSparkline from './TrendSparkline';
 import { markerShape } from './TrendChart';
-import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, LETTER_SPACING, elevation,
+} from '../../styles/designTokens';
 
 const SPARK_HEIGHT = 44;
 // A focused card's border is thicker than a resting one's. The sparkline is
@@ -100,15 +102,21 @@ const TrendGrid = ({
             aria-disabled={atCap}
             accessibilityLabel={item.name}
             testID={`trend-card-${item.key}`}
-            style={[
+            style={({ pressed }) => [
               styles.card,
               {
                 backgroundColor: colors.card,
                 borderColor: focused ? color : colors.border,
               },
               focused ? styles.cardFocused : styles.cardResting,
+              // A focused card is one of the overlay chart's lines, so it lifts
+              // to say it is doing something the others are not — the coloured
+              // border alone put that claim entirely in hue, on the one screen
+              // where hue is already spoken for by the series palette.
+              elevation(focused ? 2 : 1, mode),
               measured ? { width: cardWidth } : styles.cardUnmeasured,
               atCap && styles.cardDisabled,
+              pressed && !atCap && styles.cardPressed,
             ]}
           >
             <View style={styles.nameRow}>
@@ -192,7 +200,7 @@ const TrendGrid = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.md,
   },
   cardDisabled: {
@@ -200,6 +208,9 @@ const styles = StyleSheet.create({
   },
   cardFocused: {
     borderWidth: FOCUS_BORDER,
+  },
+  cardPressed: {
+    opacity: 0.7,
   },
   cardResting: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -222,8 +233,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   level: {
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: '700',
+    letterSpacing: LETTER_SPACING.tight,
   },
   levelFill: {
     borderRadius: BORDER_RADIUS.pill,

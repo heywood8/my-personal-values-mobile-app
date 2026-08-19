@@ -6,7 +6,9 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useValues } from '../contexts/ValuesContext';
 import { valueName } from '../utils/valueNames';
-import { SPACING, FONT_SIZE, CONTENT_MAX_WIDTH } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, CONTENT_MAX_WIDTH, LINE_HEIGHT, LETTER_SPACING,
+} from '../styles/designTokens';
 
 /**
  * Manage which values get dealt.
@@ -86,6 +88,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
   },
   header: {
     alignItems: 'center',
@@ -94,7 +97,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
   inner: {
     maxWidth: CONTENT_MAX_WIDTH,
@@ -116,8 +119,9 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
   },
   title: {
-    fontSize: FONT_SIZE.xl,
+    fontSize: FONT_SIZE.xxl,
     fontWeight: '700',
+    letterSpacing: LETTER_SPACING.tight,
   },
 });
 

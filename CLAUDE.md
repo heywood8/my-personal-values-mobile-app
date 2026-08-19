@@ -247,6 +247,36 @@ separation as an ordered set. Reordering the slots degrades it silently. Three
 light-mode slots are below 3:1 contrast and are legal only because every surface
 using them prints a visible label beside the mark.
 
+**`colors.surface` is the surface those palettes were validated against, and it
+does not move.** `#ffffff` on light, `#181b23` on dark — every contrast figure in
+`chartPalette.js`'s header is a figure against exactly those two, so repainting
+either silently invalidates the whole validation while nothing on screen looks
+wrong. Two things follow. Retuning the light or dark scheme means moving
+`background`, `card`, `border` and the rest *around* a fixed `surface`. And a new
+chart goes **on** `surface` rather than straight onto the background: the ranked
+list and the comparison bars are each wrapped in a surface card for that reason
+and not for the looks.
+
+**Depth is a token, and it is mode-dependent for a reason.** `elevation(level,
+mode)` in `app/styles/designTokens.js` returns a `boxShadow` style — three levels,
+1 resting, 2 chosen, 3 floating. `boxShadow` rather than the `shadow*` props,
+which react-native-web 0.21 warns are deprecated and which never rendered on
+Android at all; the new architecture (enabled here) draws it natively on both
+platforms, so one string covers all three targets. The dark scale is deliberately
+shallower: a shadow is the absence of light and reads as nothing on a near-black
+page, so what separates a dark card from a dark background is that `card` is
+*lighter* than `background`. Both schemes therefore keep a real gap between
+`background` and `surface`/`card` — closing it takes the elevation scale with it.
+
+**A `lineHeight` in a StyleSheet does not scale with the reader's font size.**
+React Native grows a `fontSize` with the system font-size setting and leaves the
+`lineHeight` beside it exactly where it was written, so at 200% the text prints on
+top of itself. `LINE_HEIGHT` in the tokens is therefore a set of *multipliers*:
+multiply the font size by one of them. Where the font scale is genuinely in play —
+the deck card's name and description, which are also measured — multiply by
+`PixelRatio.getFontScale()` as well, and put the result in an inline style rather
+than the sheet (see `DeckCardText`).
+
 **The backup file is the only backup this app has.** Nothing leaves the device
 otherwise, so `app/services/BackupCsv.js` has to keep reading files older
 releases wrote: change the columns by adding, never by renaming. Import trusts

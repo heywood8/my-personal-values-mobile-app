@@ -7,7 +7,9 @@ import { useLocalization } from '../../contexts/LocalizationContext';
 import { priorityColor } from '../../styles/chartPalette';
 import { priorityBand, getScale, scaleStepLabel, scoreFraction } from '../../utils/scales';
 import { valueName, valueDescription } from '../../utils/valueNames';
-import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS, LINE_HEIGHT, LETTER_SPACING,
+} from '../../styles/designTokens';
 
 /**
  * The ranked list of every rated value, as horizontal bars.
@@ -60,7 +62,15 @@ const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
         accessibilityLabel={valueName(item, t)}
         accessibilityHint={description || undefined}
         aria-expanded={!!description && revealed}
-        style={styles.row}
+        style={({ pressed, hovered }) => [
+          styles.row,
+          // The row is the hit area for the description, so it has to say so
+          // when pointed at. It says it in the gutter around the bar rather
+          // than behind it: a tint under a track and a fill would change what
+          // both colours are being read against, which on the one surface the
+          // chart palette was validated for is not a free thing to do.
+          (pressed || hovered) && !!description && { backgroundColor: colors.selected },
+        ]}
       >
         <View style={styles.labelColumn}>
           <Text
@@ -174,31 +184,37 @@ const RankedValueBars = ({ items, scaleId }) => {
 
 const styles = StyleSheet.create({
   description: {
-    borderRadius: BORDER_RADIUS.sm,
+    borderRadius: BORDER_RADIUS.md,
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginBottom: SPACING.xs,
     overflow: 'hidden',
-    padding: SPACING.sm,
+    padding: SPACING.md,
   },
   fill: {
     // Rounded at the data end, square at the baseline, so the bar reads as
     // growing from the axis rather than as a floating pill.
-    borderBottomRightRadius: BORDER_RADIUS.sm,
-    borderTopRightRadius: BORDER_RADIUS.sm,
+    borderBottomRightRadius: BORDER_RADIUS.pill,
+    borderTopRightRadius: BORDER_RADIUS.pill,
     height: '100%',
   },
   labelColumn: {
     justifyContent: 'center',
-    width: '38%',
+    // Wide enough that "Respect and self-respect" and the other long entries in
+    // the catalogue print whole. The tracks give up the four points: every one
+    // of them gives up the same four, so the shared baseline the chart is read
+    // against is untouched.
+    width: '42%',
   },
   row: {
     alignItems: 'center',
+    borderRadius: BORDER_RADIUS.md,
     flexDirection: 'row',
     gap: SPACING.sm,
     // A 2px gap between neighbouring bars, as surface rather than as a border,
     // so adjacent fills never touch and merge into one shape.
     height: HEIGHTS.rankedBar,
+    paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
   },
   score: {
@@ -217,14 +233,15 @@ const styles = StyleSheet.create({
     top: 0,
   },
   track: {
-    borderRadius: BORDER_RADIUS.sm,
+    borderRadius: BORDER_RADIUS.pill,
     flex: 1,
-    height: 14,
+    height: 12,
     overflow: 'hidden',
   },
   valueName: {
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
+    letterSpacing: LETTER_SPACING.snug,
   },
 });
 

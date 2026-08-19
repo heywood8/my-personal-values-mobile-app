@@ -5,7 +5,9 @@ import { Text } from 'react-native-paper';
 import { useThemeColors } from '../contexts/ThemeColorsContext';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { getScale, scaleStepLabel } from '../utils/scales';
-import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS, LETTER_SPACING, elevation,
+} from '../styles/designTokens';
 
 /**
  * The row of buttons a value is rated with.
@@ -25,7 +27,7 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS, HEIGHTS } from '../styles/designToke
  * re-ordered.
  */
 const ScaleInput = ({ scaleId, value, onChange, disabled, testIDPrefix = 'scale' }) => {
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const { t } = useLocalization();
   const scale = getScale(scaleId);
   const isWordScale = !!scale.stepLabelKeys;
@@ -53,13 +55,18 @@ const ScaleInput = ({ scaleId, value, onChange, disabled, testIDPrefix = 'scale'
             aria-disabled={!!disabled}
             accessibilityLabel={label}
             testID={`${testIDPrefix}-step-${step}`}
-            style={[
+            style={({ pressed }) => [
               styles.step,
               isWordScale ? styles.stepWide : styles.stepNarrow,
               {
                 backgroundColor: selected ? colors.primary : colors.surface,
                 borderColor: selected ? colors.primary : colors.inputBorder,
               },
+              // The chosen step lifts off the row. On a deck answered by thumb
+              // the answer already given has to be findable at a glance, and
+              // fill alone put it on the same plane as the four it beat.
+              selected ? elevation(2, mode) : elevation(1, mode),
+              pressed && !disabled && styles.pressed,
               disabled && styles.disabled,
             ]}
           >
@@ -88,6 +95,9 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
+  pressed: {
+    opacity: 0.7,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -97,13 +107,14 @@ const styles = StyleSheet.create({
   },
   step: {
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1.5,
     justifyContent: 'center',
     minHeight: HEIGHTS.scaleStep,
   },
   stepLabel: {
     fontWeight: '600',
+    letterSpacing: LETTER_SPACING.snug,
   },
   stepLabelNumber: {
     fontSize: FONT_SIZE.base,

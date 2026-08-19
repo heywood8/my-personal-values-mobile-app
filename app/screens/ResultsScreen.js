@@ -12,8 +12,12 @@ import { getPreference, setPreference, PREF_KEYS } from '../services/Preferences
 import RankedValueBars from '../components/charts/RankedValueBars';
 import SegmentedToggle from '../components/SegmentedToggle';
 import EmptyState from '../components/EmptyState';
+import ScreenHeader from '../components/ScreenHeader';
+import SectionCard from '../components/SectionCard';
 import { formatDateKey } from '../utils/dateUtils';
-import { SPACING, FONT_SIZE, CONTENT_MAX_WIDTH } from '../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, CONTENT_MAX_WIDTH, LINE_HEIGHT, BORDER_RADIUS, elevation,
+} from '../styles/designTokens';
 
 const SORT_ASC = 'asc';
 const SORT_DESC = 'desc';
@@ -50,7 +54,7 @@ const SORT_DESC = 'desc';
  */
 const ResultsScreen = ({ onStartCalibration }) => {
   const { t, language } = useLocalization();
-  const { colors } = useThemeColors();
+  const { colors, mode } = useThemeColors();
   const { latest, results, isLoading, hasResults } = useAssessment();
   const { latestCheckin } = useAlignment();
   const { exportBackup, busy } = useBackupTransfer();
@@ -112,9 +116,10 @@ const ResultsScreen = ({ onStartCalibration }) => {
       testID="results-screen"
     >
       <View style={styles.inner}>
-        <Text style={[styles.meta, { color: colors.mutedText }]}>
-          {`${t('results_calibrated_on', { date: formatDateKey(latest.assessedOn, language) })} · ${t('results_value_count', { count: results.length })}`}
-        </Text>
+        <ScreenHeader
+          title={t('tab_results')}
+          meta={`${t('results_calibrated_on', { date: formatDateKey(latest.assessedOn, language) })} · ${t('results_value_count', { count: results.length })}`}
+        />
 
         <View style={styles.controls}>
           <SegmentedToggle
@@ -131,86 +136,110 @@ const ResultsScreen = ({ onStartCalibration }) => {
           </Text>
         </View>
 
-        <RankedValueBars items={ordered} scaleId={latest.scale} />
-
-        <Button
-          mode="contained-tonal"
-          icon="share-variant"
-          onPress={() => shareResults({ includeAlignment })}
-          disabled={sharing}
-          style={styles.share}
-          testID="results-share"
+        {/* The list sits on `surface` rather than straight on the background,
+            and that is a data-viz decision before it is a visual one: the
+            priority ramp in styles/chartPalette.js was validated against
+            #ffffff and #181b23, so putting the bars anywhere else is reading
+            the contrast figures against a surface nobody measured. */}
+        <View
+          style={[
+            styles.chartCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            elevation(1, mode),
+          ]}
         >
-          {t('share_action')}
-        </Button>
-        <Text style={[styles.note, { color: colors.mutedText }]}>
-          {t('share_hint')}
-        </Text>
+          <RankedValueBars items={ordered} scaleId={latest.scale} />
+        </View>
 
-        {/* Offered only where there is a check-in to offer. A switch promising to
-            send a wheel nobody has filled in would be a choice about nothing. */}
-        {!!latestCheckin && (
-          <View style={styles.shareOption}>
-            <View style={styles.shareOptionRow}>
-              <Text style={[styles.shareOptionLabel, { color: colors.text }]}>
-                {t('share_include_alignment')}
-              </Text>
-              <Switch
-                value={includeAlignment}
-                onValueChange={setIncludeAlignment}
-                accessibilityLabel={t('share_include_alignment')}
-                testID="results-share-alignment"
-              />
+        {/* The two ways out of this screen are grouped rather than stacked as
+            loose buttons with paragraphs between them: each is a control plus
+            the sentence that says what leaves the device, and a note floating
+            between two buttons belongs to either of them equally. */}
+        <SectionCard style={styles.actionCard}>
+          <Button
+            mode="contained-tonal"
+            icon="share-variant"
+            onPress={() => shareResults({ includeAlignment })}
+            disabled={sharing}
+            testID="results-share"
+          >
+            {t('share_action')}
+          </Button>
+          <Text style={[styles.note, { color: colors.mutedText }]}>
+            {t('share_hint')}
+          </Text>
+
+          {/* Offered only where there is a check-in to offer. A switch promising
+              to send a wheel nobody has filled in would be a choice about
+              nothing. */}
+          {!!latestCheckin && (
+            <View style={styles.shareOption}>
+              <View style={styles.shareOptionRow}>
+                <Text style={[styles.shareOptionLabel, { color: colors.text }]}>
+                  {t('share_include_alignment')}
+                </Text>
+                <Switch
+                  value={includeAlignment}
+                  onValueChange={setIncludeAlignment}
+                  accessibilityLabel={t('share_include_alignment')}
+                  testID="results-share-alignment"
+                />
+              </View>
+              {includeAlignment && (
+                <Text
+                  style={[styles.note, { color: colors.mutedText }]}
+                  testID="results-share-alignment-hint"
+                >
+                  {t('share_include_alignment_hint', {
+                    count: latestCheckin.count,
+                    date: formatDateKey(latestCheckin.checkedOn, language),
+                  })}
+                </Text>
+              )}
             </View>
-            {includeAlignment && (
-              <Text
-                style={[styles.note, { color: colors.mutedText }]}
-                testID="results-share-alignment-hint"
-              >
-                {t('share_include_alignment_hint', {
-                  count: latestCheckin.count,
-                  date: formatDateKey(latestCheckin.checkedOn, language),
-                })}
-              </Text>
-            )}
-          </View>
-        )}
+          )}
 
-        {/* Read-only rather than hidden: this is the ranking, encoded, and the
-            reader is about to hand it to somebody. It is also the way to copy the
-            link on a browser that refused the clipboard. */}
-        {!!link && (
-          <TextInput
-            mode="outlined"
-            dense
-            multiline
-            editable={false}
-            selectTextOnFocus
-            label={t('share_link_label')}
-            value={link}
-            style={styles.link}
-            testID="results-share-link"
-          />
-        )}
+          {/* Read-only rather than hidden: this is the ranking, encoded, and the
+              reader is about to hand it to somebody. It is also the way to copy
+              the link on a browser that refused the clipboard. */}
+          {!!link && (
+            <TextInput
+              mode="outlined"
+              dense
+              multiline
+              editable={false}
+              selectTextOnFocus
+              label={t('share_link_label')}
+              value={link}
+              style={styles.link}
+              testID="results-share-link"
+            />
+          )}
+        </SectionCard>
 
-        <Button
-          mode="outlined"
-          icon="file-download-outline"
-          onPress={exportBackup}
-          disabled={busy}
-          style={styles.export}
-          testID="results-export-csv"
+        <SectionCard
+          style={styles.actionCard}
+          /* One file holds everything, the wheel's check-ins included, so
+             somebody whose backup habit is this button is not quietly saving
+             half of it. */
+          footnote={t('backup_export_note')}
         >
-          {t('backup_export')}
-        </Button>
-        {/* One file holds everything, the wheel's check-ins included, so somebody
-            whose backup habit is this button is not quietly saving half of it. */}
-        <Text style={[styles.note, { color: colors.mutedText }]}>
-          {t('backup_export_note')}
-        </Text>
+          <Button
+            mode="outlined"
+            icon="file-download-outline"
+            onPress={exportBackup}
+            disabled={busy}
+            testID="results-export-csv"
+          >
+            {t('backup_export')}
+          </Button>
+        </SectionCard>
 
+        {/* Filled, and the only filled button on the screen: recalibrating is
+            what this app is for on the day you come back to it, and the two
+            cards above are things you do occasionally. */}
         <Button
-          mode="outlined"
+          mode="contained"
           onPress={onStartCalibration}
           style={styles.recalibrate}
           testID="results-recalibrate"
@@ -223,24 +252,32 @@ const ResultsScreen = ({ onStartCalibration }) => {
 };
 
 const styles = StyleSheet.create({
+  actionCard: {
+    marginBottom: SPACING.lg,
+  },
   centered: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
   },
+  chartCard: {
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: SPACING.xxl,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
   contentContainer: {
     alignItems: 'center',
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,
   },
   controls: {
     gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
-  export: {
-    marginTop: SPACING.xl,
-  },
+
   fill: {
     flex: 1,
   },
@@ -254,24 +291,19 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     maxHeight: 96,
   },
-  meta: {
-    fontSize: FONT_SIZE.sm,
-    marginBottom: SPACING.md,
-  },
   note: {
     fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
     marginTop: SPACING.sm,
   },
   recalibrate: {
-    marginTop: SPACING.md,
+    marginTop: SPACING.sm,
   },
   rowHint: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: FONT_SIZE.sm * LINE_HEIGHT.relaxed,
   },
-  share: {
-    marginTop: SPACING.xxl,
-  },
+
   shareOption: {
     marginTop: SPACING.md,
   },
