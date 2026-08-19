@@ -621,6 +621,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
     marginTop: SPACING.xs,
   },
   detail: {
