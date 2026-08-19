@@ -5,7 +5,9 @@ import { useFakeLocalStorage } from '../../test-utils/fakeLocalStorage';
 import AppInitializer from '../../app/screens/AppInitializer';
 import { __resetDatabaseHandleForTests, resetDatabase } from '../../app/services/db';
 import { appEvents, EVENTS } from '../../app/services/eventEmitter';
-import { getPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
+import { getAssessments } from '../../app/services/AssessmentsDB';
+import { getBooleanPreference, getPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
+import { localDateKey } from '../../app/utils/dateUtils';
 import { SCALE_IDS } from '../../app/utils/scales';
 
 /**
@@ -153,6 +155,98 @@ describe('the settings on the first card', () => {
     // The same statement, in the new scale's terms: the top step is still the
     // top step, and the answer was not quietly lost with the old numbering.
     await waitFor(() => expect(screen.getByTestId('scale-step-10')).toBeSelected());
+  });
+});
+
+/**
+ * The other way a first run can end.
+ *
+ * Somebody changing phone, or coming back to a browser that lost its database,
+ * already has their records in a CSV file — and every other door to that file is
+ * in Settings, which is behind the tab shell, which a first run does not reach
+ * until it has produced a record. Without a door on the card, restoring a backup
+ * means answering all 47 cards and throwing the result away first.
+ */
+describe('arriving with a CSV file', () => {
+  const fileFor = (date) => [
+    'assessed_on,scale,value_key,value_name,score,normalized',
+    `${date},numeric5,love,Love,5,1`,
+    `${date},numeric5,learning,Self-development,2,0.25`,
+  ].join('\n');
+
+  /** Paste a file into the first card's import and agree to what it says it will do. */
+  const importFromTheDeck = async (csv) => {
+    await press('deck-csv-import-open');
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('deck-csv-paste-input'), csv);
+    });
+    await press('deck-csv-paste-import');
+    // The confirmation is a gate, not a notice: nothing is written until it is
+    // answered, and the affirmative action is the second one.
+    await press('dialog-action-1');
+    await waitFor(() => expect(screen.getByText('Import finished')).toBeTruthy());
+    await press('dialog-action-0');
+  };
+
+  it('takes the records rather than making the reader deal 47 cards first', async () => {
+    await launch();
+    await waitForTheDeck();
+
+    await importFromTheDeck(fileFor('2026-08-12'));
+
+    // The run is over: the records it was for arrived by another route.
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+    expect(await getAssessments({ completedOnly: true })).toHaveLength(1);
+  });
+
+  it('does not greet the same reader as a first-time visitor next launch', async () => {
+    const first = await launch();
+    await waitForTheDeck();
+    await importFromTheDeck(fileFor('2026-08-12'));
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+
+    // Written for the same reason finishing the deck writes it — so that
+    // deleting every record later lands on an empty results screen rather than
+    // back in a deck with no way out.
+    expect(await getBooleanPreference(PREF_KEYS.ONBOARDING_COMPLETE)).toBe(true);
+
+    await first.unmount();
+    await launch();
+
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+  });
+
+  it('deals the next recalibration from the imported rows, not from the run it interrupted', async () => {
+    await launch();
+    await waitForTheDeck();
+
+    // A file that contains today, which is the day the interrupted run had
+    // already opened a record for.
+    await importFromTheDeck(fileFor(localDateKey()));
+    await waitFor(() => expect(screen.getByTestId('main-app')).toBeTruthy());
+
+    await press('main-app');
+
+    // The session the deck was holding was dealt before any of this existed: it
+    // would open blank, calling today a new record. What opens instead knows
+    // today has one and starts from the two answers that came out of the file.
+    await waitForTheDeck();
+    expect(screen.getByText('You already calibrated today. Finishing overwrites that record.')).toBeTruthy();
+    expect(screen.getByText('2 rated')).toBeTruthy();
+  });
+
+  it('is not offered again once there is a settings screen holding it', async () => {
+    await launch();
+    await waitForTheDeck();
+    expect(screen.getByTestId('deck-import')).toBeTruthy();
+
+    await finishTheRun();
+    await press('main-app');
+
+    // A recalibration can be left, which means Settings is reachable — a second
+    // door here would only be one more thing to scroll past.
+    await waitForTheDeck();
+    expect(screen.queryByTestId('deck-import')).toBeNull();
   });
 });
 

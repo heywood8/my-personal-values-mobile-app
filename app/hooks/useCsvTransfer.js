@@ -25,8 +25,13 @@ import { appEvents, EVENTS } from '../services/eventEmitter';
  * through the same three steps with different strings and different writers, so
  * the steps are written once here and the two are configured below. The reason
  * they are separate files at all is in app/services/AlignmentCsv.js.
+ *
+ * `onRecordsImported` is for the caller that has to move afterwards: the deck,
+ * where an import during a first run has just supplied the records that run was
+ * for. The reload every other caller needs is already handled by the events
+ * emitted below, so nobody else passes it.
  */
-export function useCsvTransfer() {
+export function useCsvTransfer({ onRecordsImported } = {}) {
   const { t } = useLocalization();
   const { showDialog } = useDialog();
   const { assessments } = useAssessment();
@@ -46,7 +51,7 @@ export function useCsvTransfer() {
    * cannot end up quietly sharing a sentence that only fits one of them.
    */
   const makeTransfer = useCallback(({
-    filename, hasRecords, build, parse, apply, strings,
+    filename, hasRecords, build, parse, apply, strings, onImported,
   }) => {
     const exportCsv = async () => {
       if (!hasRecords) {
@@ -84,6 +89,9 @@ export function useCsvTransfer() {
           lines.push(t('csv_import_done_skipped', { count: summary.skipped }));
         }
         showDialog(t(strings.doneTitle), lines.join('\n'), [{ text: t('ok') }]);
+        // After the dialog, so the report is on screen before a caller that
+        // reacts by changing which screen is showing gets to act on it.
+        onImported?.(summary);
       } catch (e) {
         reportError(e);
       } finally {
@@ -148,7 +156,8 @@ export function useCsvTransfer() {
       doneMessage: 'csv_import_done_message',
       changedEvents: [EVENTS.ASSESSMENTS_CHANGED],
     },
-  }), [makeTransfer, assessments.length]);
+    onImported: onRecordsImported,
+  }), [makeTransfer, assessments.length, onRecordsImported]);
 
   const alignment = useMemo(() => makeTransfer({
     filename: () => `values-alignment-${localDateKey()}.csv`,

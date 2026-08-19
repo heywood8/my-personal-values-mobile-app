@@ -45,6 +45,8 @@
   "assessment_saved_new": "Saved as a new record for {{date}}.",
   "assessment_see_results": "See results",
   "assessment_no_values": "There are no values in your deck. Restore some in Settings.",
+  "assessment_import_hint": "Have a CSV of records from another device? Load it here — the deck is not the only way in.",
+  "assessment_import_open": "Load records from CSV",
 
   "tab_results": "Values",
   "tab_alignment": "Alignment",
