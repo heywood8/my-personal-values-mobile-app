@@ -9,6 +9,7 @@ import { getAssessments } from '../../app/services/AssessmentsDB';
 import { getBooleanPreference, getPreference, PREF_KEYS } from '../../app/services/PreferencesDB';
 import { localDateKey } from '../../app/utils/dateUtils';
 import { SCALE_IDS } from '../../app/utils/scales';
+import en from '../../assets/i18n/en.json';
 
 /**
  * Where the app opens, on the first launch and the fiftieth.
@@ -87,6 +88,17 @@ describe('the first launch', () => {
     expect(screen.getByTestId('calibration-settings')).toBeTruthy();
     expect(screen.getByTestId('calibration-language')).toBeTruthy();
     expect(screen.getByTestId('calibration-scale')).toBeTruthy();
+  });
+
+  // The bar carries a value but no text, so without a label a screen reader
+  // announces a bare "progress bar, 1" with nothing to say what is progressing.
+  it('names the progress bar rather than leaving it to its number', async () => {
+    await launch();
+    await waitForTheDeck();
+
+    const bar = screen.getByTestId('assessment-progress');
+    expect(bar.props.accessibilityLabel).toBe(en.assessment_progress_label);
+    expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 47, now: 0 });
   });
 
   it('offers no way out of a run that has nowhere to go back to', async () => {
@@ -168,7 +180,7 @@ describe('the settings on the first card', () => {
 
     // The same statement, in the new scale's terms: the top step is still the
     // top step, and the answer was not quietly lost with the old numbering.
-    await waitFor(() => expect(screen.getByTestId('scale-step-10')).toBeSelected());
+    await waitFor(() => expect(screen.getByTestId('scale-step-10')).toBeChecked());
   });
 });
 

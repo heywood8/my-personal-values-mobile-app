@@ -1,8 +1,13 @@
 # Web quality audit — 2026-08-19
 
-Audit of the web export (`bun run build:web`) against the
+Audit of the web export against the
 [web-quality-audit skill](https://github.com/addyosmani/web-quality-skills#web-quality-audit)
 — Lighthouse's four categories: performance, accessibility, SEO, best practices.
+
+The accessibility, SEO and best-practices findings are **fixed**; they are kept
+below with what the fix was, because two of them were wrong in a way that is easy
+to reintroduce. The performance findings are **open**, and the last section says
+why they were not taken in the same change.
 
 ## How it was run
 
@@ -15,186 +20,151 @@ CHROME_PATH=<chromium> npx lighthouse@12 http://localhost:8099/ \
 # repeated with --preset=desktop
 ```
 
-Lighthouse 12.8.2, bundle `index-05fce1a27d7ba02520da62b4ee000e46.js` — the same
-hash that is live on `values.heywood8.com`, so the numbers describe the published
-site. Header-level findings (compression, cache lifetimes) were re-checked
-against the real GitHub Pages response rather than the local static server,
-which sends neither.
+Lighthouse 12.8.2, against the built `dist/` — the first run used the same bundle
+hash that was live on `values.heywood8.com`, so the "before" column describes the
+published site. Header-level findings (compression, cache lifetimes) were
+re-checked against the real GitHub Pages response rather than the local static
+server, which sends neither.
 
-| Category | Mobile | Desktop |
-|---|---|---|
-| Performance | **38** | 72 |
-| Accessibility | **89** | 89 |
-| Best practices | **100** | 100 |
-| SEO | **90** | 90 |
+| Category | Before (mobile) | After (mobile) | Desktop (before) |
+|---|---|---|---|
+| Performance | 38 | 48 | 72 |
+| Accessibility | 89 | **100** | 89 |
+| Best practices | 100 | **100** | 100 |
+| SEO | 90 | **100** | 90 |
 
-| Metric (mobile / desktop) | Value | Budget |
+Performance moved inside its run-to-run spread and nothing in this change was
+aimed at it — read it as unchanged.
+
+| Metric (mobile) | Value | Budget |
 |---|---|---|
-| FCP | 0.6 s / 0.2 s | < 1.8 s ✅ |
-| LCP | **21.7 s** / 3.5 s | < 2.5 s ❌ |
-| CLS | 0.01 / 0.01 | < 0.1 ✅ |
-| TBT | **2,670 ms** / 170 ms | < 200 ms ❌ |
-| TTI | 23.2 s / 3.6 s | — |
+| FCP | 0.6 s | < 1.8 s ✅ |
+| LCP | **21.0 s** | < 2.5 s ❌ |
+| CLS | 0.02 | < 0.1 ✅ |
+| TBT | **750 ms** (2,670 ms on the first run) | < 200 ms ❌ |
 
 **What Lighthouse could see.** A run only ever reaches the first deck card, which
 is the first-run screen and the only one reachable without answering 47 values.
-The results, history, wheel and settings screens are unaudited — the
-accessibility findings below are what the entry screen alone contains, not a
-clean bill for the rest.
+The results, history, wheel and settings screens were never loaded — the
+accessibility findings below are what the entry screen alone contained. The fixes
+were applied to every matching call site, not only the ones the audit reached.
 
-## Audit results
+## Fixed
 
-### High priority (3 found)
+### `accessibilityState` reaches no DOM on react-native-web
 
-**[Accessibility] `role="radio"` is announced without its checked state.**
-`app/components/ScaleInput.js:50`, `app/components/SegmentedToggle.js:31`
+**Was:** every state flag in the app — `checked`, `selected`, `expanded` — was
+written as `accessibilityState={{ … }}`. react-native-web 0.21 reads the
+`aria-*` props and consults `accessibilityState` only to decide whether an
+element is disabled; the ARIA attribute was never written. On the deck's rating
+buttons this was not a quiet omission but an axe failure, because `role="radio"`
+*requires* `aria-checked`: ten nodes on the entry screen alone, including all
+five buttons of the 1–5 scale.
 
-Both pass `accessibilityState={{ selected }}`. React Native Web maps `selected`
-to `aria-selected` and `checked` to `aria-checked`; ARIA requires `aria-checked`
-on `role="radio"`, so the attribute is simply absent. Lighthouse flags four nodes
-on the first card alone (both language chips, both scale chips).
+**Impact:** a screen reader announced the app's primary control — repeated 47
+times per run — as a radio group with no answer given. The reader could not hear
+what they had just answered.
 
-- **Impact:** A screen reader reads the rating buttons as an unlabelled radio
-  group with nothing selected — on `ScaleInput`, which is the app's primary
-  control, repeated 47 times per run. The user cannot hear which answer they gave.
-- **Fix:** `accessibilityState={{ checked: selected }}` in both files
-  (`ScaleInput` keeps `disabled`). `TrendGrid.js:99` and `HistoryScreen.js:362`
-  already use `checked` — these two are the outliers, not the convention.
+**Fix:** the state is written as an `aria-*` prop at every call site. React
+Native folds those back into `accessibilityState` for native assistive tech (the
+tests assert the native side, through `toBeChecked()`), so it is one prop for
+both platforms rather than two spellings to keep in agreement.
 
-**[Performance] LCP is 21.7 s on mobile, and 98% of it is render delay.**
+- `app/components/ScaleInput.js`, `app/components/SegmentedToggle.js` — `aria-checked`
+- `app/components/charts/TrendGrid.js`, `app/screens/HistoryScreen.js` — `aria-checked`
+- `app/navigation/SimpleTabs.js` — `aria-selected`
+- `app/components/charts/RankedValueBars.js`, `app/screens/HistoryScreen.js`,
+  `app/screens/AlignmentScreen.js` — `aria-expanded`
 
-TTFB is 451 ms and the LCP element loads nothing of its own; the remaining
-21.3 s is the browser parsing and executing 2.5 MB of JavaScript before any
-text exists. The LCP element is the first card's description paragraph.
+`AlignmentScreen` had already found this from the other end: its record rows say
+"open" inside the accessible *name* because the flag was observed not to reach
+the browser. That workaround is left in place — a date and a coverage count is a
+thin thing to identify a row by — but the comment explaining it no longer claims
+the flag is impossible.
 
-- **Impact:** Fails Core Web Vitals outright on a mid-tier phone over 4G.
-  Desktop (3.5 s) also misses the 2.5 s budget.
-- **Fix:** Three moves, in order of return:
-  1. **Subset the icon font** (below) — 580 KB gzip off the critical path.
-  2. **Split the bundle.** 1,669 KiB of the 2,535 KiB bundle (67%) is unused at
-     first paint. `ApkInstaller` is already a separate chunk via `await import()`;
-     the same treatment for the chart layer (`react-native-svg`, `TrendGrid`,
-     `AlignmentWheel`) and `SettingsScreen` would keep the deck's first card off
-     everything the tab shell needs.
-  3. **Render something before the bundle parses.** The template's `#root` is
-     empty, so there is no text on screen until React mounts. Static markup in
-     `public/index.html` (a title and a line of copy, styled inline) would give
-     LCP an element at ~600 ms instead of ~21 s.
+### The deck's progress bar had no accessible name
 
-**[Performance] 2,670 ms of total blocking time; 5.1 s of main-thread work.**
+`app/screens/AssessmentScreen.js` — the bar carried `role="progressbar"` and a
+value but no label, so it was announced as "progress bar, 12" with no noun.
+Labelled from a new string, `assessment_progress_label`, in both locales; the
+existing `assessment_progress` is the visible "12 of 47" and reads poorly as a
+name.
 
-3.6 s of that is script evaluation. Same root cause as LCP, same fixes — but
-worth listing separately because it is what makes the first tap feel dead, and
-INP is the metric a card-by-card deck lives or dies on.
+### No meta description
 
-- **Fix:** The code splitting above is the lever. Also `MaterialCommunityIcons`
-  is imported at module scope in `SimpleTabs.js`, `EmptyState.js`,
-  `HistoryScreen.js` and `TrendGrid.js`, which pulls the font module into the
-  entry chunk.
+The one SEO failure. `expo.web.description` and `expo.web.themeColor` in
+`app.config.js` become `<meta>` tags in the export —
+`createTemplateHtmlFromExpoConfigAsync` reads them off the config, so neither
+needs a forked HTML template.
 
-### Medium priority (4 found)
+It matters more here than the score suggests: the site renders client-side into
+an empty `#root`, so a crawler or a link preview has nothing else to quote — and
+the links being previewed are the "share with a friend" links the app exists to
+hand out.
 
-**[Performance] The icon font is 1.3 MB for sixteen glyphs.**
-`dist/assets/.../MaterialCommunityIcons.*.ttf` — 593 KB gzipped on the wire, and
-Lighthouse's network dependency tree shows it as the longest critical chain
-(2,180 ms).
+### `<html lang>` was hard-coded `en` in a bilingual app
 
-The app uses 16 distinct glyph names: `arrow-left`, `cards-outline`,
-`chart-line-variant`, `chevron-right`, `close`, `cloud-download-outline`,
-`file-download-outline`, `file-upload-outline`, `open-in-new`, `package-down`,
-`package-variant-closed`, `restore`, `scale-balance`, `share-variant`, `target`,
-`trash-can-outline`. The shipped face carries roughly seven thousand.
+The template ships `lang="en"` and nothing updated it when the reader picked
+Русский on the first card, so a screen reader pronounced 47 Russian value names
+with English phonetics. `applyDocumentLanguage()` in `app/utils/languages.js`
+labels the document, called from `LocalizationProvider` whenever the language
+changes — asked by predicate rather than by branching on `Platform`, since native
+has no document to label.
 
-- **Impact:** The single largest asset on the site, larger than the gzipped
-  JavaScript bundle, downloaded on every cold visit for 0.2% of its contents.
-- **Fix:** Subset to the used glyphs at build time (`fonttools pyftsubset`
-  against the codepoints in `MaterialCommunityIcons.json`), or replace the 16
-  with inline `react-native-svg` paths — the app already depends on
-  `react-native-svg` for every chart. Either drops ~580 KB from the critical path.
+## Open — performance
 
-**[SEO] No meta description.** `dist/index.html`
+Nothing below is fixed. All three are the same root cause seen from different
+angles: everything the app can do arrives before anything is on screen.
 
-Lighthouse's one SEO failure. Expo's default template has no description and the
-project does not override it.
+**LCP is 21 s on mobile, and 98% of it is render delay.** TTFB is 451 ms and the
+LCP element loads nothing of its own; the rest is the browser parsing and
+executing 2.5 MB of JavaScript before any text exists. Desktop (3.5 s) also
+misses the 2.5 s budget.
 
-- **Impact:** Search results and every link preview — including the "share with a
-  friend" links the app exists to hand out — show whatever the crawler scrapes,
-  which for a client-rendered SPA with an empty `#root` is nothing.
-- **Fix:** `npx expo customize index.html` writes `public/index.html`, which
-  `createTemplateHtmlFromExpoConfigAsync` prefers over its built-in template.
-  Add `<meta name="description">`, Open Graph and `theme-color` there. Same file
-  fixes the two items below.
+**The icon font is 1.3 MB for sixteen glyphs.** 593 KB gzipped on the wire —
+larger than the gzipped JavaScript bundle — and Lighthouse's network dependency
+tree shows it as the longest critical chain at 2,180 ms. The app names 16 icons;
+the shipped face carries roughly seven thousand.
 
-**[Accessibility] The deck's progress bar has no accessible name.**
-`app/screens/AssessmentScreen.js:159`
+**1,669 KiB of the 2,535 KiB entry chunk is unused at first paint.**
+`ApkInstaller` is already split out behind an `await import()`; the chart layer
+(`react-native-svg`, `TrendGrid`, `AlignmentWheel`) and `SettingsScreen` are the
+obvious next candidates, and `MaterialCommunityIcons` is imported at module scope
+in four files, which pulls the font module into the entry chunk.
 
-The `View` carries `accessibilityRole="progressbar"` and `accessibilityValue`,
-but no label, so it is announced as "progress bar, 12" with no noun.
+### Why they are not in this change
 
-- **Fix:** `accessibilityLabel={t('assessment_progress', { current: session.index + 1, total })}`
-  — the string already exists and is already rendered above the bar.
+The two big wins are both riskier than they look, and neither is verifiable by
+the test suite:
 
-**[Accessibility/SEO] `<html lang>` is hard-coded `en` in a bilingual app.**
+- **Subsetting the font** silently blanks an icon on all three platforms if the
+  glyph set misses one. That set cannot be derived from `app/` alone: names are
+  written as literals in ternaries as well as attributes, and react-native-paper
+  draws its own icons by name from inside `node_modules`. It needs a generated
+  manifest, a test that fails when a name is used that the subset does not carry,
+  and a pass over every screen in a browser.
+- **Splitting the chart layer** changes what is on screen during a lazy chunk's
+  load on every platform, not just the web.
 
-The template ships `lang="en"` and nothing updates it when the reader picks
-Русский on the first card.
+Both are worth doing. Both want their own change, with the browser sweep the note
+at the end of `CLAUDE.md` asks for.
 
-- **Impact:** A screen reader pronounces Russian value names with English
-  phonetics — the deck is 47 of them.
-- **Fix:** Set `document.documentElement.lang` from the i18n language, behind the
-  same predicate style the codebase uses for other web-only capabilities.
+## Checked and not a problem
 
-### Low priority (3 found)
-
-**[Best practices] `httpEquiv` is not an HTML attribute.** `dist/index.html:5`
-
-Expo's template emits `<meta httpEquiv="X-UA-Compatible" content="IE=edge" />` —
-the JSX prop name, not the HTML attribute `http-equiv`. The tag is inert. It
-also targets IE, which is gone. Drop it in `public/index.html`.
-
-**[Performance] The icon font has no `font-display`.** Est. 20 ms of invisible
-text. `font-display: swap` in the template's inline style block.
-
-**[Best practices] No source maps deployed.** Lighthouse's only best-practices
-finding (the category still scores 100). Production debugging is guesswork
-without them; `expo export --source-maps` and a `.nojekyll`-safe upload would fix
-it, at the cost of publishing readable source.
-
-### Checked and not a problem
-
-- **Text compression.** Lighthouse reports 1,901 KiB of savings, measured
-  against the local `python3 -m http.server`. GitHub Pages returns
+- **Text compression.** Lighthouse reports 1,901 KiB of savings, measured against
+  the local `python3 -m http.server`. GitHub Pages returns
   `content-encoding: gzip` on the bundle, the font and the wasm — verified
   against the live site. Not a real finding.
-- **CLS 0.01.** The measured-height work in `DeckCardText` is holding.
+- **CLS 0.02.** The measured-height work in `DeckCardText` is holding.
+- **Cache lifetimes.** Lighthouse asks for long TTLs on the hashed assets; GitHub
+  Pages sends `cache-control: max-age=600` and does not let a project change it.
+  Not fixable without leaving Pages, and not worth leaving Pages for.
+- **Source maps.** Lighthouse's one remaining best-practices note (the category
+  still scores 100). Deploying them would mean publishing readable source; that
+  is a choice, not a defect.
+- **`<meta httpEquiv="X-UA-Compatible">`.** Expo's own template emits the JSX
+  prop name rather than the HTML attribute `http-equiv`, so the tag is inert. It
+  targets IE, which is gone. Forking the whole HTML template to delete a dead tag
+  costs more than it saves; it belongs upstream.
 - **Console errors, mixed content, HTTPS, deprecated APIs, charset, doctype,
   viewport, tap-target sizes, crawlability:** all pass.
-- **Cache lifetimes.** Lighthouse asks for long TTLs on the hashed assets;
-  GitHub Pages sends `cache-control: max-age=600` and does not let a project
-  change it. Not fixable without leaving Pages, and not worth leaving Pages for.
-
-## Summary
-
-| Category | Issues | High |
-|---|---|---|
-| Performance | 4 | 2 |
-| Accessibility | 3 | 1 |
-| SEO | 2 | 0 |
-| Best practices | 2 | 0 |
-
-## Recommended order
-
-1. **`accessibilityState={{ checked }}` in `ScaleInput` and `SegmentedToggle`.**
-   Two words, and it is the app's main control being unusable by screen reader.
-2. **`public/index.html`.** One new file clears the meta description, the
-   `httpEquiv` nit, `font-display`, and gives the static-markup LCP fix somewhere
-   to live.
-3. **Subset the icon font.** Biggest single byte win, no behaviour change.
-4. **Split the chart layer and settings out of the entry chunk.** The largest
-   remaining performance item, and the one that needs real care — `ApkInstaller`
-   is the pattern to copy, and the web build has to be opened in a browser after,
-   per the note at the end of `CLAUDE.md`.
-5. **`document.documentElement.lang` from i18n.**
-
-Nothing here touches the invariants in `CLAUDE.md`: no database call, no
-preference route, no change to what is asked in front of the deck.

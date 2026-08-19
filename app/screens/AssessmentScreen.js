@@ -157,6 +157,7 @@ const AssessmentScreen = ({ canExit, canImport, onExit, onFinished, onImported }
       <View
         style={[styles.progressTrack, { backgroundColor: colors.track }]}
         accessibilityRole="progressbar"
+        accessibilityLabel={t('assessment_progress_label')}
         accessibilityValue={{ min: 0, max: total, now: ratedCount }}
         testID="assessment-progress"
       >

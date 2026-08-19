@@ -68,7 +68,7 @@ const SimpleTabs = ({ onStartCalibration }) => {
                 key={tab.key}
                 onPress={() => setActive(tab.key)}
                 accessibilityRole="tab"
-                accessibilityState={{ selected }}
+                aria-selected={selected}
                 accessibilityLabel={t(tab.labelKey)}
                 testID={`tab-${tab.key}`}
                 style={styles.tab}

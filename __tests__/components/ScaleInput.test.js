@@ -79,14 +79,19 @@ describe('ScaleInput', () => {
     expect(onChange).toHaveBeenCalledWith(4);
   });
 
-  it('marks the current value as selected for assistive tech', async () => {
+  // Written as `aria-checked` in the component, because that is the prop
+  // react-native-web reads — `accessibilityState` reaches no DOM at all, which
+  // left these radios with no checked state on the web and made it an axe
+  // failure, since `role="radio"` requires one. React Native folds the prop
+  // back into `accessibilityState`, which is what the matcher sees here.
+  it('marks the current value as checked for assistive tech', async () => {
     await render(
       <ScaleInput scaleId={SCALE_IDS.NUMERIC_5} value={3} onChange={jest.fn()} />,
       { wrapper: ThemeOnlyProviders },
     );
 
-    expect(screen.getByTestId('scale-step-3').props.accessibilityState.selected).toBe(true);
-    expect(screen.getByTestId('scale-step-2').props.accessibilityState.selected).toBe(false);
+    expect(screen.getByTestId('scale-step-3')).toBeChecked();
+    expect(screen.getByTestId('scale-step-2')).not.toBeChecked();
   });
 
   it('does not fire when disabled', async () => {

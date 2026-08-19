@@ -28,7 +28,14 @@ const SegmentedToggle = ({ options, value, onChange, testID }) => {
             key={option.value}
             onPress={() => onChange(option.value)}
             accessibilityRole="radio"
-            accessibilityState={{ selected }}
+            // `aria-checked`, not `accessibilityState`: react-native-web 0.21
+            // reads the `aria-*` props and ignores `accessibilityState`
+            // entirely, so the state never reached the DOM — and `role="radio"`
+            // *requires* `aria-checked`, which made it an axe failure rather
+            // than a quiet omission. React Native folds the same prop back into
+            // `accessibilityState` for native assistive tech, so this is one
+            // source for both platforms.
+            aria-checked={selected}
             accessibilityLabel={option.label}
             testID={testID ? `${testID}-${option.value}` : undefined}
             style={[

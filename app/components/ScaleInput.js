@@ -47,7 +47,10 @@ const ScaleInput = ({ scaleId, value, onChange, disabled, testIDPrefix = 'scale'
             disabled={disabled}
             onPress={() => onChange(step)}
             accessibilityRole="radio"
-            accessibilityState={{ selected, disabled: !!disabled }}
+            // See SegmentedToggle: `accessibilityState` reaches no DOM on
+            // react-native-web, and `role="radio"` requires `aria-checked`.
+            aria-checked={selected}
+            aria-disabled={!!disabled}
             accessibilityLabel={label}
             testID={`${testIDPrefix}-step-${step}`}
             style={[

@@ -328,7 +328,7 @@ const HistoryScreen = ({ onStartCalibration }) => {
               <Pressable
                 onPress={() => setManaging((open) => !open)}
                 accessibilityRole="button"
-                accessibilityState={{ expanded: managing }}
+                aria-expanded={managing}
                 testID="history-manage-toggle"
                 style={styles.manageButton}
               >
@@ -359,7 +359,7 @@ const HistoryScreen = ({ onStartCalibration }) => {
                         key={value.valueId}
                         onPress={() => toggleTracked(value.valueId)}
                         accessibilityRole="checkbox"
-                        accessibilityState={{ checked: selected }}
+                        aria-checked={selected}
                         accessibilityLabel={value.name}
                         testID={`legend-${value.key}`}
                         style={[

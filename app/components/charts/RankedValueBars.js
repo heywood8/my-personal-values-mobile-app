@@ -59,7 +59,7 @@ const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
         accessibilityRole={description ? 'button' : 'text'}
         accessibilityLabel={valueName(item, t)}
         accessibilityHint={description || undefined}
-        accessibilityState={{ expanded: !!description && revealed }}
+        aria-expanded={!!description && revealed}
         style={styles.row}
       >
         <View style={styles.labelColumn}>

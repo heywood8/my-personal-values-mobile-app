@@ -29,6 +29,7 @@
 
   "assessment_title": "Калибровка",
   "assessment_progress": "{{current}} из {{total}}",
+  "assessment_progress_label": "Прогресс калибровки",
   "assessment_rated_count": "Оценено: {{count}}",
   "assessment_unrated_remaining": "Без оценки: {{count}}",
   "assessment_finish": "Завершить",
