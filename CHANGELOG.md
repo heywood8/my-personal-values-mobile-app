@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.7.0...values-v0.8.0) (2026-08-19)
+
+
+### Features
+
+* offer the CSV import on the first card of the deck ([#42](https://github.com/heywood8/my-personal-values-mobile-app/issues/42)) ([77b96a2](https://github.com/heywood8/my-personal-values-mobile-app/commit/77b96a21fe8c812034fafba93ef4fcda5bb73b77))
+* say what the answers are for on both filling screens ([#41](https://github.com/heywood8/my-personal-values-mobile-app/issues/41)) ([f46679e](https://github.com/heywood8/my-personal-values-mobile-app/commit/f46679ef99f09075b435f9554c338e1b575ba976))
+
 ## [0.7.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v0.6.0...values-v0.7.0) (2026-08-19)
 
 
