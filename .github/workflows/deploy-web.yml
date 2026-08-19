@@ -37,11 +37,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      # The site is served from the custom domain's root (see the CNAME step
+      # below), not from a /<repo>/ sub-path, so EXPO_WEB_BASE_URL is left unset
+      # and app.config.js falls back to the root base URL.
       - name: Export web bundle
-        env:
-          # Pages serves the site from /<repo>/, so every asset URL has to carry
-          # that prefix. app.config.js reads this into expo.experiments.baseUrl.
-          EXPO_WEB_BASE_URL: /${{ github.event.repository.name }}
         run: bun run build:web
 
       # Expo's static export puts its bundles under `_expo/`, and GitHub Pages
@@ -49,6 +48,13 @@ jobs:
       # Without this file the page loads and every script 404s.
       - name: Disable Jekyll processing
         run: touch dist/.nojekyll
+
+      # Pins the custom domain to this deploy. actions/deploy-pages publishes
+      # exactly the artifact it is given, so without this file each deploy would
+      # drop the domain set in Settings → Pages and fall back to the default
+      # heywood8.github.io address.
+      - name: Set custom domain
+        run: echo "values.heywood8.com" > dist/CNAME
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

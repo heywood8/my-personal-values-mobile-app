@@ -14,9 +14,10 @@ const ANDROID_ARCHITECTURES = IS_PREVIEW
       ? ['x86_64']
       : undefined; // undefined = all architectures
 
-// GitHub Pages serves the site from a repository sub-path, so every asset URL in
-// the web export has to be prefixed with it. Set by the deploy workflow; empty
-// locally and in `expo start --web`, where the app is served from the root.
+// The published site sits at the root of a custom domain (values.heywood8.com),
+// so this is unset by the deploy workflow and every asset URL is root-relative.
+// A fork without a custom domain — served from /<repo>/ on github.io instead —
+// sets this to that sub-path.
 const WEB_BASE_URL = process.env.EXPO_WEB_BASE_URL || undefined;
 
 // Where a "share with a friend" link points when the app that makes it is not

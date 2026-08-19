@@ -323,7 +323,7 @@ of their own gets the two side by side. There is no server to put anything on, s
 the link carries the reading itself:
 
 ```
-https://heywood8.github.io/my-personal-values-mobile-app/?r=1a0mjed.MSoyMDI2LTA4...
+https://values.heywood8.com/?r=1a0mjed.MSoyMDI2LTA4...
 ```
 
 | file | what it does |
