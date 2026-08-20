@@ -121,6 +121,17 @@ nothing.
 results screen defaults to that. One direction across the whole app: if a new
 surface orders values, it orders them that way unless the user flips it.
 
+**A ranked row never clips the name.** A ranking is a list of names, and
+"Поддержка / поощрение / подбадривание" is one of them, so `RankedValueBars`
+lets a name wrap to a second line and the row grow around it — the fixed row
+height it used to have was a clipped name by another spelling. Below
+`STACKED_BELOW`, measured off the chart's own width rather than the window's,
+the name stops sharing a line with the bar at all: split across a phone, the
+tracks were left 58px to express a magnitude in, and stacked they get the full
+width the name gets. What does *not* move in either layout is the score column,
+held at one measured width so that every track starts and ends at the same x —
+that shared baseline at both ends is the whole of what makes it a bar chart.
+
 **The history screen opens on the current top ten, or the whole current core
 band — whichever is longer.** `defaultTrackedIds()` reads that off the latest
 ranking, where the core band is a *prefix*, so both halves of the rule are one

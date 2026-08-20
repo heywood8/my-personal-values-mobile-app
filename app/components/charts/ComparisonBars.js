@@ -9,7 +9,9 @@ import { getScale, scaleStepLabel } from '../../utils/scales';
 import { ALIGNMENT_MAX } from '../../utils/alignment';
 import { COMPARE_METRICS } from '../../utils/comparison';
 import { valueName } from '../../utils/valueNames';
-import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../styles/designTokens';
+import {
+  SPACING, FONT_SIZE, BORDER_RADIUS, LINE_HEIGHT,
+} from '../../styles/designTokens';
 
 /**
  * One value, twice: what each of two people answered about it.
@@ -31,6 +33,12 @@ import { SPACING, FONT_SIZE, BORDER_RADIUS } from '../../styles/designTokens';
  * row, so every track starts and ends at the same x. The same reason as
  * RankedValueBars: a row whose label happens to read "Very important" would
  * otherwise squeeze its own track and look like a shorter answer.
+ *
+ * The name above them may take a second line, for the reason it may take one
+ * next door: the longest entries in the catalogue are longer than a phone is
+ * wide, and a comparison of "Радостное возбуждение / эмоц…" with itself names
+ * nothing. It is still capped, because a legacy custom value carries whatever
+ * text was typed into it.
  */
 
 /** What a side's reading prints at the end of its bar. */
@@ -64,7 +72,7 @@ const ComparisonRow = memo(({ row, sides, metric, whoWidth, scoreWidth, showWho 
       style={styles.row}
       testID={`compare-row-${row.key}`}
     >
-      <Text numberOfLines={1} style={[styles.valueName, { color: colors.text }]}>
+      <Text numberOfLines={2} style={[styles.valueName, { color: colors.text }]}>
         {name}
       </Text>
 
@@ -248,6 +256,9 @@ const styles = StyleSheet.create({
   valueName: {
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
+    // Tight, so a wrapped name reads as one label rather than as two lines of
+    // prose. A multiplier of the font size, never a pixel count: see LINE_HEIGHT.
+    lineHeight: FONT_SIZE.md * LINE_HEIGHT.tight,
     marginBottom: SPACING.xs,
   },
   who: {

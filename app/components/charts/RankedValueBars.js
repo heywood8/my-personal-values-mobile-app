@@ -32,8 +32,50 @@ import {
  * reader compares the fills against a shared baseline at both ends. The score
  * column is therefore held at a fixed width (see `RankedValueBars`) rather than
  * sized to whatever word each row happens to print.
+ *
+ * The name column is held to the same discipline for the same reason, and what
+ * gives instead is the row's height: a name too long for the column wraps and
+ * the row grows around it. Widening the column per row, or per language, would
+ * move the baseline the bars are read against; clipping the name — which is
+ * what a fixed row height amounts to — loses the one thing a ranking is a list
+ * of.
+ *
+ * Below `STACKED_BELOW` the name stops sharing a line with the bar at all. A
+ * name column is a fraction of the width, and a fraction of a phone is not
+ * enough for "Поддержка / поощрение / подбадривание" *and* a track long enough
+ * to read a magnitude off: side by side, a 320px screen left the bars 58px to
+ * say everything in. Stacked, the name gets the full width and every track gets
+ * the same full width under it — the shared baseline is not weakened by the
+ * switch, it is longer.
  */
-const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
+
+/**
+ * How many lines a value's name may take before it is ellipsised.
+ *
+ * One was not enough. Names run from "Любовь" to "Поддержка / поощрение /
+ * подбадривание", and the name never has the whole width to itself, so a single
+ * line clipped a good part of the Russian deck to "Поддержка / поощ…" — a
+ * ranking is a list of names, and a truncated name is not one. Two lines print
+ * every catalogue entry whole in both languages, in either layout, and the row
+ * grows only on the rows that need the second one.
+ *
+ * It stays a cap rather than becoming no limit at all, because a legacy custom
+ * value carries whatever text was once typed into it, and one such row must not
+ * push the rest of the chart off the screen.
+ */
+const NAME_LINES = 2;
+
+/**
+ * The width, in points, under which a row stacks its name above its bar.
+ *
+ * Measured against the chart's own width rather than the window's: this
+ * component is rendered inside a card on two different screens, and what
+ * decides whether a name and a bar can share a line is the space the chart
+ * actually got.
+ */
+const STACKED_BELOW = 440;
+
+const RankedBar = memo(({ item, scaleId, scoreWidth, stacked }) => {
   const { colors, mode } = useThemeColors();
   const { t } = useLocalization();
   const [revealed, setRevealed] = useState(false);
@@ -64,6 +106,7 @@ const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
         aria-expanded={!!description && revealed}
         style={({ pressed, hovered }) => [
           styles.row,
+          stacked && styles.rowStacked,
           // The row is the hit area for the description, so it has to say so
           // when pointed at. It says it in the gutter around the bar rather
           // than behind it: a tint under a track and a fill would change what
@@ -72,37 +115,42 @@ const RankedBar = memo(({ item, scaleId, scoreWidth }) => {
           (pressed || hovered) && !!description && { backgroundColor: colors.selected },
         ]}
       >
-        <View style={styles.labelColumn}>
+        <View style={stacked ? styles.labelFull : styles.labelColumn}>
           <Text
-            numberOfLines={1}
+            numberOfLines={NAME_LINES}
             style={[styles.valueName, { color: colors.text }]}
           >
             {valueName(item, t)}
           </Text>
         </View>
 
-        <View style={[styles.track, { backgroundColor: colors.track }]}>
-          <View
-            style={[
-              styles.fill,
-              {
-                backgroundColor: fill,
-                width: `${Math.round(fraction * 100)}%`,
-              },
-            ]}
-          />
-        </View>
+        {/* Track and score stay on one line in both layouts: the word is the
+            bar's own label, and a score that wrapped away from the fill it
+            names would have to be read back up to it. */}
+        <View style={stacked ? styles.barLine : [styles.barLine, styles.barLineWide]}>
+          <View style={[styles.track, { backgroundColor: colors.track }]}>
+            <View
+              style={[
+                styles.fill,
+                {
+                  backgroundColor: fill,
+                  width: `${Math.round(fraction * 100)}%`,
+                },
+              ]}
+            />
+          </View>
 
-        <Text
-          style={[
-            styles.score,
-            scoreWidth ? { width: scoreWidth } : null,
-            { color: colors.mutedText },
-          ]}
-          numberOfLines={1}
-        >
-          {scaleStepLabel(scaleId, item.score, t)}
-        </Text>
+          <Text
+            style={[
+              styles.score,
+              scoreWidth ? { width: scoreWidth } : null,
+              { color: colors.mutedText },
+            ]}
+            numberOfLines={1}
+          >
+            {scaleStepLabel(scaleId, item.score, t)}
+          </Text>
+        </View>
       </Pressable>
 
       {!!description && revealed && (
@@ -126,6 +174,7 @@ RankedBar.propTypes = {
   item: PropTypes.object.isRequired,
   scaleId: PropTypes.string.isRequired,
   scoreWidth: PropTypes.number,
+  stacked: PropTypes.bool,
 };
 
 const RankedValueBars = ({ items, scaleId }) => {
@@ -153,8 +202,19 @@ const RankedValueBars = ({ items, scaleId }) => {
     setScoreWidth((current) => (current === width ? current : width));
   }, []);
 
+  // Which layout the rows use, from the width the chart was actually given.
+  // Zero until the first layout lands — and the wide layout is what that
+  // renders, because it is the one a chart wide enough to measure will keep,
+  // and a phone shows one frame of it rather than a frame of nothing.
+  const [width, setWidth] = useState(0);
+  const measureChart = useCallback((event) => {
+    const measured = Math.round(event.nativeEvent.layout.width);
+    setWidth((current) => (current === measured ? current : measured));
+  }, []);
+  const stacked = width > 0 && width < STACKED_BELOW;
+
   return (
-    <View testID="ranked-value-bars">
+    <View testID="ranked-value-bars" onLayout={measureChart}>
       <View
         testID="ranked-score-sizer"
         accessibilityElementsHidden
@@ -176,6 +236,7 @@ const RankedValueBars = ({ items, scaleId }) => {
           item={item}
           scaleId={scaleId}
           scoreWidth={scoreWidth}
+          stacked={stacked}
         />
       ))}
     </View>
@@ -183,6 +244,19 @@ const RankedValueBars = ({ items, scaleId }) => {
 };
 
 const styles = StyleSheet.create({
+  barLine: {
+    // The bar and its word are one thing in both layouts, so they travel
+    // together: a score that wrapped away from the fill it names would have to
+    // be read back up to it.
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  barLineWide: {
+    // Side by side with the name, the bar is what is left of the row once the
+    // name column has taken its share.
+    flex: 1,
+  },
   description: {
     borderRadius: BORDER_RADIUS.md,
     fontSize: FONT_SIZE.sm,
@@ -200,24 +274,47 @@ const styles = StyleSheet.create({
   },
   labelColumn: {
     justifyContent: 'center',
-    // Wide enough that "Respect and self-respect" and the other long entries in
-    // the catalogue print whole. The tracks give up the four points: every one
-    // of them gives up the same four, so the shared baseline the chart is read
-    // against is untouched.
+    // The share of a wide row the name takes before the bar starts. Enough for
+    // "Respect and self-respect" on one line and for the longer Russian entries
+    // on two, and the tracks give up the same 42 points on every row — so the
+    // shared baseline the chart is read against is untouched.
     width: '42%',
+  },
+  labelFull: {
+    justifyContent: 'center',
+    // Stacked, the name has the row to itself — no width to share and none to
+    // reserve.
+    width: '100%',
   },
   row: {
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.md,
     flexDirection: 'row',
     gap: SPACING.sm,
+    // A floor rather than a height: a name that needs a second line takes one,
+    // and the row grows around it instead of clipping it (see NAME_LINES).
+    minHeight: HEIGHTS.rankedBar,
+    paddingHorizontal: SPACING.xs,
     // A 2px gap between neighbouring bars, as surface rather than as a border,
     // so adjacent fills never touch and merge into one shape.
-    height: HEIGHTS.rankedBar,
-    paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
   },
+  rowStacked: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    // Two points inside a row, eight between rows: with the bars no longer in a
+    // column of their own, proximity is the only thing saying which name the
+    // bar under it belongs to.
+    gap: 2,
+    justifyContent: 'center',
+    paddingVertical: SPACING.xs,
+  },
   score: {
+    // The measured width is a floor as well as a width: a `Text` is a flex item
+    // that would otherwise give its own column back to a row under pressure,
+    // and a score column that shrank would print "Very impor…" beside a bar
+    // whose length it is supposed to be naming.
+    flexShrink: 0,
     fontSize: FONT_SIZE.sm,
     minWidth: 26,
     // Left, so every label starts at the same x just past the end of the tracks.
@@ -242,6 +339,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
     letterSpacing: LETTER_SPACING.snug,
+    // Tight, because a wrapped name is one label rather than a paragraph: the
+    // two lines have to read as belonging to the row they sit in and not to
+    // the rows above and below it.
+    lineHeight: FONT_SIZE.md * LINE_HEIGHT.tight,
   },
 });
 
