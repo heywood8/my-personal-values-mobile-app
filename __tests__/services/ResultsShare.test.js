@@ -49,6 +49,47 @@ const handMade = ([format, assessedOn, scale, checkedOn = null], entries = [['lo
   })),
 });
 
+// A deliberate second implementation of the envelope, so a test can take a
+// real code apart and put a different one together. If this ever disagrees
+// with the module, one of the two has changed the format.
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+const fingerprint = (body) => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < body.length; i += 1) {
+    hash ^= body.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash.toString(36);
+};
+
+const bytesOf = (code) => {
+  const body = code.slice(code.indexOf('.') + 1);
+  let bits = 0;
+  let width = 0;
+  const out = [];
+  for (const char of body) {
+    bits = (bits << 6) | ALPHABET.indexOf(char);
+    width += 6;
+    if (width >= 8) {
+      width -= 8;
+      out.push((bits >> width) & 0xff);
+    }
+  }
+  return out;
+};
+
+const codeOf = (bytes) => {
+  let body = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const [a, b, c] = [bytes[i], bytes[i + 1] || 0, bytes[i + 2] || 0];
+    body += ALPHABET[a >> 2] + ALPHABET[((a & 0x03) << 4) | (b >> 4)];
+    if (i + 1 < bytes.length) body += ALPHABET[((b & 0x0f) << 2) | (c >> 6)];
+    if (i + 2 < bytes.length) body += ALPHABET[c & 0x3f];
+  }
+  return `${fingerprint(body)}.${body}`;
+};
+
 describe('a shared code', () => {
   it('survives the round trip', () => {
     const { payload, error } = decodeShareCode(codeFor());
@@ -110,10 +151,11 @@ describe('a shared code', () => {
     const code = codeFor(deck);
 
     expect(decodeShareCode(code).payload.entries).toHaveLength(catalogue.values.length);
-    // Not a hard limit — a comfortable one, with room for the deck to grow. A
-    // link starts being unpleasant to send well before an address bar refuses
-    // it, and this one is around 900 characters with the URL in front of it.
-    expect(code.length).toBeLessThan(1200);
+    // Not a hard limit — a comfortable one, with room for the deck to grow. This
+    // is around eighty characters with the URL in front of it: short enough to
+    // read down the phone, to survive a chat client's line wrapping, and to be
+    // copied by hand out of a message without losing the end of it.
+    expect(code.length).toBeLessThan(120);
   });
 });
 
@@ -228,19 +270,20 @@ describe('the wheel, when it is sent along', () => {
       .toEqual([['love', 8], ['health', 3], ['learning', null]]);
   });
 
-  it('leaves the ranking’s own columns exactly where they were', () => {
-    // The whole reason this did not need a format bump: the wheel is a column
-    // AFTER the ones every shipped release already reads, so a reader that has
-    // never heard of it takes the first three and ignores the rest.
-    const columns = (code) => decodeShareCode(code).payload.entries
+  it('leaves the ranking exactly where it was', () => {
+    // The wheel is its own block, so sending it cannot move, rescale or reorder
+    // a single importance score. Two questions, two blocks — the same separation
+    // the backup file's `kind` column keeps.
+    const ranking = (code) => decodeShareCode(code).payload.entries
       .map((entry) => [entry.key, entry.score, entry.name]);
 
-    expect(columns(withWheel())).toEqual(columns(codeFor()));
+    expect(ranking(withWheel())).toEqual(ranking(codeFor()));
   });
 
   it('keeps a custom value’s name and its wheel score together', () => {
-    // The name column sits between the two, so an entry with a score and no name
-    // has to write the name empty rather than let the score slide into it.
+    // A value with no slot leaves the packed block entirely and travels as text,
+    // wheel score and all — so the two halves of it must not come apart on the
+    // way out.
     const rows = [
       { key: 'love', valueId: 'love', isCustom: false, score: 5, normalized: 1 },
       { key: 'a-uuid', valueId: 'a-uuid', isCustom: true, customName: 'Sailing', score: 3, normalized: 0.5 },
@@ -297,7 +340,129 @@ describe('the wheel, when it is sent along', () => {
     const code = codeFor(deck, assessment, checkin(scores));
 
     expect(decodeShareCode(code).payload.entries).toHaveLength(catalogue.values.length);
-    expect(code.length).toBeLessThan(1400);
+    expect(code.length).toBeLessThan(160);
+  });
+});
+
+describe('a code from before the deck was fixed', () => {
+  /**
+   * Format 1 named every value in every row. Nothing writes it now, but it is in
+   * people's chat histories, so it is read forever — and this is the only place
+   * that still writes one, precisely so the reader is exercised against a code
+   * this release would never produce.
+   */
+  const legacy = (rows = results, meta = assessment, alignment = null) => encodeShareCode({
+    ...buildSharePayload(meta, rows, (value) => value.customName || value.key, alignment),
+    format: 1,
+  });
+
+  it('still reads, and says which format it came in', () => {
+    const { payload, error } = decodeShareCode(legacy());
+
+    expect(error).toBeNull();
+    expect(payload.format).toBe(1);
+    expect(payload.assessedOn).toBe('2026-08-12');
+    expect(payload.entries.map((entry) => [entry.key, entry.score]))
+      .toEqual([['love', 5], ['health', 4], ['learning', 1]]);
+  });
+
+  it('still carries the names and the wheel it was written with', () => {
+    const rows = [
+      { key: 'love', valueId: 'love', isCustom: false, score: 5, normalized: 1 },
+      { key: 'a-uuid', valueId: 'a-uuid', isCustom: true, customName: 'Sailing', score: 3, normalized: 0.5 },
+    ];
+    const { payload } = decodeShareCode(legacy(rows, assessment, checkin({ love: 9, 'a-uuid': 4 })));
+
+    expect(payload.checkedOn).toBe('2026-08-13');
+    expect(payload.entries).toEqual([
+      expect.objectContaining({ key: 'love', name: '', score: 5, alignment: 9 }),
+      expect.objectContaining({ key: 'a-uuid', name: 'Sailing', score: 3, alignment: 4 }),
+    ]);
+  });
+
+  it('is the length the current one is measured against', () => {
+    // Three quarters of a format 1 code was the keys — `assertiveness` spelled
+    // out once per card, in a link whose both ends already knew the deck by
+    // heart. That is the whole of the difference.
+    const deck = catalogue.values.map((value, i) => ({
+      key: value.key, isCustom: false, score: (i % 5) + 1, normalized: 0,
+    }));
+
+    expect(legacy(deck).length).toBeGreaterThan(800);
+    expect(codeFor(deck).length * 8).toBeLessThan(legacy(deck).length);
+  });
+
+  it('is refused if it claims to be the current format', () => {
+    // A body of rows can only be format 1. One claiming otherwise did not come
+    // from this module, and its columns are not where its header says they are —
+    // so it is refused rather than read on the strength of its header.
+    const rows = '2*2026-08-12*numeric5!love*5';
+    const forged = codeOf(Array.from(rows, (char) => char.charCodeAt(0)));
+
+    expect(decodeShareCode(forged).error).toBe('malformed');
+  });
+});
+
+describe('what makes the code short', () => {
+  it('never spells a shipped value out', () => {
+    // The point of the whole format: `love` is a position, and the app that
+    // opens the link is what names it — in its own reader's language.
+    const body = String.fromCharCode(...bytesOf(codeFor()));
+
+    expect(body).not.toContain('love');
+    expect(body).not.toContain('health');
+  });
+
+  it('says nothing at all about the values nobody rated', () => {
+    // A ranking of one is a handful of bytes, not a deck's worth of zeroes.
+    const one = codeFor([{ key: 'acceptance', isCustom: false, score: 5, normalized: 1 }]);
+
+    expect(one.length).toBeLessThan(25);
+    expect(decodeShareCode(one).payload.entries).toEqual([
+      expect.objectContaining({ key: 'acceptance', score: 5 }),
+    ]);
+  });
+
+  it('still carries a value the catalogue has retired', () => {
+    // Its ratings outlive its card, so its slot outlives its card too.
+    const [retired] = catalogue.retired;
+    const { payload } = decodeShareCode(codeFor([
+      { key: retired, isCustom: false, score: 4, normalized: 0.75 },
+    ]));
+
+    expect(payload.entries[0].key).toBe(retired);
+  });
+
+  it('recovers the ranking’s order instead of carrying it', () => {
+    // Scores travel in the deck's order, which is exactly the order
+    // `getRankedResults` breaks ties by — so strongest-first can be worked out
+    // on arrival rather than spelled out on the way.
+    const { payload } = decodeShareCode(handMade(
+      [SHARE_FORMAT, '2026-08-12', 'numeric5'],
+      [['adventure', 3], ['acceptance', 5], ['love', 3]],
+    ));
+
+    expect(payload.entries.map((entry) => entry.key)).toEqual(['acceptance', 'adventure', 'love']);
+  });
+
+  it('skips a block from a later release rather than choking on it', () => {
+    // What replaced format 1's "ignore the columns you do not know": a block
+    // says how long it is, so an older reader can step over it and read the rest.
+    const bytes = bytesOf(codeFor());
+    const spliced = [...bytes.slice(0, 5), 99, 0, 2, 0xab, 0xcd, ...bytes.slice(5)];
+    const { payload, error } = decodeShareCode(codeOf(spliced));
+
+    expect(error).toBeNull();
+    expect(payload.entries.map((entry) => entry.key)).toEqual(['love', 'health', 'learning']);
+  });
+
+  it('refuses a block that claims to be longer than the code', () => {
+    // The other half of trusting a length: a truncated body must not be read as
+    // far as the length says it goes.
+    const bytes = bytesOf(codeFor());
+    const lying = [...bytes.slice(0, 5), bytes[5], 0xff, 0xff, ...bytes.slice(8)];
+
+    expect(decodeShareCode(codeOf(lying)).error).toBe('malformed');
   });
 });
 

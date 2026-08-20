@@ -236,8 +236,8 @@ same one file before an in-app APK install, rotating the newest three.
 
 There is a third way data leaves the device, and it is not a backup.
 `app/services/ResultsShare.js` packs the latest ranking into a link —
-`?r=<fingerprint>.<body>`, holding the date, the scale and one `key,score` pair
-per rated value — which the reader hands to somebody else. Nothing is uploaded:
+`?r=<fingerprint>.<body>`, holding the date, the scale and one four-bit score per
+catalogue slot — which the reader hands to somebody else. Nothing is uploaded:
 the reading *is* the string, which is what lets a static export with no server
 behind it show a friend's results.
 
@@ -248,21 +248,24 @@ The backup file is how records travel between installs that mean to keep them;
 a link is a reading, and `SharedResultsScreen` renders it without touching the
 database at all.
 
-Values travel as keys for the same reason the backup file matches on `value_key`
-— the key is the stable identity across installs and languages — with one
-difference: the shared code omits the *name* of a catalogue value entirely, so the
-app that opens the link names it in its own reader's language. A value the opening
-app does not know has no key anyone else can resolve and travels as text, which is
-also why two values added by hand on two different phones never match when two
-rankings are compared: their keys are uuids minted separately.
+Values travel as identity for the same reason the backup file matches on
+`value_key` — a name is not stable across installs and languages — with one
+difference: a link does not spell the key out either. It carries a *slot* in
+`app/services/shareIndex.js`, a frozen append-only list, because the deck is the
+shipped catalogue and both ends of a link already know it; the app that opens the
+link resolves the slot to a key and names it in its own reader's language. A value
+with no slot — one the reader added on an older release, or a catalogue entry from
+a newer one — travels as text instead, which is also why two values added by hand
+on two different phones never match when two rankings are compared: their keys are
+uuids minted separately.
 
 The wheel can go along, when the sender switches it on — one alignment score per
-value and the check-in's date, as columns *after* the ones every shipped release
-already reads. That is the one place the two lists share a carrier, and it is
-allowed for the reason the CSV files are not: an older reader ignores a column it
-has never heard of, whereas alignment scores appended to a records file would be
-read as importance ratings for that date. None of it comes back in either — a
-comparison is drawn on screen and nothing about it is written.
+slot and the check-in's date, in a section of its own. That is the one place the
+two lists share a carrier, and it is allowed for the reason the CSV files are not:
+a reader steps over a section it has never heard of by the length written in front
+of it, whereas alignment scores appended to a records file would be read as
+importance ratings for that date. None of it comes back in either — a comparison
+is drawn on screen and nothing about it is written.
 
 ## Storage locations
 

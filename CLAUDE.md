@@ -307,25 +307,46 @@ happens.
 **A shared link is a reading, not a record.** `app/services/ResultsShare.js` packs
 the latest ranking into the URL itself — `?r=<fingerprint>.<body>` — because there
 is no server to put it on and there is not going to be one. Three things about it
-are load-bearing. It travels as *keys*, so the app that opens it names each value
-in its own reader's language and only a value the opening app cannot name carries
-text. It lands **read-only**: `SharedResultsScreen` writes nothing, because an
-import would resolve the sender's date through `startAssessment()` and overwrite
-the reader's own record for that day — the backup import is the door for records
-that are meant to land. And the header row carries `SHARE_FORMAT`, because the link lives in
-somebody's chat history and the app that finally opens it may be older or newer
-than the one that wrote it; a code from a newer format is refused by name rather
-than half-read.
+are load-bearing. It travels as *identity*, never as names, so the app that opens
+it names each value in its own reader's language and only a value the opening app
+could not name for itself carries text. It lands **read-only**:
+`SharedResultsScreen` writes nothing, because an import would resolve the sender's
+date through `startAssessment()` and overwrite the reader's own record for that
+day — the backup import is the door for records that are meant to land. And the
+body opens with `SHARE_FORMAT`, because the link lives in somebody's chat history
+and the app that finally opens it may be older or newer than the one that wrote
+it; a code from a newer format is refused by name rather than half-read.
 
-**The wheel travels in that link too, and only when it is asked for.** It is a
-fourth column on each value's row and a fourth column on the header (the check-in's
-date), never a number folded into the importance score — the same separation the
-backup file's `kind` column keeps. What forced the two files apart does not apply
-here: a shipped
-release would misread alignment scores appended to a records file as importance
-ratings, while a trailing column it has never heard of is simply ignored, which is
-why one link can carry both lists and `SHARE_FORMAT` is still 1. Adding a column
-in front of those, or reusing one, is the change that would need the bump.
+**A value's identity in that link is a slot number, and the slots are frozen.**
+`app/services/shareIndex.js` is the list — append-only, never reordered, and a
+literal rather than anything derived from `defaultValues.json` at runtime. That is
+what makes the link short: the deck is the shipped catalogue and nothing else, so
+both ends already know all 47 cards and a link that spelled them out was three
+quarters key text (~820 characters for a full ranking, against ~50 now). Three
+things follow. `alignCatalogueOrder()` is free to renumber the *deck* and this
+list is not, because a link sent last month is still opened today. **Retired
+values keep their slots**, since `getRankedResults()` deliberately does not filter
+archived values and an old ranking still carries them. And a key with no slot is
+not an error — it travels as text in the code's tail — which is why the parity
+test, not the format, is what keeps a shipped value from quietly falling into it.
+
+The body is bytes, not rows: a five-byte header, then `[type][length][bytes]`
+sections. Values are four bits each at their slot (0 = not rated, which no scale
+can express), trailing unrated slots are simply not written, and the section
+lengths are what replaced format 1's "ignore a column you do not know" — a reader
+takes the types it knows and **steps over the rest by length**, which works
+wherever the new block sits rather than only at the end. Format 1 is still read,
+and still written by the tests, because a reader has to be exercised against a
+code this release would not produce.
+
+**The wheel travels in that link too, and only when it is asked for.** It is its
+own section — dated, one four-bit ring per slot — never a number folded into the
+importance score, the same separation the backup file's `kind` column keeps.
+`SHARE_FORMAT` went to 2 when the ranking became positional, and that is the rule
+being applied rather than a version bumped for tidiness: a format 1 reader takes
+a row's first field as a value's key and would have read a slot number as the name
+of a value it had never heard of. Adding a *section* is not that, and does not
+need a bump.
 
 The switch is on the results screen, it starts off on every visit, and it is
 deliberately **not** a stored preference: `shareResults({ includeAlignment })`
