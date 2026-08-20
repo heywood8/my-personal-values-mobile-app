@@ -151,6 +151,74 @@ describe('the score column', () => {
   });
 });
 
+describe('a name too long for its line', () => {
+  const layOutChart = async (width) => {
+    await act(async () => {
+      fireEvent(screen.getByTestId('ranked-value-bars'), 'layout', {
+        nativeEvent: { layout: { width } },
+      });
+    });
+  };
+
+  const rowStyle = (key) => StyleSheet.flatten(screen.getByTestId(`ranked-bar-${key}`).props.style);
+
+  it('wraps rather than being cut off mid-word', async () => {
+    await render(
+      <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // A ranking is a list of names, and "Поддержка / поощ…" is not one of them.
+    expect(screen.getByText('Love').props.numberOfLines).toBe(2);
+  });
+
+  it('lets a row grow instead of clipping what wrapped', async () => {
+    await render(
+      <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    const style = rowStyle('love');
+    expect(style.height).toBeUndefined();
+    expect(style.minHeight).toBe(34);
+  });
+
+  it('stacks the name above the bar where the two cannot share a line', async () => {
+    await render(
+      <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // A phone's width split between a name and a track leaves the track too
+    // short to read a magnitude off, so below the breakpoint the name takes the
+    // whole row and every track under it gets the whole row too.
+    await layOutChart(320);
+    expect(rowStyle('love').flexDirection).toBe('column');
+  });
+
+  it('keeps name and bar side by side once there is room for both', async () => {
+    await render(
+      <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    await layOutChart(560);
+    expect(rowStyle('love').flexDirection).toBe('row');
+  });
+
+  it('draws the wide layout before it has been measured', async () => {
+    await render(
+      <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
+      { wrapper: ThemeOnlyProviders },
+    );
+
+    // `onLayout` lands a frame late on the web and never at all under RNTL.
+    // Blanking the chart until it does would cost more than one frame of the
+    // layout a chart wide enough to measure is going to keep anyway.
+    expect(rowStyle('love').flexDirection).toBe('row');
+  });
+});
+
 describe('the description behind a row', () => {
   const renderBars = () => render(
     <RankedValueBars items={ITEMS} scaleId={SCALE_IDS.NUMERIC_5} />,
