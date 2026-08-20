@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.0...values-v1.1.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **results:** stop the ranked list clipping a value's name ([#59](https://github.com/heywood8/my-personal-values-mobile-app/issues/59)) ([7f932f4](https://github.com/heywood8/my-personal-values-mobile-app/commit/7f932f4323063e2eb768b446663c452f5a690a5a))
+
 ## [1.1.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.0.0...values-v1.1.0) (2026-08-19)
 
 
