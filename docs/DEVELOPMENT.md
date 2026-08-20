@@ -328,7 +328,7 @@ of their own gets the two side by side. There is no server to put anything on, s
 the link carries the reading itself:
 
 ```
-https://values.heywood8.com/?r=1a0mjed.MSoyMDI2LTA4...
+https://values.heywood8.com/?r=1w2d07c.AgEAUM0BABgSNFZ4mhI0VniaEjRW...
 ```
 
 | file | what it does |
@@ -340,14 +340,25 @@ https://values.heywood8.com/?r=1a0mjed.MSoyMDI2LTA4...
 | `app/utils/comparison.js` | two readings of one list, matched up and summarised |
 | `app/components/charts/ComparisonBars.js` | one value, twice: a bar per person |
 
-Inside the parameter is a base36 fingerprint, a dot, and a base64url body holding
-the date, the scale and one `key,score` pair per rated value. A full 47-value deck
-comes to about 900 characters with the URL in front of it.
+Inside the parameter is a base36 fingerprint, a dot, and a base64url body. The
+body is bytes: a five-byte header — the format, the scale, and the date as a day
+count — followed by `[type][length][bytes]` sections. A value is a *slot* in
+`app/services/shareIndex.js` and its score is the four bits at that slot, zero
+meaning "not rated"; trailing unrated slots are not written at all. A full
+47-value deck comes to about **eighty characters** with the URL in front of it,
+where the format that named every value came to nine hundred.
 
-The wheel can travel with it, when the sender switches it on: the check-in's date
-is a fourth column on the header row and each value's alignment score a fourth
-column on its own row. Both sit *after* the columns every shipped release already
-reads, which is why this needed no format bump — see the last point below. The
+That works because the deck is the shipped catalogue and nothing else, so both
+ends of the link already know all 47 cards. The one thing it asks in return is
+that `shareIndex.js` is **append-only and never reordered** — a slot is a promise
+to every link already sent, retired values keep theirs (an old ranking still
+carries them), and a parity test fails if a shipped or retired key has none. A key
+with no slot still shares; it travels as text in the code's tail, which costs
+length and nothing else.
+
+The wheel can travel with it, when the sender switches it on: a section of its
+own, holding the check-in's date and one four-bit ring per slot. Importance and
+alignment are two questions and neither is folded into the other's number. The
 switch is on the results screen, starts off on every visit and is not stored:
 `shareResults({ includeAlignment })` takes it as an argument, because "how far I
 am from living this" is not as easy a thing to hand over as "this matters to me",
@@ -360,11 +371,11 @@ Five properties are worth knowing before changing any of it:
   against a link that arrived in half — the failure that actually happens, when a
   chat client wraps a long URL and only the first line gets copied. It is not a
   signature and proves nothing about who made the link.
-- **Values travel as keys.** `love`, not "Love" — so a ranking shared in Russian
-  reads in English on the other side, resolved by the app that opens it. Only a
-  value the opening app does not know — one the reader added on an older release,
-  or a catalogue entry from a newer one — travels as text, because nothing else
-  can name it.
+- **Values travel as identity, never as names.** A slot resolves to `love`, and
+  the app that *opens* the link is what names it — so a ranking shared in Russian
+  reads in English on the other side. Only a value the opening app does not know —
+  one the reader added on an older release, or a catalogue entry from a newer one
+  — travels as text, because nothing else can name it.
 - **Nothing is written on arrival.** The shared screen renders and closes; it
   never touches the database. An import would resolve the sender's date through
   `startAssessment()` and overwrite the reader's own record for that day, and a
@@ -389,10 +400,14 @@ Five properties are worth knowing before changing any of it:
   shares *itself*, so a fork's deployment and a local export both produce links
   that work; `EXPO_SHARE_URL` overrides the fallback for native builds.
 
-The format's header row carries `SHARE_FORMAT`. A link outlives the release that
-wrote it, so a code from a newer format is reported as needing a newer app rather
-than read with the columns this build happens to know. Adding a trailing column is
-not a format change — a reader takes the columns it knows and ignores the rest.
+The body opens with `SHARE_FORMAT`. A link outlives the release that wrote it, so
+a code from a newer format is reported as needing a newer app rather than read
+with a layout this build happens to know. It went to 2 when the ranking became
+positional, which is the rule rather than an exception: a format 1 reader takes a
+row's first field as a value's key, and would have read a slot number as the name
+of a value it had never heard of. Adding a *section* is not a format change — a
+reader takes the types it knows and steps over the rest by their length — and
+format 1 codes, which are in people's chat histories, are still read.
 
 ## Tests
 
