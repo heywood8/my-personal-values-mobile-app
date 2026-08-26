@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.1...values-v1.2.0) (2026-08-26)
+
+
+### Features
+
+* back up to Google Sheets, behind a Google sign-in ([#61](https://github.com/heywood8/my-personal-values-mobile-app/issues/61)) ([fc71856](https://github.com/heywood8/my-personal-values-mobile-app/commit/fc718569867c97626511a2de0c182223ad33945f))
+
 ## [1.1.1](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.0...values-v1.1.1) (2026-08-20)
 
 
