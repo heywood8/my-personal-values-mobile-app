@@ -75,7 +75,11 @@ const nameOf = (row, resolveName) => (
 );
 
 /**
- * Everything on the device as CSV text.
+ * Everything on the device, as the table both carriers write.
+ *
+ * Rows rather than text, because the same table travels two ways: a CSV file,
+ * and a Google spreadsheet's cells (see app/services/GoogleSheets.js). One
+ * builder, so a column added for the file is a column the sheet gets too.
  *
  * The ranking comes first, then the check-ins — the order they have to be
  * imported in (the wheel's sectors are derived from a completed ranking), so the
@@ -90,7 +94,7 @@ const nameOf = (row, resolveName) => (
  * @param {(value: object) => string} resolveName renders a value's display name
  *   (the caller owns translation, so this takes the app's `valueName`).
  */
-export async function buildBackupCsv(resolveName) {
+export async function buildBackupRows(resolveName) {
   const history = await getHistory();
   const checkins = await getAlignmentHistory();
 
@@ -100,7 +104,7 @@ export async function buildBackupCsv(resolveName) {
       : a.assessedOn.localeCompare(b.assessedOn)
   ));
 
-  return toCsv([
+  return [
     BACKUP_CSV_HEADER,
     ...ranked.map((row) => [
       KIND.IMPORTANCE,
@@ -122,7 +126,12 @@ export async function buildBackupCsv(resolveName) {
       '',
       ALIGNMENT_RINGS,
     ]),
-  ]);
+  ];
+}
+
+/** The same table as CSV text — what a file holds. */
+export async function buildBackupCsv(resolveName) {
+  return toCsv(await buildBackupRows(resolveName));
 }
 
 /**
@@ -267,8 +276,12 @@ const collectAlignment = (rows) => {
 };
 
 /**
- * Read a backup file into the records it describes, without touching the
+ * Read a backup's rows into the records they describe, without touching the
  * database.
+ *
+ * A file's rows and a spreadsheet's cells arrive in the same shape — a header
+ * row and the rows under it — so both are read here rather than each getting
+ * its own reader.
  *
  * Split from the write so the UI can say what an import is about to do before it
  * does it — replacing a day's record is not something to discover afterwards.
@@ -284,8 +297,8 @@ const collectAlignment = (rows) => {
  *   `error` is a stable identifier ('empty' | 'no_columns'), not a message: the
  *   caller owns the wording and the language it is in.
  */
-export function parseBackupCsv(text) {
-  const parsed = rowsToObjects(parseCsv(text));
+export function parseBackupRows(cells) {
+  const parsed = rowsToObjects(cells);
   const empty = {
     alignment: { ratings: 0, records: [] },
     importance: { ratings: 0, records: [] },
@@ -314,6 +327,11 @@ export function parseBackupCsv(text) {
     importance: { ratings: importance.ratings, records: importance.records },
     skipped: importance.skipped + alignment.skipped + unknownKind,
   };
+}
+
+/** The same reading, from a file's text. */
+export function parseBackupCsv(text) {
+  return parseBackupRows(parseCsv(text));
 }
 
 /**

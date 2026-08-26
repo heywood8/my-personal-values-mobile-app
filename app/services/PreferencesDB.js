@@ -16,6 +16,11 @@ export const PREF_KEYS = {
   // a run" are the same fact. A first run interrupted mid-deck resumes in the
   // deck, because that is where it started.
   ONBOARDING_COMPLETE: 'onboarding_complete',
+  // What the reader's backup spreadsheet in Google Drive is called. A
+  // preference rather than a constant because it is the only handle on that
+  // file: the app searches Drive by this name, so a reader with two devices
+  // points both at one name and gets one backup.
+  GOOGLE_SHEET_NAME: 'google_sheet_name',
   // Sort direction on the results screen: 'desc' (most important first, the
   // default) or 'asc'.
   RESULTS_SORT: 'results_sort',

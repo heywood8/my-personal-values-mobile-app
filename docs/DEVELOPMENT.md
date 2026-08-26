@@ -321,6 +321,92 @@ lands: see the first-run notes in [../CLAUDE.md](../CLAUDE.md) for what
 an in-app APK install, rotating the newest three. A change that adds a third
 record type adds a `kind` to this file rather than a file beside it.
 
+## The Google Sheets backup
+
+The same backup, kept as a spreadsheet in the reader's own Google Drive instead
+of a file they have to hold on to. `app/services/GoogleSheets.js` is the Drive
+and Sheets half, `app/services/GoogleAuth.js` the sign-in, and
+`app/hooks/useGoogleSheetsSync.js` wires them to the panel in Settings.
+
+It is the same *table*, not a second format: `buildBackupRows()` and
+`parseBackupRows()` in `BackupCsv.js` are shared with the file, and the CSV
+serialiser sits on top of them. So a column added for the file is a column the
+sheet gets, a sheet downloaded as CSV imports through the file door, and loading
+from Drive goes through the same confirmation — it replaces a date's record
+rather than merging into it, which is not a thing to discover afterwards.
+
+The spreadsheet is found by name. That name is a preference
+(`google_sheet_name`, default `my-personal-values.xlsx`), so two devices told the
+same name reach the same backup. The extension is part of the name rather than a
+fact about the file — a Google spreadsheet has no extension, and this is what
+somebody looking for their backup in a Drive listing expects to see.
+
+Saving clears the sheet and appends, rather than writing over the front of it: a
+shorter save left under a longer one is half of one history and half of another.
+Loading never creates anything — a name that finds nothing is reported, because
+an empty spreadsheet made in answer would report success for a backup that does
+not exist.
+
+### What has to be configured
+
+Nothing is offered unless a client ID was configured for the platform the app is
+running on: `canUseGoogleSync()` is false otherwise and the settings card is not
+rendered at all, which is what a default build and every fork gets until they set
+one up. Three variables, read by `app.config.js` into `extra.google`:
+
+| variable | client type | needed for |
+|---|---|---|
+| `GOOGLE_WEB_CLIENT_ID` | Web application | the web export |
+| `GOOGLE_ANDROID_CLIENT_ID` | Android | Android builds |
+| `GOOGLE_IOS_CLIENT_ID` | iOS | iOS builds |
+
+They are not secrets — an OAuth client ID is public by design, and what protects
+it is the origin, package or bundle it is bound to — but they are
+per-deployment, so a fork uses its own.
+
+In the Google Cloud console, once per project:
+
+1. Enable the **Google Drive API** and the **Google Sheets API**.
+2. On the OAuth consent screen, add the scopes
+   `https://www.googleapis.com/auth/drive.file` and `email`. `drive.file` is
+   per-file access to files the app itself created — it cannot list or read
+   anything else in the Drive, which is why it is the scope and also why a
+   spreadsheet the reader made by hand is invisible to the search.
+3. Create the clients you need. The Web client lists the origins the export is
+   served from as **Authorised JavaScript origins** (there is no redirect URI to
+   add: the browser uses Google Identity Services, which hands a token to a
+   callback). The Android client takes the package name and the signing
+   certificate's SHA-1; the iOS client the bundle ID.
+
+A phone's redirect comes back on the reversed client ID
+(`com.googleusercontent.apps.<id>`). `app.config.js` adds that to the app's
+schemes from the same variable the sign-in builds it from, so the two cannot
+drift apart — but it does mean an Android or iOS client ID is a **native rebuild**,
+not a runtime setting. On EAS that variable goes in the build profile's `env` in
+`eas.json`, or as a project environment variable of the plain (non-secret) kind;
+the web deploy workflow already passes `GOOGLE_WEB_CLIENT_ID` through from a
+repository variable of the same name, and ships without the panel when it is
+unset.
+
+### Why the platforms sign in differently
+
+A browser cannot do the code-for-token exchange a phone does: Google requires a
+client secret from a Web client at the token endpoint, and a secret shipped
+inside a static export is not a secret. So the web half
+(`app/services/googleAuthWeb.js`) uses Google Identity Services, and the phone
+half (`app/services/googleAuthNative.js`) uses `expo-auth-session` with PKCE.
+Both are reached with `await import()` from `GoogleAuth.js`, for the reason
+`ApkInstaller` is: the web half fetches a script from `accounts.google.com`, and
+loading that eagerly would tell Google about every reader who opened the page.
+Metro splits them — `googleAuthWeb` is its own chunk in `bun run build:web`
+output, and `expo-auth-session` does not appear in the web bundle at all.
+
+The token lives in memory and is never written to the preferences. Those are
+mirrored into `localStorage` on the web, and a credential any script on the
+origin can read is not one this app is willing to keep — so a session lasts as
+long as the app is open, and signing in again is the tap that already had to
+happen to start a sync.
+
 ## Sharing a result as a link, and comparing two
 
 The results screen can hand the ranking to somebody else, and a reader who has one

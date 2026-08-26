@@ -21,6 +21,7 @@
     "@expo/vector-icons": "^15.0.3",
     "drizzle-orm": "^1.0.0-beta.6-7aaf14b",
     "expo": "~56.0.19",
+    "expo-auth-session": "~56.0.17",
     "expo-build-properties": "~56.0.25",
     "expo-constants": "~56.0.23",
     "expo-file-system": "~56.0.8",
@@ -30,6 +31,7 @@
     "expo-sqlite": "~56.0.5",
     "expo-status-bar": "~56.0.4",
     "expo-system-ui": "~56.0.5",
+    "expo-web-browser": "~56.0.6",
     "prop-types": "^15.8.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -45,6 +47,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
+    "@babel/plugin-transform-dynamic-import": "^8.0.1",
     "@eslint/js": "^10.0.1",
     "@testing-library/react-native": "^14.0.0",
     "babel-preset-expo": "~56.0.15",

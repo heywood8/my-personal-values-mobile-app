@@ -27,6 +27,38 @@ const WEB_BASE_URL = process.env.EXPO_WEB_BASE_URL || undefined;
 // builds at its own deployment by setting this.
 const SHARE_URL = process.env.EXPO_SHARE_URL || '';
 
+// The Google OAuth clients, one per client type, because Google does not issue
+// one that covers all three: a Web client authorises an origin, an Android
+// client a package plus signing certificate, an iOS client a bundle ID. Left
+// unset, the app shows no Google Sheets panel at all — see
+// app/services/GoogleAuth.js, which reads these back off `extra.google`.
+//
+// They are not secrets (an OAuth client ID is public by design; what protects
+// the client is the origin, package or bundle it is bound to), but they are
+// per-deployment, so a fork sets its own rather than inheriting these.
+const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || '';
+const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || '';
+const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || '';
+
+const GOOGLE_CLIENT_IDS = {
+  ...(GOOGLE_WEB_CLIENT_ID && { webClientId: GOOGLE_WEB_CLIENT_ID }),
+  ...(GOOGLE_ANDROID_CLIENT_ID && { androidClientId: GOOGLE_ANDROID_CLIENT_ID }),
+  ...(GOOGLE_IOS_CLIENT_ID && { iosClientId: GOOGLE_IOS_CLIENT_ID }),
+};
+
+// A phone's OAuth redirect comes back on the reversed client ID, so that scheme
+// has to be one the app answers to. The same string is built in
+// app/services/googleAuthNative.js, which is the other half of this: the app
+// asks Google to redirect where the manifest says it can be reached, and a
+// mismatch is a sign-in that never returns.
+const reversedClientId = (clientId) => (
+  `com.googleusercontent.apps.${clientId.replace(/\.apps\.googleusercontent\.com$/, '')}`
+);
+
+const OAUTH_SCHEMES = [GOOGLE_ANDROID_CLIENT_ID, GOOGLE_IOS_CLIENT_ID]
+  .filter(Boolean)
+  .map(reversedClientId);
+
 // The EAS project this app builds under. `eas build` reads it from
 // `extra.eas.projectId` and refuses to start without it — `eas.json` asks for a
 // remote `versionCode`, and there is no project to read one from.
@@ -48,7 +80,7 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true, // Required for react-native-worklets (used by reanimated 4.x)
-    scheme: 'com.heywood8.values',
+    scheme: ['com.heywood8.values', ...OAUTH_SCHEMES],
     // Android, iOS and web are all first-class targets — the value catalogue and
     // every chart are pure JS/SVG, so nothing in the feature set is platform-bound.
     platforms: ['android', 'ios', 'web'],
@@ -102,6 +134,7 @@ module.exports = {
     ...(WEB_BASE_URL && { experiments: { baseUrl: WEB_BASE_URL } }),
     extra: {
       ...(SHARE_URL && { shareUrl: SHARE_URL }),
+      ...(Object.keys(GOOGLE_CLIENT_IDS).length && { google: GOOGLE_CLIENT_IDS }),
       ...(EAS_PROJECT_ID && { eas: { projectId: EAS_PROJECT_ID } }),
     },
     plugins: [

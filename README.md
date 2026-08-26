@@ -52,6 +52,9 @@ list is tracked over time too.
 - **Backup in and out** — save everything you have as one spreadsheet-readable
   file and read it back on another device; the ranking and the wheel check-ins
   travel together, and files written by older versions still import
+- **Backup to Google Sheets** — the same backup as a spreadsheet in your own
+  Google Drive, under a name you choose (`my-personal-values.xlsx` by default),
+  saved and read back when you press the button and never in the background
 - **Share a ranking** — a link with the whole result packed inside it, so a friend
   opens it in a browser with no app, no account and nothing uploaded
 - **Your own deck** — archive the values you do not care about, so they stop
@@ -71,6 +74,13 @@ Which also means nothing is backed up anywhere, so everything can be saved as on
 CSV file and read back in — on the web as a download and a file dialog, on a phone
 through the share sheet and a paste box. One file, both lists: the ranking and the
 wheel check-ins.
+
+A build configured with a Google OAuth client also offers that backup as a
+spreadsheet in your own Google Drive: same rows, same confirmation on the way
+back in, saved when you press save. The app is given per-file access — it can see
+the spreadsheet it made and nothing else in the Drive — and the access token is
+kept in memory for as long as the app is open, never stored. Without a client ID
+configured, the app never mentions Google at all.
 
 The one thing that ever leaves is a link you make yourself and hand to somebody:
 "Share with a friend" puts the ranking *inside* the link rather than on a server,
