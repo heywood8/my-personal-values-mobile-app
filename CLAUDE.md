@@ -315,6 +315,38 @@ clear a date it cannot refill: replacing a record starts by clearing it, so a da
 whose every row names a value this deck does not have is skipped before that
 happens.
 
+**The spreadsheet is the backup file's table, in cells.** The module
+`app/services/GoogleSheets.js` is a second carrier, not a second format:
+`buildBackupRows()` and `parseBackupRows()` in `BackupCsv.js` are shared with the
+file and the CSV serialiser sits on top of them, so a column added for the file
+is a column the sheet gets, a sheet downloaded as CSV imports through the file
+door, and a load from Drive goes through `useBackupImport` — the same
+confirmation, because what it does to the database is the same thing. Which
+spreadsheet is decided by *name*, kept as a preference (default
+`my-personal-values.xlsx`), because that is the only handle two devices can
+share. Saving clears the sheet and appends rather than writing over the front of
+it — a shorter save left under a longer one is half of one history and half of
+another — and loading creates nothing: a name that finds nothing is reported,
+since an empty spreadsheet made in answer would report success for a backup that
+does not exist.
+
+**The Google half is absent unless it was configured, and its token dies with
+the session.** `canUseGoogleSync()` is false when no client ID was set for this
+platform (`app.config.js` reads three, one per Google client type), and the
+settings card is not rendered at all — a default build and every fork show
+nothing rather than a button that fails on press, the same predicate-not-Platform
+rule as `canPickFile()`. The access token lives in `GoogleAuth.js` and nowhere
+else: the preferences are mirrored into `localStorage`, and a credential any
+script on the origin can read is not one to keep. Signing in again is the tap
+that already had to happen to start a sync.
+
+The two sign-in halves are reached with `await import()` for the same reason
+`ApkInstaller` is, and the reason is not portability here: the web half fetches a
+script from `accounts.google.com`, and loading it eagerly would tell Google about
+every reader who opened the page. `googleAuthWeb` appears as its own chunk in
+`bun run build:web` output and `expo-auth-session` does not appear in the web
+bundle at all; if either changes, something started importing it eagerly.
+
 **A shared link is a reading, not a record.** `app/services/ResultsShare.js` packs
 the latest ranking into the URL itself — `?r=<fingerprint>.<body>` — because there
 is no server to put it on and there is not going to be one. Three things about it

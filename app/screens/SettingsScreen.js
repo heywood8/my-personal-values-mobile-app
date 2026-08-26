@@ -14,9 +14,11 @@ import ScreenHeader from '../components/ScreenHeader';
 import SectionCard from '../components/SectionCard';
 import ValueDeckPanel from '../components/ValueDeckPanel';
 import BackupTransferPanel from '../components/BackupTransferPanel';
+import GoogleSheetsPanel from '../components/GoogleSheetsPanel';
 import PrivacyNote from '../components/PrivacyNote';
 import UpdatePanel from '../components/UpdatePanel';
 import { canInstallUpdates } from '../services/AppUpdateService';
+import { canUseGoogleSync } from '../services/GoogleAuth';
 import { SCALE_ORDER, SCALES } from '../utils/scales';
 import { languageLabel } from '../utils/languages';
 import { resetDatabase, isUsingMemoryFallback } from '../services/db';
@@ -187,6 +189,20 @@ const SettingsScreen = ({ onStartCalibration }) => {
             {t('reset_data')}
           </Button>
         </SectionCard>
+
+        {/* Absent from a build with no Google client ID configured for this
+            platform — see services/GoogleAuth.js. A card of its own rather than
+            a third block inside the data card: it is the same backup, but it is
+            the only thing in the app that talks to anybody. */}
+        {canUseGoogleSync() && (
+          <SectionCard
+            title={t('sheets_title')}
+            footnote={t('sheets_privacy_note')}
+            style={styles.card}
+          >
+            <GoogleSheetsPanel />
+          </SectionCard>
+        )}
 
         {/* Absent where an APK cannot be installed — see the component. */}
         {canInstallUpdates() && (

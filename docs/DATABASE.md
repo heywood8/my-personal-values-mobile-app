@@ -20,7 +20,8 @@ SQL and against the live database, so the two halves cannot drift apart.
 ### `app_metadata`
 
 Key/value preferences, behind `app/services/PreferencesDB.js`: language, theme,
-rating scale, onboarding state, and the results screen's view and sort toggles.
+rating scale, onboarding state, the results screen's view and sort toggles, and
+the name of the reader's backup spreadsheet in Google Drive.
 
 | column | type | notes |
 |---|---|---|
@@ -231,6 +232,24 @@ an error: a backup taken before the reader ever filled in the wheel has no
 check-ins, and a reader restoring one gets told what actually landed rather than a
 line claiming zero of what was never there. `writePreUpdateSnapshot()` writes the
 same one file before an in-app APK install, rotating the newest three.
+
+### The same table, in a spreadsheet
+
+The file is not the only carrier. `app/services/GoogleSheets.js` puts the very
+same rows — header included — into a spreadsheet in the reader's own Google
+Drive, and reads them back the same way. `BackupCsv.js` builds and parses *rows*;
+the CSV serialiser sits on top of that, so a column added for the file is a
+column the sheet gets, and a sheet downloaded as CSV imports through the file
+door without anything having to agree twice.
+
+Nothing about the rules above changes for that route. A sheet is loaded through
+the same confirmation, resolves each date through `startAssessment` /
+`startCheckin`, recomputes `normalized`, and counts the rows it could not match.
+What is different is only where the rows came from and that it needs a Google
+account: which spreadsheet is decided by name (`google_sheet_name` in
+`app_metadata`, default `my-personal-values.xlsx`), the app can only see the file
+it created itself, and the access token is never stored anywhere — see
+[DEVELOPMENT.md](./DEVELOPMENT.md#the-google-sheets-backup).
 
 ### The share link, and why it never comes back in
 

@@ -96,6 +96,9 @@ export function parseCsv(text) {
  * Header names are lower-cased and trimmed, so a file that came back from a
  * spreadsheet as "Assessed_On" still lines up. A short row is padded rather than
  * rejected: a missing optional column is the caller's business, not the parser's.
+ *
+ * Cells are coerced to text, not assumed to be text: the same shape arrives from
+ * the Sheets API, which hands a numeric cell back as a number.
  */
 export function rowsToObjects(rows) {
   if (rows.length === 0) return [];
@@ -103,7 +106,7 @@ export function rowsToObjects(rows) {
   return rows.slice(1).map((row) => {
     const record = {};
     header.forEach((name, index) => {
-      record[name] = (row[index] ?? '').trim();
+      record[name] = String(row[index] ?? '').trim();
     });
     return record;
   });

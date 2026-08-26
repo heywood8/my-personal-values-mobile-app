@@ -40,8 +40,15 @@ jobs:
       # The site is served from the custom domain's root (see the CNAME step
       # below), not from a /<repo>/ sub-path, so EXPO_WEB_BASE_URL is left unset
       # and app.config.js falls back to the root base URL.
+      # The Google Sheets backup is offered only where a Web OAuth client ID was
+      # configured; the repository variable is unset by default, and the export
+      # then ships without the panel (see docs/DEVELOPMENT.md). A client ID is
+      # public by design — what protects it is the origin it is bound to — so it
+      # is a variable rather than a secret.
       - name: Export web bundle
         run: bun run build:web
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
 
       # Expo's static export puts its bundles under `_expo/`, and GitHub Pages
       # runs Jekyll by default, which skips every underscore-prefixed directory.
