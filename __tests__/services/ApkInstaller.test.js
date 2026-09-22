@@ -263,19 +263,36 @@ describe('verifyCachedApk', () => {
 });
 
 describe('installApk', () => {
-  it('hands the installer a content URI with both flags it needs', async () => {
+  it('hands the installer a content URI it is allowed to read', async () => {
     await installApk(`${CACHE}values-v0.4.0.apk`);
 
     expect(IntentLauncher.startActivityAsync).toHaveBeenCalledWith(
       'android.intent.action.VIEW',
       expect.objectContaining({
         data: `content://${CACHE}values-v0.4.0.apk`,
-        // FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK — without the
-        // first the installer cannot read the file it was handed.
-        flags: 1 | 268435456,
+        // FLAG_GRANT_READ_URI_PERMISSION alone: without it the installer, which
+        // is another process, cannot read the file it was handed.
+        flags: 1,
         type: 'application/vnd.android.package-archive',
       }),
     );
+  });
+
+  it('does not launch the installer into a task of its own', async () => {
+    // FLAG_ACTIVITY_NEW_TASK was here, and expo-intent-launcher starts this with
+    // `startActivityForResult`: Android cancels the result of anything launched
+    // into a new task, so the promise resolved before the installer had drawn
+    // anything and said CANCELED whatever the user went on to do.
+    await installApk(`${CACHE}values-v0.4.0.apk`);
+
+    const [, params] = IntentLauncher.startActivityAsync.mock.calls[0];
+    expect(params.flags & 268435456).toBe(0);
+  });
+
+  it('returns what the installer reported, so a refusal is not silent', async () => {
+    IntentLauncher.startActivityAsync.mockResolvedValueOnce({ resultCode: 0 });
+
+    expect(await installApk(`${CACHE}values-v0.4.0.apk`)).toEqual({ resultCode: 0 });
   });
 });
 

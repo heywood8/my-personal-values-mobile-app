@@ -3,6 +3,7 @@
     ".": {
       "release-type": "node",
       "include-v-in-tag": true,
+      "draft": true,
       "extra-files": [
         "app.config.js"
       ],

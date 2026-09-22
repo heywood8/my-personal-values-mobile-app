@@ -416,6 +416,31 @@ everywhere (`app/utils/linkSharing.js`, asked by predicate like `canPickFile()`)
 who already has the app can follow — which is why every link points at the
 published web export.
 
+**Installing an update needs a line in the manifest, and its absence is
+silent.** `android.permissions` in `app.config.js` declares
+`REQUEST_INSTALL_PACKAGES`, and since Android 8 the package installer refuses an
+APK handed to it by an app that has not — by aborting inside `onCreate` and
+finishing with `RESULT_CANCELED` before it draws anything. So the failure is not
+an error dialog or a rejected file: it is an install button that does nothing,
+for both the button in Settings and the last step of an automatic update, with
+nothing in the app able to tell it from a user who changed their mind. The deck
+that goes with it: `installApk()` sets `FLAG_GRANT_READ_URI_PERMISSION` and
+deliberately **not** `FLAG_ACTIVITY_NEW_TASK` — expo-intent-launcher starts the
+intent with `startActivityForResult`, and Android cancels the result of anything
+launched into a task of its own, which made the returned result code a
+fabrication.
+
+**The release is published last, after the APK is on it.** GitHub's immutable
+releases freeze a release's assets at publication, so `release-please-config.json`
+asks for a **draft** and `.github/workflows/release-apk.yml` publishes it once
+the build has been attached. Attaching afterwards is refused — `HTTP 422: Cannot
+upload assets to an immutable release` — and a release that took that answer
+cannot be given an APK later by any route, which is why v0.7.0 through v1.1.1
+have none and never will. Two consequences worth keeping: the tag does not exist
+while the build runs, so the workflow checks out the commit the caller passes;
+and a failed build publishes the draft anyway, but only on the second attempt,
+because the first one still has `auto-retry.yml`'s re-run to upload into.
+
 **`app/services/ApkInstaller.js` is never imported statically.** It is the only
 module touching expo-file-system and expo-intent-launcher, and the latter has no
 web implementation — a static import puts it in the web bundle's module graph and

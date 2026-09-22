@@ -29,9 +29,17 @@ const MAX_RELEASES_TO_CHECK = 20;
 // How many past releases the settings panel lists as a changelog.
 const MAX_CHANGELOG_ENTRIES = 10;
 
-// The workflow that builds the APK and attaches it to a release. A release tag
-// that exists with no APK on it usually means this is still running.
-const BUILD_WORKFLOW_FILE = 'release-apk.yml';
+// The workflows that build the APK and attach it to a release. A release that
+// exists with no APK on it usually means one of these is still running.
+//
+// Two files, and the second is not belt-and-braces. The build is a *reusable*
+// workflow, and a workflow started with `uses:` never gets a run of its own —
+// it is a job inside the run of whatever called it. So every APK this project
+// has ever built automatically is invisible at release-apk.yml's own runs
+// endpoint, which lists only the handful somebody started by hand from the
+// Actions tab. release-please.yml is the caller; its own job finishes in
+// seconds, so a run of it still in flight is the APK build, near enough.
+const BUILD_WORKFLOW_FILES = ['release-apk.yml', 'release-please.yml'];
 
 export const RELEASES_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
@@ -166,19 +174,23 @@ export const fetchActiveBuildRun = async ({
   fetchImpl = fetch,
   now = Date.now(),
 } = {}) => {
-  const endpoint = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${BUILD_WORKFLOW_FILE}/runs?per_page=10`;
-
-  try {
+  const runsOf = async (workflowFile) => {
+    const endpoint = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs?per_page=10`;
     const response = await fetchWithTimeout(
       endpoint,
       { headers: githubHeaders(currentAppVersion()) },
       UPDATE_CHECK_TIMEOUT_MS,
       fetchImpl,
     );
-    if (!response.ok) return null;
+    if (!response.ok) return [];
 
     const data = await response.json();
-    const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
+    return Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
+  };
+
+  try {
+    const pages = await Promise.all(BUILD_WORKFLOW_FILES.map(runsOf));
+    const runs = pages.flat();
 
     // "Active" is anything GitHub has not marked completed: queued, in_progress,
     // waiting on an approval, and so on.

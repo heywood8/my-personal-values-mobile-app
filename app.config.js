@@ -96,6 +96,20 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       package: 'com.heywood8.values',
+      // The app installs its own updates — there is no store listing, so
+      // ApkInstaller.js hands the downloaded file to the Android package
+      // installer itself. Since Android 8 that installer refuses an APK from an
+      // app which has not declared this permission, and it refuses it *in
+      // silence*: InstallStart aborts inside onCreate and finishes with
+      // RESULT_CANCELED before drawing anything at all. A build without this
+      // line therefore has an install button that does nothing, reports no
+      // error, and cannot be told apart from a user who changed their mind.
+      //
+      // It is declared, not requested. What the user grants is the app-op
+      // behind it, on the "install unknown apps" settings screen — which the
+      // package installer opens by itself, but only once the declaration is
+      // here to be found.
+      permissions: ['android.permission.REQUEST_INSTALL_PACKAGES'],
     },
     ios: {
       bundleIdentifier: 'com.heywood8.values',
