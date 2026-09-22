@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.1...values-v1.2.0) (2026-09-22)
+
+
+### Features
+
+* back up to Google Sheets, behind a Google sign-in ([#61](https://github.com/heywood8/my-personal-values-mobile-app/issues/61)) ([fc71856](https://github.com/heywood8/my-personal-values-mobile-app/commit/fc718569867c97626511a2de0c182223ad33945f))
+
+
+### Bug Fixes
+
+* **updates:** declare REQUEST_INSTALL_PACKAGES and publish releases last ([#65](https://github.com/heywood8/my-personal-values-mobile-app/issues/65)) ([94c01f9](https://github.com/heywood8/my-personal-values-mobile-app/commit/94c01f9aeca880ed8b1166c164b3e0ca2d408d18))
+
+
+### Build System
+
+* **deps-dev:** Bump jest from 30.4.2 to 30.5.1 ([#64](https://github.com/heywood8/my-personal-values-mobile-app/issues/64)) ([e995cc5](https://github.com/heywood8/my-personal-values-mobile-app/commit/e995cc50deeff528589093c4a49ad455afc72ad0))
+
 ## [1.1.1](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.0...values-v1.1.1) (2026-08-20)
 
 
