@@ -1,5 +1,56 @@
 # Changelog
 
+## [2.0.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.2.0...values-v2.0.0) (2026-09-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **backup:** save and restore everything as one file, and freeze the deck ([#55](https://github.com/heywood8/my-personal-values-mobile-app/issues/55))
+
+### Features
+
+* **alignment:** show each value's description on the wheel's rows ([#44](https://github.com/heywood8/my-personal-values-mobile-app/issues/44)) ([a7b8e92](https://github.com/heywood8/my-personal-values-mobile-app/commit/a7b8e92eac4a1806319351cd08315797c62cd854))
+* **alignment:** track how far behaviour matches the values that matter most ([#36](https://github.com/heywood8/my-personal-values-mobile-app/issues/36)) ([969e718](https://github.com/heywood8/my-personal-values-mobile-app/commit/969e718d5cd90acf13ac9b9a41c08eae18b05276))
+* back up to Google Sheets, behind a Google sign-in ([#61](https://github.com/heywood8/my-personal-values-mobile-app/issues/61)) ([fc71856](https://github.com/heywood8/my-personal-values-mobile-app/commit/fc718569867c97626511a2de0c182223ad33945f))
+* **backup:** save and restore everything as one file, and freeze the deck ([#55](https://github.com/heywood8/my-personal-values-mobile-app/issues/55)) ([69bf969](https://github.com/heywood8/my-personal-values-mobile-app/commit/69bf969d341d3f20def02a0e7eb2e44bb4fae9ac))
+* **history:** track many values as a grid of small multiples ([#47](https://github.com/heywood8/my-personal-values-mobile-app/issues/47)) ([3068aaa](https://github.com/heywood8/my-personal-values-mobile-app/commit/3068aaa3f2f17a711ce43b33fd2b93f2bf4f8a76))
+* name the value behind a wheel sector on hover or tap ([#45](https://github.com/heywood8/my-personal-values-mobile-app/issues/45)) ([c0ba5d8](https://github.com/heywood8/my-personal-values-mobile-app/commit/c0ba5d8c09f3a456a4588b4107539b5a6080a658))
+* offer the CSV import on the first card of the deck ([#42](https://github.com/heywood8/my-personal-values-mobile-app/issues/42)) ([77b96a2](https://github.com/heywood8/my-personal-values-mobile-app/commit/77b96a21fe8c812034fafba93ef4fcda5bb73b77))
+* **results:** compare a friend's shared ranking with your own ([#48](https://github.com/heywood8/my-personal-values-mobile-app/issues/48)) ([aea1af1](https://github.com/heywood8/my-personal-values-mobile-app/commit/aea1af13c4b7aba7f7253c6fb8987052902fe857))
+* **results:** share a ranking as a link that carries it ([#39](https://github.com/heywood8/my-personal-values-mobile-app/issues/39)) ([5e62b88](https://github.com/heywood8/my-personal-values-mobile-app/commit/5e62b88c6424b54ab18f37b688fffc8fb138f2e0))
+* say what the answers are for on both filling screens ([#41](https://github.com/heywood8/my-personal-values-mobile-app/issues/41)) ([f46679e](https://github.com/heywood8/my-personal-values-mobile-app/commit/f46679ef99f09075b435f9554c338e1b575ba976))
+* **ui:** give the app a depth, type and grouping system ([#56](https://github.com/heywood8/my-personal-values-mobile-app/issues/56)) ([2913a02](https://github.com/heywood8/my-personal-values-mobile-app/commit/2913a02201d86687264eaaa27392b06abab3cf0e))
+* **web:** serve the site from values.heywood8.com ([#51](https://github.com/heywood8/my-personal-values-mobile-app/issues/51)) ([cfaae69](https://github.com/heywood8/my-personal-values-mobile-app/commit/cfaae69fcd27248f80059cfbfec96236dd96f2f7))
+
+
+### Bug Fixes
+
+* **a11y:** write accessibility state as aria props, and describe the page ([#53](https://github.com/heywood8/my-personal-values-mobile-app/issues/53)) ([b2b2d33](https://github.com/heywood8/my-personal-values-mobile-app/commit/b2b2d33a4b7ee046300ea9135fcfa7fe1eb5433f))
+* **alignment:** give the wheel row description a line height ([#50](https://github.com/heywood8/my-personal-values-mobile-app/issues/50)) ([9069652](https://github.com/heywood8/my-personal-values-mobile-app/commit/9069652703f907ec174c0f417e2ee58acec2d81b))
+* **alignment:** make the wheel's copies of the truth stay true ([#38](https://github.com/heywood8/my-personal-values-mobile-app/issues/38)) ([534831d](https://github.com/heywood8/my-personal-values-mobile-app/commit/534831d30121290fdb12cb16c5e8ce9a89028694))
+* **results:** stop the ranked list clipping a value's name ([#59](https://github.com/heywood8/my-personal-values-mobile-app/issues/59)) ([7f932f4](https://github.com/heywood8/my-personal-values-mobile-app/commit/7f932f4323063e2eb768b446663c452f5a690a5a))
+* **updates:** declare REQUEST_INSTALL_PACKAGES and publish releases last ([#65](https://github.com/heywood8/my-personal-values-mobile-app/issues/65)) ([94c01f9](https://github.com/heywood8/my-personal-values-mobile-app/commit/94c01f9aeca880ed8b1166c164b3e0ca2d408d18))
+
+
+### Miscellaneous Chores
+
+* **main:** release values 0.10.0 ([#49](https://github.com/heywood8/my-personal-values-mobile-app/issues/49)) ([e2c4096](https://github.com/heywood8/my-personal-values-mobile-app/commit/e2c4096b147bc1d1a35dbf2e78bb5da6e4bd85aa))
+* **main:** release values 0.11.0 ([#52](https://github.com/heywood8/my-personal-values-mobile-app/issues/52)) ([87760d5](https://github.com/heywood8/my-personal-values-mobile-app/commit/87760d5fd227c78f84bd359282d25ef5e730c616))
+* **main:** release values 0.5.1 ([#35](https://github.com/heywood8/my-personal-values-mobile-app/issues/35)) ([465f786](https://github.com/heywood8/my-personal-values-mobile-app/commit/465f78642a7b0fc13fbe37e327aae97b56612eb8))
+* **main:** release values 0.6.0 ([#37](https://github.com/heywood8/my-personal-values-mobile-app/issues/37)) ([b156342](https://github.com/heywood8/my-personal-values-mobile-app/commit/b156342d7e7683e9bfad6953b30081c0c9b0bb37))
+* **main:** release values 0.7.0 ([#40](https://github.com/heywood8/my-personal-values-mobile-app/issues/40)) ([b5525b4](https://github.com/heywood8/my-personal-values-mobile-app/commit/b5525b4bd3ec2a00b6b3f4f88a2ca4dba0a4324e))
+* **main:** release values 0.8.0 ([#43](https://github.com/heywood8/my-personal-values-mobile-app/issues/43)) ([3239ae4](https://github.com/heywood8/my-personal-values-mobile-app/commit/3239ae4866159845c49c3e5a7952f5718717ae4c))
+* **main:** release values 0.9.0 ([#46](https://github.com/heywood8/my-personal-values-mobile-app/issues/46)) ([bb85862](https://github.com/heywood8/my-personal-values-mobile-app/commit/bb85862436ce749f89bdd919ebc3ca51852e6344))
+* **main:** release values 1.0.0 ([#54](https://github.com/heywood8/my-personal-values-mobile-app/issues/54)) ([d7bcff5](https://github.com/heywood8/my-personal-values-mobile-app/commit/d7bcff5c5792b98b7de122aee797e5677200002c))
+* **main:** release values 1.1.0 ([#57](https://github.com/heywood8/my-personal-values-mobile-app/issues/57)) ([60ed405](https://github.com/heywood8/my-personal-values-mobile-app/commit/60ed405daf9abd21479d92c5bfd5a04a9cf6855d))
+* **main:** release values 1.1.1 ([#60](https://github.com/heywood8/my-personal-values-mobile-app/issues/60)) ([1d1aca1](https://github.com/heywood8/my-personal-values-mobile-app/commit/1d1aca16a7a1d51437ade4be586771329ceb04b2))
+* **main:** release values 1.2.0 ([#62](https://github.com/heywood8/my-personal-values-mobile-app/issues/62)) ([6b07d7f](https://github.com/heywood8/my-personal-values-mobile-app/commit/6b07d7f0d04ada51d9317494dcf7774975273efd))
+
+
+### Build System
+
+* **deps-dev:** Bump jest from 30.4.2 to 30.5.1 ([#64](https://github.com/heywood8/my-personal-values-mobile-app/issues/64)) ([e995cc5](https://github.com/heywood8/my-personal-values-mobile-app/commit/e995cc50deeff528589093c4a49ad455afc72ad0))
+
 ## [1.2.0](https://github.com/heywood8/my-personal-values-mobile-app/compare/values-v1.1.1...values-v1.2.0) (2026-09-22)
 
 
