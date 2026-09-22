@@ -242,16 +242,48 @@ export const verifyCachedApk = async (downloadUrl, {
   return { exists: true, uri: localUri, verified: false };
 };
 
-/** Hand a file to the Android package installer. */
+// Android's own result codes, as `startActivityForResult` reports them.
+export const RESULT_CANCELED = 0;
+
+/**
+ * Hand a file to the Android package installer.
+ *
+ * Three things are load-bearing here and none of them is visible in the call.
+ *
+ * `REQUEST_INSTALL_PACKAGES` has to be in the manifest — see app.config.js,
+ * where the reason is written out. Without it nothing below happens at all, and
+ * nothing says so.
+ *
+ * FLAG_GRANT_READ_URI_PERMISSION, because the installer is another process and
+ * the content URI names a file of ours.
+ *
+ * And *not* FLAG_ACTIVITY_NEW_TASK, which was here and should not have been.
+ * expo-intent-launcher starts this with `startActivityForResult`, and Android
+ * cancels the result of anything launched into a task of its own — "Activity is
+ * launching as a new task, so cancelling activity result" in logcat — so the
+ * promise resolved before the installer had drawn a pixel and the resolved
+ * value said CANCELED whatever the user went on to do. The flag is also
+ * unnecessary: expo-intent-launcher starts the activity from the current
+ * Activity, which is exactly the case that does not need it.
+ *
+ * @returns {Promise<{resultCode: number}>} the installer's own result. It is
+ *   RESULT_CANCELED both when the user backs out and when the install was
+ *   refused outright, so it is worth logging and not worth alarming anybody
+ *   with.
+ */
 export const installApk = async (localUri) => {
   const contentUri = await FileSystem.getContentUriAsync(localUri);
-  await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+  const result = await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
     data: contentUri,
-    // FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK — the installer is
-    // another process and needs both to read the file and to own its own task.
-    flags: 1 | 268435456,
+    flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
     type: 'application/vnd.android.package-archive',
   });
+
+  if (result?.resultCode === RESULT_CANCELED) {
+    console.warn('[AppUpdate] The package installer came back cancelled:', localUri);
+  }
+
+  return result;
 };
 
 /**

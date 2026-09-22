@@ -1,9 +1,15 @@
 name: Release APK
 
-# Builds an Android APK on EAS and attaches it to an existing GitHub release.
+# Builds an Android APK on EAS, attaches it to a GitHub release, and publishes
+# that release.
 #
-# Called by release-please.yml the moment it publishes a release, and runnable by
-# hand from the Actions tab to (re)attach an APK to any tag that already has one.
+# Called by release-please.yml the moment it *drafts* a release, and runnable by
+# hand from the Actions tab against a tag. The order matters and is not a
+# preference: a published release is immutable here, so assets go on while it is
+# still a draft and the publish is the last step. A manual run can therefore
+# attach an APK to a release that is still a draft, and to one published before
+# immutability was turned on — but not to an immutable published release, which
+# refuses the upload with HTTP 422 and cannot be given an APK by any route.
 #
 # One secret is required — EXPO_TOKEN, from expo.dev → Settings → Access tokens.
 # The signing keystore is generated and held by EAS (`eas credentials`), so no
@@ -24,6 +30,16 @@ on:
         description: Tag of the release to build from and attach the APK to
         required: true
         type: string
+      sha:
+        # release-please creates the release as a draft, and GitHub does not
+        # create a draft's tag until it is published — so for the automated path
+        # the tag named above does not exist yet and there is nothing to check
+        # out by that name. The caller passes the commit instead. Absent (a
+        # manual run against an already-published release) the tag is used.
+        description: Commit to build, when the tag does not exist yet
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       # release-please prefixes its tags with the component name, so they read
@@ -36,7 +52,8 @@ on:
         required: true
         type: string
 
-# Uploading a release asset is the only write this needs.
+# Uploading a release asset and publishing the draft it hangs off. Both are
+# `contents`, and nothing else here writes anything.
 permissions:
   contents: write
 
@@ -63,10 +80,10 @@ jobs:
     env:
       EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
     steps:
-      - name: Checkout the release tag
+      - name: Checkout the release commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.sha || inputs.tag }}
 
       # The `secrets` context cannot be read from an `if:`, so a missing token
       # has to be caught in a step body. Failing here, before the EAS setup, is
@@ -114,9 +131,25 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         # `--output` applies to `--local` builds only, so the artifact URL is
         # read back out of the JSON. `--json` implies `--non-interactive` and
-        # keeps everything that is not JSON on stderr.
+        # keeps everything that is not JSON on stderr — hence the redirection
+        # dance: stderr goes through `tee` so the queue and the build log are
+        # still readable live, stdout goes to the file `jq` reads afterwards.
+        #
+        # The free plan caps Android builds per month, and when that cap is
+        # reached `eas build` exits with a bare "Error: build command failed."
+        # nine seconds in; the sentence naming the cap is a line above it, in
+        # among the queue chatter. v1.1.1 died that way and the run reported
+        # nothing an eye could catch. Say it plainly instead.
         run: |
-          eas build --platform android --profile release --json --wait > build.json
+          set -o pipefail
+          if ! eas build --platform android --profile release --json --wait 2>&1 1>build.json | tee eas.log; then
+            if grep -qi 'builds from the Free plan' eas.log; then
+              echo "::error title=EAS build quota reached::This month's Android builds on the Expo free plan are used up, so no APK could be built. The quota resets at the start of next month; until then, re-run this workflow by hand against the tag once it has, or upgrade the plan at https://expo.dev/accounts/lopatinikita/settings/billing."
+            else
+              echo "::error::eas build failed; the EAS output is above."
+            fi
+            exit 1
+          fi
           url="$(jq -r '.[0].artifacts.applicationArchiveUrl // .[0].artifacts.buildUrl // empty' build.json)"
           if [ -z "${url}" ]; then
             echo "::error::EAS reported no application archive for this build."
@@ -155,6 +188,7 @@ jobs:
         run: sha256sum "${APK_NAME}" > "${APK_NAME}.sha256"
 
       - name: Attach the APK and its checksum to the release
+        id: attach
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -169,3 +203,35 @@ jobs:
             "${APK_NAME}" \
             "${APK_NAME}.sha256" \
             --clobber
+
+      # release-please creates the release as a draft and this is what publishes
+      # it. The order is the whole of the fix: GitHub's immutable releases freeze
+      # a release's assets the moment it is published, so an APK attached
+      # afterwards is refused with "HTTP 422: Cannot upload assets to an
+      # immutable release" — and every release from v0.7.0 on has none for that
+      # reason, one of them after a build that had already succeeded and cannot
+      # be attached to that tag now or ever. A draft still takes assets, so the
+      # APK goes on first and the release is published last.
+      #
+      # A release nobody can see is worse than a release without an APK, so a
+      # failed build does not hold the draft back for good: it is published
+      # anyway on the second attempt, which auto-retry.yml starts. Holding it
+      # through the first attempt is what leaves that retry somewhere to upload
+      # to — publish immediately and the retry hits the same 422 the draft was
+      # introduced to avoid.
+      #
+      # Already published (a manual run against an existing release) is not an
+      # error and not something to edit: an immutable release refuses that too.
+      - name: Publish the release
+        if: ${{ always() && (steps.attach.outcome == 'success' || github.run_attempt > 1) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$(gh release view "${TAG}" --json isDraft --jq .isDraft)" = "true" ]; then
+            gh release edit "${TAG}" --draft=false --latest
+            echo "Published ${TAG}."
+          else
+            echo "Release ${TAG} is already published; nothing to do."
+          fi

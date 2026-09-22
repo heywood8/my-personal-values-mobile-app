@@ -272,6 +272,38 @@ describe('fetchActiveBuildRun', () => {
     const fetchImpl = jest.fn(async () => { throw new Error('offline'); });
     expect(await fetchActiveBuildRun({ fetchImpl })).toBeNull();
   });
+
+  it('asks the calling workflow too, since a reusable one has no runs of its own', async () => {
+    // release-apk.yml is started with `uses:`, and a workflow started that way
+    // is a job inside the caller's run rather than a run of its own — so its own
+    // runs endpoint lists only the handful started by hand, and every automated
+    // build was invisible here.
+    const fetchImpl = jest.fn(async () => jsonResponse({ workflow_runs: [] }));
+
+    await fetchActiveBuildRun({ fetchImpl });
+
+    const asked = fetchImpl.mock.calls.map(([url]) => url);
+    expect(asked.some((url) => url.includes('release-apk.yml'))).toBe(true);
+    expect(asked.some((url) => url.includes('release-please.yml'))).toBe(true);
+  });
+
+  it('still answers when one of the two endpoints refuses', async () => {
+    const now = Date.now();
+    const fetchImpl = jest.fn(async (url) => (
+      url.includes('release-apk.yml')
+        ? { ok: false, status: 404, json: async () => ({}) }
+        : jsonResponse({
+          workflow_runs: [
+            { status: 'in_progress', run_started_at: new Date(now - 12 * 60000).toISOString(), html_url: 'caller' },
+          ],
+        })
+    ));
+
+    expect(await fetchActiveBuildRun({ fetchImpl, now })).toMatchObject({
+      htmlUrl: 'caller',
+      elapsedMinutes: 12,
+    });
+  });
 });
 
 describe('canInstallUpdates', () => {

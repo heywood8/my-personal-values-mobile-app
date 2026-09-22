@@ -520,7 +520,7 @@ providers by hand.
 | `pr-title-check.yml` | every PR | PR title must be a Conventional Commit |
 | `ossar.yml` | PRs to main, weekly | static analysis into the Security tab |
 | `release-please.yml` | push to main | maintains the release PR and changelog |
-| `release-apk.yml` | on release, or by hand | builds the APK on EAS, attaches it to the release |
+| `release-apk.yml` | on a drafted release, or by hand | builds the APK on EAS, attaches it, publishes the release |
 | `deploy-web.yml` | push to main | publishes the web export to GitHub Pages |
 | `auto-retry.yml` | on failure | re-runs a failed run's jobs once, for flakes |
 
@@ -555,6 +555,43 @@ It is called from inside `release-please.yml` rather than triggered by
 no event that can start another workflow. Give release-please a `RELEASE_TOKEN`
 and that stops being true, but the direct call works either way, so it is the one
 path.
+
+### The release is drafted first and published last
+
+`release-please-config.json` sets `"draft": true`, so what release-please creates
+is a draft; the APK goes onto it, and `release-apk.yml`'s last step publishes it.
+That order is not tidiness. GitHub's **immutable releases** freeze a release's
+assets the moment it is published, and an upload after that point is refused:
+
+```
+HTTP 422: Cannot upload assets to an immutable release.
+```
+
+Releases v0.7.0 through v1.1.1 have no APK for exactly that reason, and cannot be
+given one now by any route — v1.1.1's build succeeded and its upload was refused,
+sixteen minutes later. A draft still takes assets, so the fix is to put them on
+before the release exists publicly.
+
+Two things follow, both of which the workflow handles and neither of which is
+obvious:
+
+- **The tag does not exist while the build runs.** GitHub creates a draft's tag
+  when the draft is published, so there is nothing to check out by name.
+  `release-please.yml` passes its `sha` output and `release-apk.yml` checks that
+  out, falling back to the tag for a manual run against a release that is
+  already published.
+- **A failed build does not hold the release back for ever.** The publish step
+  runs when the upload succeeded *or* when this is the second attempt — the one
+  `auto-retry.yml` starts. Holding it through the first attempt is what leaves
+  the retry somewhere to upload to; publishing immediately would walk the retry
+  into the same 422. If a run is cancelled rather than failed, auto-retry does
+  not fire and the draft waits for a human: publish it from the Releases page,
+  or re-run the workflow by hand.
+
+A manual **Actions → Release APK → Run workflow** can therefore attach an APK to
+a release that is still a draft, and to one published before immutable releases
+were turned on. It cannot rescue an immutable published release; cut a new
+version instead.
 
 Two things have to be in place before the first release:
 
@@ -600,6 +637,14 @@ alike. `preview` is arm64-only on purpose and is the wrong thing to hand a
 stranger. Signing is EAS-managed — `eas credentials` holds the keystore, and
 nothing about it lives in this repository.
 
+The Expo **free plan caps Android builds per month**, and that cap is the other
+way a release ends up without an APK. `eas build` reports it one line above a
+bare `Error: build command failed.` and exits nine seconds in, which is what
+happened to v1.1.1's first attempt and read like nothing at all in the run log;
+the workflow now greps for it and turns it into a named annotation. There is no
+fix in this repository — wait for the reset, re-run the workflow by hand against
+the tag afterwards, or upgrade the plan.
+
 Expect it to be slow, and mostly not for compiling. `eas build --wait` submits in
 about ten seconds and then holds the runner in a queue whose length is not ours to
 control; the first release build spent a full hour in it without starting, and the
@@ -644,12 +689,42 @@ module graph and evaluate it on load. Metro splits it into its own async chunk,
 which is visible in `bun run build:web` output — if `ApkInstaller` stops
 appearing there as a separate bundle, something started importing it eagerly.
 
+**The manifest has to say the app installs packages, and its silence is
+absolute.** `android.permissions` in `app.config.js` declares
+`REQUEST_INSTALL_PACKAGES`. Since Android 8 the package installer refuses an APK
+handed to it by an app that has not — and it refuses it without drawing
+anything: `InstallStart` aborts inside `onCreate` and finishes with
+`RESULT_CANCELED`. So a build missing that line has an install button that does
+nothing at all, an automatic update that downloads and verifies and then stops,
+and nothing anywhere to say why — the app cannot tell that result from a user who
+backed out of the installer. Builds up to and including v1.1.1 were missing it.
+
+What the user still grants is the app-op behind the permission, on the "install
+unknown apps" settings screen. The package installer opens that screen itself,
+but only once it finds the declaration — which is the whole difference between a
+visible prompt and nothing.
+
+Beside it, `installApk()` sets `FLAG_GRANT_READ_URI_PERMISSION` and deliberately
+**not** `FLAG_ACTIVITY_NEW_TASK`. expo-intent-launcher starts the intent with
+`startActivityForResult`, and Android cancels the result of anything launched
+into a task of its own ("Activity is launching as a new task, so cancelling
+activity result"), so with that flag the promise resolved before the installer
+had drawn anything and its result code meant nothing.
+
 **Checks are events, not a timer.** The app checks when it opens and when it
 returns to the foreground, throttled to once an hour by
 `PREF_KEYS.UPDATE_LAST_CHECK_AT`. Unauthenticated GitHub allows sixty requests an
 hour *per address* — shared with everyone else behind the same router — and a
 one-minute poll would spend that on an app people open for a minute a day. The
 timestamp is written even when the check fails, so a rate limit is not hammered.
+
+**"A build is running" is read off two workflows, not one.** A release with no
+APK usually means the build is in flight, and `fetchActiveBuildRun()` says so.
+It asks about `release-apk.yml` *and* `release-please.yml`, because the build is
+a reusable workflow: a workflow started with `uses:` is a job inside the
+caller's run and never gets a run of its own, so `release-apk.yml`'s own runs
+endpoint lists only the handful somebody started by hand. release-please's own
+job finishes in seconds, so one of its runs still in flight is the APK build.
 
 **A downloaded APK is verified twice before it is offered.** Against the
 release's `.sha256` when there is one, and otherwise against the ZIP structure —

@@ -15,6 +15,11 @@ jobs:
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
+      # The commit the release was cut from. Needed because the release is
+      # created as a *draft* (see release-please-config.json) and GitHub does
+      # not create a draft's tag until it is published — so there is no
+      # `values-v1.2.0` to check out while the APK is being built.
+      sha: ${{ steps.release-please.outputs.sha }}
     # The `secrets` context is not available in a step-level `if:`, but it is in
     # a job-level `env:` — so the "do we have a PAT?" test is resolved here and
     # read back as a plain string below.
@@ -52,6 +57,12 @@ jobs:
   # Attached from inside this workflow rather than from `on: release`, because a
   # release created with the default GITHUB_TOKEN raises no event that can start
   # another workflow — the APK would simply never be built.
+  #
+  # It also publishes the release, which is still a draft when this job starts.
+  # That order is the whole point: assets can only be added while a release is a
+  # draft, and everything from v0.7.0 on was published first and then refused its
+  # APK. A release therefore appears when it has something to install, which is
+  # also when it stops being a version the app can see and do nothing about.
   android-apk:
     name: Android APK
     needs: release-please
@@ -59,5 +70,6 @@ jobs:
     uses: ./.github/workflows/release-apk.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
+      sha: ${{ needs.release-please.outputs.sha }}
     # EXPO_TOKEN; the called workflow narrows the permissions it actually uses.
     secrets: inherit
